@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moola</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Lora:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f5f0;--bg2:#efecea;--bg3:#e5e2dc;--bg4:#d8d4cc;
+  --ink:#1a1814;--ink2:#4a4640;--ink3:#8a8680;
+  --acc:#1a6b3c;--accl:#d4edde;--accll:#f0f9f4;
+  --gold:#b8860b;--goldl:#fdf3d0;
+  --red:#c0392b;--redl:#fde8e6;
+  --blue:#1a4a7a;--bluel:#deeaf8;
+  --bd:#d0ccc4;--bd2:#c0bbb2;
+  --mo:'IBM Plex Mono',monospace;--sr:'Lora',serif;--sa:'Syne',sans-serif;--r:6px;
+}
+html{background:var(--bg);color:var(--ink);font-family:var(--sa);font-size:14px;line-height:1.5}
+body{min-height:100vh}
+input,select,button{font-family:var(--sa);font-size:13px;color:var(--ink)}
+button{cursor:pointer}
+/* NAV */
+nav{position:sticky;top:0;z-index:300;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:50px;background:var(--bg);border-bottom:1px solid var(--bd)}
+.logo{font-family:var(--sr);font-size:19px;font-style:italic;color:var(--acc)}
+.nav-tabs{display:flex}
+.nt{padding:0 .85rem;height:50px;display:flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.nt:hover{color:var(--ink)}.nt.on{color:var(--acc);border-bottom-color:var(--acc)}
+/* TABS */
+.tc{display:none;padding:1.25rem;max-width:1180px;margin:0 auto}
+.tc.on{display:block;animation:fu .17s ease}
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* CARDS */
+.card{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem}
+.csm{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:.8rem}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}
+/* TYPE */
+.lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.bnum{font-family:var(--mo);font-size:25px;font-weight:500;line-height:1}
+.mnum{font-family:var(--mo);font-size:16px}
+.snum{font-family:var(--mo);font-size:12px;color:var(--ink2)}
+.sec{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:.75rem;padding-bottom:.35rem;border-bottom:1px solid var(--bd)}
+/* TAGS */
+.tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.tg{background:var(--accl);color:var(--acc)}.tr{background:var(--redl);color:var(--red)}.tb{background:var(--bluel);color:var(--blue)}.tgld{background:var(--goldl);color:var(--gold)}
+/* BUTTONS */
+.btn{padding:6px 12px;border-radius:var(--r);font-size:11px;font-weight:600;letter-spacing:.04em;border:1px solid var(--bd);background:#fff;color:var(--ink);transition:all .15s}
+.btn:hover{background:var(--bg2);border-color:var(--bd2)}
+.bp{background:var(--acc);color:#fff;border-color:var(--acc)}.bp:hover{background:#155c33}
+.bsm{padding:3px 8px;font-size:10px}.bgh{border-color:transparent;background:transparent;color:var(--ink3)}.bgh:hover{background:var(--bg2);color:var(--ink)}
+/* INPUTS */
+.inp{width:100%;padding:6px 9px;border:1px solid var(--bd);border-radius:var(--r);background:#fff;color:var(--ink);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--acc)}.inpm{font-family:var(--mo)}.inpsm{padding:4px 7px;font-size:11px}
+.fr{display:flex;flex-direction:column;gap:3px;margin-bottom:9px}
+.fr label{font-size:11px;font-weight:600;color:var(--ink2)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;background:var(--bg3);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--acc)}
+.pb{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;transition:width .4s}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);text-align:left;padding:6px 9px;border-bottom:1px solid var(--bd)}
+.tbl td{padding:8px 9px;border-bottom:1px solid var(--bg2);font-size:12px}
+.tbl tr:last-child td{border-bottom:none}.tbl tr:hover td{background:var(--bg)}.tbl .mo{font-family:var(--mo)}
+/* UTIL */
+.flex{display:flex;align-items:center}.fb{display:flex;align-items:center;justify-content:space-between}
+.gsm{gap:6px}.gmd{gap:12px}.glg{gap:18px}
+.pos{color:var(--acc)}.neg{color:var(--red)}.mut{color:var(--ink3)}.mo{font-family:var(--mo)}
+.stabs{display:flex;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.stab{padding:5px 12px;font-size:11px;font-weight:600;border:none;background:#fff;color:var(--ink3);cursor:pointer;transition:all .15s}
+.stab.on{background:var(--ink);color:#fff}
+.atab{padding:5px 12px;font-size:11px;font-weight:600;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--ink3);cursor:pointer;transition:all .15s}
+.atab.on{color:var(--acc);border-bottom-color:var(--acc)}
+/* MODAL */
+.mo-ov{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s}
+.mo-ov.on{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:8px;padding:1.5rem;width:450px;max-width:92vw;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:14px;font-weight:700;margin-bottom:1.1rem;display:flex;justify-content:space-between;align-items:center}
+.gc{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:.9rem;position:relative}
+.gc .ga{position:absolute;top:8px;right:8px;display:flex;gap:3px;opacity:0;transition:opacity .15s}
+.gc:hover .ga{opacity:1}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:var(--bg2);border:1px solid var(--bd);border-radius:3px;font-size:10px;color:var(--ink2)}
+
+/* ═══ SPREADSHEET ════════════════════════════════════════════ */
+.ss-outer{overflow:auto;max-height:65vh;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);position:relative}
+.ss-tbl{border-collapse:collapse;font-size:12px;table-layout:fixed}
+.ss-tbl th{position:sticky;top:0;z-index:20;background:var(--bg2);border:1px solid var(--bd);padding:0;height:28px;white-space:nowrap;cursor:default;user-select:none}
+.ss-tbl th.rh{position:sticky;top:0;left:0;z-index:30;width:32px;min-width:32px}
+.ss-tbl th .th-inner{display:flex;align-items:center;justify-content:center;padding:0 4px;height:100%;gap:4px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)}
+.ss-tbl th .dh{cursor:grab;color:var(--ink3);font-size:9px;opacity:.4;flex-shrink:0}
+.ss-tbl th .dh:hover,.ss-tbl th:hover .dh{opacity:1}
+.ss-tbl th.drag-over{border-left:2px solid var(--acc);background:var(--bluel)}
+.ss-tbl td{border:1px solid var(--bg3);padding:0;height:26px;position:relative;min-width:110px}
+.ss-tbl td.rn{background:var(--bg2);border-color:var(--bd);text-align:center;font-size:10px;color:var(--ink3);position:sticky;left:0;z-index:5;width:32px;min-width:32px;max-width:32px;cursor:default;user-select:none}
+/* every data cell content */
+.ss-cell-content {
+  padding: 2px 5px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mo);
+  font-size: 11px;
+  line-height: 22px;
+  text-align: right;
+  user-select: none;
+}
+.ss-tbl td.ss-nw .ss-cell-content { font-weight: 600; color: var(--acc); }
+.ss-tbl td.ss-formula .ss-cell-content { color: var(--acc); }
+.ss-tbl td.ss-mil { background: var(--accll); }
+
+/* overlay editor */
+.ss-editor-overlay {
+  font-family: var(--mo);
+  font-size: 12px;
+  border-radius: 0 !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* states */
+td.ss-range { background: rgba(26, 74, 122, 0.08) !important; }
+td.ss-active {
+  outline: 2px solid var(--acc);
+  outline-offset: -2px;
+  z-index: 10;
+  position: relative;
+}
+
+/* toolbar */
+.ss-toolbar{display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--bd);border-bottom:none;border-radius:var(--r) var(--r) 0 0;background:var(--bg);flex-wrap:wrap}
+.ss-ref-box{font-family:var(--mo);font-size:11px;width:44px;padding:3px 6px;border:1px solid var(--bd);border-radius:3px;background:#fff;color:var(--ink);outline:none;text-align:center}
+.ss-fbar{flex:1;font-family:var(--mo);font-size:12px;padding:3px 8px;border:1px solid var(--bd);border-radius:3px;background:#fff;color:var(--ink);outline:none;min-width:180px}
+.ss-fbar:focus{border-color:var(--acc)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">moola</div>
+  <div class="nav-tabs">
+    <button class="nt on" onclick="showTab('overview',this)">Overview</button>
+    <button class="nt" onclick="showTab('accounts',this)">Accounts</button>
+    <button class="nt" onclick="showTab('portfolio',this)">Portfolio</button>
+    <button class="nt" onclick="showTab('rebalance',this)">Rebalance</button>
+    <button class="nt" onclick="showTab('projections',this)">Projections</button>
+    <button class="nt" onclick="showTab('goals',this)">Goals</button>
+    <button class="nt" onclick="showTab('life',this)">Life</button>
+    <button class="nt" onclick="showTab('settings',this)">Settings</button>
+  </div>
+  <div class="flex gmd">
+    <div class="stabs" id="cur-tabs">
+      <button class="stab on" onclick="setCur('USD',this)">USD</button>
+      <button class="stab" onclick="setCur('KRW',this)">KRW</button>
+    </div>
+    <div class="stabs" id="krw-fmt-tabs" style="display:none">
+      <button class="stab on" onclick="setKrwFmt('short',this)">억/만</button>
+      <button class="stab" onclick="setKrwFmt('full',this)">Full ₩</button>
+    </div>
+    <div style="font-family:var(--mo);font-size:11px;color:var(--ink3)" id="nav-date"></div>
+  </div>
+</nav>
+
+<!-- OVERVIEW -->
+<div id="tab-overview" class="tc on">
+  <div class="fb mb-3"><div><div class="lbl">Total net worth</div><div class="bnum" id="ov-total">—</div><div class="flex gsm mt-1" id="ov-gain"></div></div><div class="flex gmd"><button class="btn" onclick="openWidgets()">Customize</button><button class="btn bp" onclick="logSnap()">Log snapshot</button></div></div>
+  <div id="ov-widgets"></div>
+</div>
+<!-- ACCOUNTS -->
+<div id="tab-accounts" class="tc">
+  <div class="fb mb-3"><div><div class="lbl">All accounts</div><div class="bnum" id="acc-total">—</div></div><button class="btn bp" onclick="openAcctModal(null)">+ Add account</button></div>
+  <div class="card mb-2"><div class="sec">Cash & savings</div><table class="tbl" id="cash-tbl"></table></div>
+  <div class="card"><div class="sec">Investments & pension</div><table class="tbl" id="inv-tbl"></table></div>
+</div>
+<!-- PORTFOLIO -->
+<div id="tab-portfolio" class="tc">
+  <div class="fb mb-3">
+    <div><div class="lbl">Portfolio</div><div class="bnum" id="port-total">—</div></div>
+    <div class="flex gmd">
+      <div class="flex" style="border-bottom:1px solid var(--bd)">
+        <button class="atab on" onclick="setPortView('all',this)">All</button>
+        <button class="atab" onclick="setPortView('roth',this)">Roth IRA</button>
+        <button class="atab" onclick="setPortView('taxable',this)">Taxable</button>
+      </div>
+      <button class="btn" onclick="openFundModal(null)">+ Add fund</button>
+    </div>
+  </div>
+  <div class="g2 mb-2">
+    <div class="card"><div class="sec">Drift summary</div><div id="drift-tbl-wrap"></div></div>
+    <div class="card"><div class="sec">Allocation chart</div><div style="position:relative;height:240px"><canvas id="allocChart"></canvas></div></div>
+  </div>
+  <div class="card"><div class="sec">Fund detail</div><table class="tbl" id="fund-tbl"></table></div>
+</div>
+<!-- REBALANCE -->
+<div id="tab-rebalance" class="tc">
+  <div class="fb mb-3">
+    <div><div class="lbl">Rebalancing assistant</div></div>
+    <div class="flex gmd">
+      <div class="flex" style="border-bottom:1px solid var(--bd)">
+        <button class="atab on" onclick="setRAcct('all',this)">All</button>
+        <button class="atab" onclick="setRAcct('roth',this)">Roth IRA</button>
+        <button class="atab" onclick="setRAcct('taxable',this)">Taxable</button>
+      </div>
+      <div class="stabs">
+        <button class="stab on" onclick="setRMode('contribution',this)">Contribution only</button>
+        <button class="stab" onclick="setRMode('combined',this)">Contribution + rebalance</button>
+        <button class="stab" onclick="setRMode('full',this)">Full rebalance</button>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-2">
+    <div class="flex gmd mb-3" style="align-items:center;flex-wrap:wrap">
+      <div class="flex gsm" id="contrib-input-row" style="align-items:center">
+        <label style="font-size:12px;color:var(--ink2);white-space:nowrap">Monthly contribution ($)</label>
+        <input type="number" class="inp inpm inpsm" style="width:120px" id="r-contrib" value="3333" oninput="calcRebal()">
+      </div>
+      <div style="font-size:11px;color:var(--ink2)" id="rebal-mode-desc"></div>
+    </div>
+    <div id="rebal-body"></div>
+    <div id="rebal-totals" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;gap:24px;font-size:12px">
+      <span>Buy: <strong class="pos" id="r-buy-total">—</strong></span>
+      <span>Sell: <strong class="neg" id="r-sell-total">—</strong></span>
+      <span>Net cash needed: <strong id="r-net-cash">—</strong></span>
+    </div>
+  </div>
+  <div style="background:var(--goldl);border:1px solid #e8d080;border-radius:var(--r);padding:8px 12px;font-size:11px;color:var(--gold)" id="rebal-note"></div>
+</div>
+<!-- PROJECTIONS -->
+<div id="tab-projections" class="tc">
+  <div class="fb mb-3"><div class="lbl">Wealth projections</div><div class="stabs"><button class="stab on" onclick="setScen('base',this)">Base</button><button class="stab" onclick="setScen('conservative',this)">Conservative</button><button class="stab" onclick="setScen('optimistic',this)">Optimistic</button></div></div>
+  <div class="g4 mb-2">
+    <div class="csm"><div class="lbl">Nominal future value</div><div class="mnum" id="p-nom">—</div></div>
+    <div class="csm"><div class="lbl">Inflation-adjusted</div><div class="mnum" id="p-real">—</div></div>
+    <div class="csm"><div class="lbl">Total contributed</div><div class="mnum" id="p-contrib">—</div></div>
+    <div class="csm"><div class="lbl">Market gains</div><div class="mnum pos" id="p-gains">—</div></div>
+  </div>
+  <div class="g2 mb-2">
+    <div>
+      <div class="card mb-2">
+        <div class="sec">Assumptions</div>
+        <div class="fr"><label>Annual contribution — <span class="mo" id="lc">$40,000</span></label><input type="range" min="0" max="150000" step="1000" value="40000" id="sl-c" oninput="updateProj()"></div>
+        <div class="fr"><label>Contribution growth/yr — <span class="mo" id="lcg">0%</span></label><input type="range" min="0" max="20" step="0.5" value="0" id="sl-cg" oninput="updateProj()"></div>
+        <div class="fr"><label>Inflation — <span class="mo" id="linf">3.0%</span></label><input type="range" min="1" max="7" step="0.5" value="3" id="sl-inf" oninput="updateProj()"></div>
+        <div class="fr"><label>Time horizon — <span class="mo" id="lyrs">20 yrs</span></label><input type="range" min="5" max="50" step="1" value="20" id="sl-yrs" oninput="updateProj()"></div>
+        <div class="fr"><label>KRW/USD — <span class="mo" id="lfx">1,370</span></label><input type="range" min="1000" max="1700" step="10" value="1370" id="sl-fx" oninput="updateProj()"></div>
+        <div class="fr" style="flex-direction:row;align-items:center;gap:8px"><label style="white-space:nowrap">USFR yield</label><input type="number" class="inp inpm inpsm" id="usfr-inp" value="5.2" step="0.1" style="width:75px" oninput="updateProj()"><span class="mut" style="font-size:10px">% update quarterly</span></div>
+      </div>
+      <div class="card"><div class="sec">Stress events</div><div id="stress-list" class="mb-2"></div><button class="btn bsm" onclick="addStress()">+ Add event</button></div>
+    </div>
+    <div class="card"><div class="sec">Growth chart</div><div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:18px;height:2px;background:#1a6b3c;display:inline-block"></span>Nominal</span><span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:18px;height:2px;background:#1a4a7a;display:inline-block"></span>Real</span><span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:18px;height:2px;background:#c0392b;display:inline-block"></span>w/ events</span></div><div style="position:relative;height:300px"><canvas id="projChart"></canvas></div></div>
+  </div>
+  <div class="card"><div class="sec">Per-asset return assumptions (editable)</div><table class="tbl" id="ret-tbl"></table></div>
+</div>
+<!-- GOALS -->
+<div id="tab-goals" class="tc">
+  <div class="fb mb-3"><div class="lbl">Life goals</div><button class="btn bp" onclick="openGoalModal(null)">+ Add goal</button></div>
+  <div class="card mb-3"><div class="sec">Net worth vs goal targets</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px" id="goals-legend"></div><div style="position:relative;height:320px"><canvas id="goalsChart"></canvas></div></div>
+  <div id="goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.8rem"></div>
+</div>
+<!-- LIFE -->
+<div id="tab-life" class="tc" style="padding-bottom:2rem">
+  <div class="fb mb-2">
+    <div><div class="lbl">Life financial spreadsheet</div><div style="font-size:11px;color:var(--ink2);margin-top:2px">Click to select · Type to edit · Arrows to navigate · Ctrl+C/V paste · Ctrl+D fill-down · Drag column headers to reorder · Double-click header to rename</div></div>
+    <div class="flex gmd">
+      <button class="btn bsm" onclick="ssAddRow()">+ Row</button>
+      <button class="btn bsm" onclick="ssAddCol()">+ Col</button>
+      <button class="btn bsm" onclick="ssDelRow()">− Row</button>
+      <button class="btn bsm" onclick="ssDelCol()">− Col</button>
+      <button class="btn bsm" title="Fill Down (Ctrl+D)" onclick="ssFillDown()">Fill Down</button>
+      <button class="btn bsm bp" onclick="ssRecalc()">Recalc</button>
+    </div>
+  </div>
+  <div class="g2 mb-2">
+    <div class="card"><div class="sec">Net worth trajectory</div><div style="position:relative;height:210px"><canvas id="lifeNW"></canvas></div></div>
+    <div class="card"><div class="sec">Income vs expenses</div><div style="position:relative;height:210px"><canvas id="lifeInc"></canvas></div></div>
+  </div>
+  <div class="ss-toolbar" id="ss-tb">
+    <input class="ss-ref-box" id="ss-ref" value="A1" readonly>
+    <span style="font-size:11px;color:var(--ink3);font-weight:600">fx</span>
+    <input class="ss-fbar" id="ss-fb" placeholder="=prev*1.05 · =B2+C2 · =if(age>30,val1,val2)">
+    <span class="mut" style="font-size:10px">Formulas: =prev*1.05  =B3*0.96  =if(age>=56,0,E2*1.03)  =sum(C2:C5)</span>
+  </div>
+  <div class="ss-outer" id="ss-outer">
+    <table class="ss-tbl" id="ss-tbl"></table>
+  </div>
+</div>
+<!-- SETTINGS -->
+<div id="tab-settings" class="tc">
+  <div class="lbl mb-3">Settings</div>
+  <div class="g2">
+    <div class="card">
+      <div class="sec">Currency</div>
+      <div class="fr"><label>KRW / USD exchange rate (₩ per $1)</label><input type="number" class="inp inpm" id="fx-set" value="1370" step="1" style="width:140px" onchange="updFX(this.value)"></div>
+      <div class="sec mt-2">Data</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <button class="btn" onclick="exportData()">Export data (JSON)</button>
+        <button class="btn" onclick="document.getElementById('imp').click()">Import data (JSON)</button>
+        <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn" style="color:var(--red)" onclick="if(confirm('Reset all data?'))resetData()">Reset to defaults</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec">Snapshot history</div>
+      <div style="font-size:11px;color:var(--ink2);margin-bottom:8px;line-height:1.6">Market gains = current NW − first snapshot NW − all contributions logged since.</div>
+      <div id="snap-list" style="max-height:260px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="mo-ov" id="m-acct"><div class="modal"><div class="modal-title"><span id="m-acct-title">Add account</span><button class="bgh btn bsm" onclick="closeModal('m-acct')">✕</button></div><div class="fr"><label>Name</label><input class="inp" id="a-name"></div><div class="fr"><label>Type</label><select class="inp" id="a-type"><option value="checking">Checking</option><option value="savings">Savings/HYSA</option><option value="brokerage-taxable">Brokerage (Taxable)</option><option value="brokerage-roth">Brokerage (Roth IRA)</option><option value="pension">Pension/연금</option><option value="subscription">청약계좌</option><option value="other">Other</option></select></div><div class="fr"><label>Balance</label><div style="position:relative"><span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--ink3)" id="a-sym">$</span><input class="inp inpm" style="padding-left:20px" id="a-bal" type="number" step="0.01"></div></div><div class="fr"><label>Currency</label><select class="inp" id="a-cur" onchange="document.getElementById('a-sym').textContent=this.value==='KRW'?'₩':'$'"><option value="USD">USD</option><option value="KRW">KRW</option></select></div><div style="display:flex;gap:7px;justify-content:flex-end;margin-top:.9rem"><button class="btn" onclick="closeModal('m-acct')">Cancel</button><button class="btn bp" onclick="saveAcct()">Save</button></div></div></div>
+<div class="mo-ov" id="m-fund"><div class="modal"><div class="modal-title"><span id="m-fund-title">Add fund</span><button class="bgh btn bsm" onclick="closeModal('m-fund')">✕</button></div><div class="fr"><label>Ticker</label><input class="inp" id="f-tkr"></div><div class="fr"><label>Name</label><input class="inp" id="f-name"></div><div class="fr"><label>Account</label><select class="inp" id="f-acct"><option value="TAXABLE">Taxable</option><option value="ROTH">Roth IRA</option><option value="BOTH">Both</option></select></div><div class="fr"><label>Current value ($)</label><input class="inp inpm" id="f-val" type="number" step="0.01"></div><div class="fr"><label>% in Roth (if BOTH)</label><input class="inp inpm" id="f-rs" type="number" value="40" step="1"></div><div class="fr"><label>Target allocation % (of total)</label><input class="inp inpm" id="f-tgt" type="number" step="0.1"></div><div class="fr"><label>Expected return (%)</label><input class="inp inpm" id="f-ret" type="number" step="0.1" placeholder="10.0"></div><div style="display:flex;gap:7px;justify-content:flex-end;margin-top:.9rem"><button class="btn" onclick="closeModal('m-fund')">Cancel</button><button class="btn bp" onclick="saveFund()">Save</button></div></div></div>
+<div class="mo-ov" id="m-goal"><div class="modal"><div class="modal-title"><span id="m-goal-title">Add goal</span><button class="bgh btn bsm" onclick="closeModal('m-goal')">✕</button></div><div class="fr"><label>Goal name</label><input class="inp" id="g-name"></div><div class="fr"><label>Category</label><select class="inp" id="g-cat"><option value="fire">FIRE/Retirement</option><option value="home">Home purchase</option><option value="emergency">Emergency fund</option><option value="milestone">Investment milestone</option><option value="wedding">Wedding</option><option value="kids">Having kids</option><option value="custom">Custom</option></select></div><div class="fr"><label>Target amount ($)</label><input class="inp inpm" id="g-amt" type="number"></div><div class="fr"><label>Target year</label><input class="inp inpm" id="g-yr" type="number" placeholder="2030"></div><div class="fr"><label>Type</label><select class="inp" id="g-type"><option value="savings">Savings target</option><option value="expense">One-time expense</option></select></div><div class="fr"><label>Notes</label><input class="inp" id="g-notes"></div><div style="display:flex;gap:7px;justify-content:flex-end;margin-top:.9rem"><button class="btn" onclick="closeModal('m-goal')">Cancel</button><button class="btn bp" onclick="saveGoal()">Save</button></div></div></div>
+<div class="mo-ov" id="m-widgets"><div class="modal"><div class="modal-title"><span>Customize overview</span><button class="bgh btn bsm" onclick="closeModal('m-widgets');renderOverview()">Done</button></div><div id="wid-list" style="display:flex;flex-direction:column;gap:10px"></div></div></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE
+const NY=new Date().getFullYear();
+const COLORS=['#1a6b3c','#1a4a7a','#b8860b','#c0392b','#6b3c7a','#3c6b5a','#7a4a1a','#3a7a7a'];
+const GCOL={fire:'#1a6b3c',home:'#1a4a7a',emergency:'#b8860b',milestone:'#6b3c7a',wedding:'#c0607a',kids:'#3c6b5a',custom:'#7a6b3c'};
+const GTAG={fire:'FIRE',home:'Home',emergency:'Emergency',milestone:'Milestone',wedding:'Wedding',kids:'Kids',custom:'Custom'};
+const TLAB={checking:'Checking',savings:'Savings','brokerage-taxable':'Taxable','brokerage-roth':'Roth IRA',pension:'Pension',subscription:'청약계좌',other:'Other'};
+
+function ls(){try{const s=localStorage.getItem('moola_v4');return s?JSON.parse(s):null;}catch(e){return null;}}
+function ps(){try{localStorage.setItem('moola_v4',JSON.stringify(S));}catch(e){}}
+function resetData(){localStorage.removeItem('moola_v4');location.reload();}
+
+let S=ls()||mkDef();
+
+function mkDef(){
+  return{
+    accounts:[
+      {id:1,name:'BOFA',type:'checking',balance:814.99,currency:'USD'},
+      {id:2,name:'하나은행',type:'checking',balance:3663.56,currency:'USD'},
+      {id:3,name:'하나 청약계좌',type:'subscription',balance:333.59,currency:'USD'},
+      {id:4,name:'USFR (Fidelity)',type:'savings',balance:6721.07,currency:'USD'},
+      {id:5,name:'Cash',type:'checking',balance:300.00,currency:'USD'},
+      {id:6,name:'Roth IRA',type:'brokerage-roth',balance:35646.24,currency:'USD'},
+      {id:7,name:'Taxable',type:'brokerage-taxable',balance:75469.01,currency:'USD'},
+      {id:8,name:'한국 연금보험',type:'pension',balance:5839.42,currency:'USD'},
+    ],
+    funds:[
+      {id:1,ticker:'VOO',name:'S&P 500',acct:'TAXABLE',value:54384.57,rothSplit:0,targetPct:48.94,retPct:10.5},
+      {id:2,ticker:'AVUV',name:'US Small-Cap Value',acct:'ROTH',value:20121.55,rothSplit:100,targetPct:18.11,retPct:11.5},
+      {id:3,ticker:'VXUS',name:'Total Intl Stock',acct:'BOTH',value:29558.55,rothSplit:40,targetPct:26.60,retPct:7.5},
+      {id:4,ticker:'EWY',name:'KOSPI',acct:'TAXABLE',value:4903.72,rothSplit:0,targetPct:4.41,retPct:8.0},
+      {id:5,ticker:'FBTC',name:'Bitcoin ETF',acct:'ROTH',value:2142.92,rothSplit:100,targetPct:1.93,retPct:20.0},
+    ],
+    goals:[
+      {id:1,name:'FIRE',cat:'fire',amount:3000000,year:2050,type:'savings',notes:''},
+      {id:2,name:'Emergency fund',cat:'emergency',amount:25000,year:2027,type:'savings',notes:'3-6 months expenses'},
+      {id:3,name:'Home purchase',cat:'home',amount:200000,year:2032,type:'expense',notes:'Down payment'},
+      {id:4,name:'$500K milestone',cat:'milestone',amount:500000,year:2035,type:'savings',notes:''},
+      {id:5,name:'Wedding',cat:'wedding',amount:30000,year:2029,type:'expense',notes:''},
+      {id:6,name:'Having kids',cat:'kids',amount:50000,year:2031,type:'expense',notes:'First year costs'},
+    ],
+    snapshots:[
+      {date:'2025-04-19',nw:61477,contributed:0,note:'Starting snapshot'},
+      {date:'2025-07-22',nw:78280,contributed:10000,note:''},
+      {date:'2025-11-14',nw:101500,contributed:20000,note:''},
+      {date:'2025-12-25',nw:109471,contributed:30000,note:''},
+    ],
+    stressEvents:[],
+    settings:{inflation:3,fx:1370,usfr:5.2,annualContrib:40000,contribGrowth:0,horizon:20,currency:'USD',krwFmt:'short'},
+    widgetVis:{metrics:true,history:true,breakdown:true,goals:true},
+    editAcctId:null,editFundId:null,editGoalId:null,
+    ssCols:['Age','Year','NW','Income KR','Income US','Spouse','Expenses','Housing','Kids','Note'],
+    ssData:mkSS(),
+    portView:'all',rMode:'contribution',rAcct:'all',scenario:'base',
+  };
+}
+
+function mkSS(){
+  return [
+    ['24','2025','128787','33165','24000','0','10200','2184','',''],
+    ['25','2026','=C2*(1+0.096)+(E3+F3-G3-H3)','0','85000','0','26400','18000','',''],
+    ['26','2027','=C3*(1+0.096)+(E4+F4-G4-H4)','0','86700','0','26400','19200','',''],
+    ['27','2028','=C4*(1+0.096)+(E5+F5-G5-H5)','0','88434','0','26400','20400','',''],
+    ['28','2029','=C5*(1+0.096)+(E6+F6-G6-H6)','0','90203','0','26400','20400','',''],
+    ['29','2030','=C6*(1+0.096)+(E7+F7-G7-H7)','0','92007','0','26400','20400','',''],
+    ['30','2031','=C7*(1+0.096)+(E8+F8-G8-H8)','0','93847','0','26400','20400','',''],
+    ['31','2032','=C8*(1+0.096)+(E9+F9-G9-H9)','0','95724','95724','35000','48000','',''],
+    ['32','2033','=C9*(1+0.096)+(E10+F10-G10-H10)','0','97638','97638','35000','48000','',''],
+    ['33','2034','=C10*(1+0.096)+(E11+F11-G11-H11)','0','99591','99591','35000','48000','0',''],
+    ['34','2035','=C11*(1+0.096)+(E12+F12-G12-H12)','0','101583','101583','35000','48000','1',''],
+    ['35','2036','=C12*(1+0.096)+(E13+F13-G13-H13)','0','103615','103615','35000','48000','2',''],
+    ['36','2037','=C13*(1+0.096)+(E14+F14-G14-H14)','0','105687','105687','66240','1000000','3','2M house 50% loan'],
+    ['37','2038','=C14*(1+0.096)+(E15+F15-G15-H15)','0','107801','107801','66240','50000','4',''],
+    ['40','2041','=C15*(1+0.096)*3+(E16+F16-G16-H16)*3','0','114399','114399','66240','50000','7',''],
+    ['45','2046','=C16*(1+0.096)*5+(E17+F17-G17-H17)*5','0','126306','126306','66240','50000','12',''],
+    ['50','2051','=C17*(1+0.096)*5+(E18+F18-G18-H18)*5','0','139452','139452','66240','0','17',''],
+    ['55','2056','=C18*(1+0.096)*5+(E19+F19-G19-H19)*5','0','153966','153966','66240','0','22',''],
+    ['60','2061','=C19*(1+0.096)*5+(E20+F20-G20-H20)*5','0','0','0','34031','34031','','Retired'],
+    ['65','2066','=C20*(1+0.096)*5','0','0','0','34031','34031','',''],
+    ['70','2071','=C21*(1+0.096)*5','0','0','0','38750','38750','',''],
+    ['75','2076','=C22*(1+0.096)*5','0','0','0','38750','38750','',''],
+    ['80','2081','=C23*(1+0.096)*5','0','0','0','38750','38750','',''],
+  ];
+}
+
+// ══════════════════════════════════════════════════════════════
+// CURRENCY
+let dispCur='USD',krwFmt='short';
+function setCur(c,el){dispCur=c;S.settings.currency=c;document.querySelectorAll('#cur-tabs .stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.getElementById('krw-fmt-tabs').style.display=c==='KRW'?'flex':'none';ps();reRender();}
+function setKrwFmt(f,el){krwFmt=f;S.settings.krwFmt=f;document.querySelectorAll('#krw-fmt-tabs .stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');ps();reRender();}
+function getFX(){return parseFloat(S.settings.fx||1370);}
+function cvt(usd){return dispCur==='KRW'?usd*getFX():usd;}
+function sym(){return dispCur==='KRW'?'₩':'$';}
+function fmt(v,dec=0){
+  if(v===null||v===undefined||isNaN(v))return'—';
+  const c=cvt(parseFloat(v));const abs=Math.abs(c);const sign=c<0?'-':'';
+  if(dispCur==='KRW'){
+    if(krwFmt==='short'){
+      if(abs>=1e8)return sign+'₩'+(abs/1e8).toFixed(1)+'억';
+      if(abs>=1e4)return sign+'₩'+Math.round(abs/1e4)+'만';
+      return sign+'₩'+Math.round(abs).toLocaleString();
+    } else {
+      return sign+'₩'+Math.round(abs).toLocaleString();
+    }
+  }
+  if(abs>=1e6)return sign+'$'+(abs/1e6).toFixed(2)+'M';
+  return sign+'$'+abs.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+function fmtUSD(v,dec=0){const abs=Math.abs(v);const sign=v<0?'-':'';if(abs>=1e6)return sign+'$'+(abs/1e6).toFixed(2)+'M';return sign+'$'+abs.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function pct(v){return (typeof v==='number'?v:parseFloat(v)||0).toFixed(1)+'%';}
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+function nwTotal(){return S.accounts.reduce((s,a)=>s+a.balance,0);}
+function totInv(){return S.accounts.filter(a=>['brokerage-taxable','brokerage-roth','pension'].includes(a.type)).reduce((s,a)=>s+a.balance,0);}
+function totCash(){return S.accounts.filter(a=>['checking','savings','subscription'].includes(a.type)).reduce((s,a)=>s+a.balance,0);}
+function totPort(){return S.funds.reduce((s,f)=>s+f.value,0);}
+function blendRet(off=0){const t=totPort();if(!t)return 0.096;return S.funds.reduce((s,f)=>s+(f.value/t)*(f.retPct+off)/100,0);}
+function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
+function fvCalc(pv,r,n,pmt){if(!r||!n)return pv+pmt*n;return pv*Math.pow(1+r,n)+pmt*((Math.pow(1+r,n)-1)/r);}
+function chqFV(pv,r,mp,tm,hy){const rm=r/12;let b=pv;const act=Math.min(tm,hy*12);for(let m=0;m<act;m++)b=b*(1+rm)+mp;return b*Math.pow(1+rm,hy*12-act);}
+
+let CH={};
+function dC(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+
+// ══════════════════════════════════════════════════════════════
+// NAV
+function showTab(id,el){
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.nt').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  if(el)el.classList.add('on');
+  renderTab(id);
+}
+function reRender(){const t=document.querySelector('.nt.on');if(t){const id=t.onclick.toString().match(/'(\w+)'/)?.[1];if(id)renderTab(id);}}
+function renderTab(id){
+  ({overview:renderOverview,accounts:renderAccounts,portfolio:renderPortfolio,rebalance:calcRebal,projections:()=>{updateProj();renderRetTbl();renderStress();},goals:renderGoals,life:renderLife,settings:renderSettings})[id]?.();
+}
+
+// ══════════════════════════════════════════════════════════════
+// OVERVIEW
+function renderOverview(){
+  document.getElementById('ov-total').textContent=fmt(nwTotal());
+  const snaps=S.snapshots;
+  const tc=snaps.slice(1).reduce((s,sn)=>s+(sn.contributed||0),0);
+  const gain=nwTotal()-(snaps[0]?.nw||nwTotal())-tc;
+  document.getElementById('ov-gain').innerHTML=snaps.length?`<span class="tag ${gain>=0?'tg':'tr'}">${gain>=0?'+':''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>`:`<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`;
+  const vis=S.widgetVis;let h='';
+  if(vis.metrics)h+=`<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${fmt(totInv())}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv()/nwTotal())*100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${fmt(totCash())}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash()/nwTotal())*100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${fmt(totPort())}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">since ${snaps.length?new Date(snaps[0].date).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'—'}</div></div></div>`;
+  if(vis.history||vis.breakdown){h+=`<div class="g2 mb-2">`;if(vis.history)h+=`<div class="card"><div class="sec">Net worth history</div>${snaps.length>=2?'<div style="position:relative;height:170px"><canvas id="snapChart"></canvas></div>':'<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`;if(vis.breakdown)h+=`<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:170px"><canvas id="donutChart"></canvas></div></div>`;h+=`</div>`;}
+  if(vis.goals)h+=`<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
+  document.getElementById('ov-widgets').innerHTML=h;
+  if(vis.history&&snaps.length>=2){dC('snap');CH['snap']=new Chart(document.getElementById('snapChart'),{type:'line',data:{labels:snaps.map(s=>new Date(s.date).toLocaleDateString('en-US',{month:'short',year:'2-digit'})),datasets:[{data:snaps.map(s=>cvt(s.nw)),borderColor:'#1a6b3c',backgroundColor:'#1a6b3c18',fill:true,tension:0.3,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#8a8680',font:{size:10}}},y:{ticks:{color:'#8a8680',font:{size:10},callback:v=>fmt(v/cvt(1))},grid:{color:'#00000008'}}}}});}
+  if(vis.breakdown){dC('donut');const d=[{l:'Taxable',v:S.accounts.find(a=>a.name==='Taxable')?.balance||0,c:'#1a4a7a'},{l:'Roth IRA',v:S.accounts.find(a=>a.name==='Roth IRA')?.balance||0,c:'#1a6b3c'},{l:'연금보험',v:S.accounts.find(a=>a.name==='한국 연금보험')?.balance||0,c:'#6b3c7a'},{l:'USFR',v:S.accounts.find(a=>a.name==='USFR (Fidelity)')?.balance||0,c:'#b8860b'},{l:'Cash',v:totCash()-(S.accounts.find(a=>a.name==='USFR (Fidelity)')?.balance||0),c:'#c0bbb0'}].filter(x=>x.v>0);CH['donut']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:d.map(x=>x.l),datasets:[{data:d.map(x=>x.v),backgroundColor:d.map(x=>x.c),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:10},padding:7,color:'#4a4640'}}}}});}
+  if(vis.goals){const el=document.getElementById('ov-goals');if(el){const t=nwTotal();el.innerHTML=S.goals.slice(0,5).map(g=>{const f=Math.min(100,(t/g.amount)*100);const yl=g.year-NY;return`<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${fmt(g.amount)} · ${yl>0?yl+'yr':'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`;}).join('');}}
+}
+function logSnap(){const note=prompt('Note (optional):','')||'';const c=parseFloat(prompt('Contributions since last snapshot ($):','0'))||0;S.snapshots.push({date:new Date().toISOString().split('T')[0],nw:nwTotal(),contributed:c,note});ps();renderOverview();}
+function openWidgets(){const labs={metrics:'Summary metrics',history:'NW history chart',breakdown:'Asset breakdown',goals:'Goal progress bars'};document.getElementById('wid-list').innerHTML=Object.entries(S.widgetVis).map(([k,v])=>`<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v?'var(--acc)':'var(--bd)'};background:${v?'var(--accl)':'#fff'};color:${v?'var(--acc)':'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${v?'Visible':'Hidden'}</button></div>`).join('');openModal('m-widgets');}
+function tVis(k,btn){S.widgetVis[k]=!S.widgetVis[k];btn.style.background=S.widgetVis[k]?'var(--accl)':'#fff';btn.style.borderColor=S.widgetVis[k]?'var(--acc)':'var(--bd)';btn.style.color=S.widgetVis[k]?'var(--acc)':'var(--ink3)';btn.textContent=S.widgetVis[k]?'Visible':'Hidden';ps();}
+
+// ══════════════════════════════════════════════════════════════
+// ACCOUNTS
+function renderAccounts(){
+  const t=nwTotal();document.getElementById('acc-total').textContent=fmt(t);
+  document.getElementById('cash-tbl').innerHTML=accRows(S.accounts.filter(a=>['checking','savings','subscription'].includes(a.type)),t);
+  document.getElementById('inv-tbl').innerHTML=accRows(S.accounts.filter(a=>['brokerage-taxable','brokerage-roth','pension'].includes(a.type)),t);
+}
+function accRows(accs,t){return`<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a=>`<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type]||a.type}</span></td><td class="mo">${fmt(a.balance)}</td><td class="mo">${pct((a.balance/t)*100)}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`;}
+function openAcctModal(id){S.editAcctId=id;if(id){const a=S.accounts.find(x=>x.id===id);document.getElementById('m-acct-title').textContent='Edit account';document.getElementById('a-name').value=a.name;document.getElementById('a-type').value=a.type;document.getElementById('a-bal').value=a.balance;document.getElementById('a-cur').value=a.currency||'USD';document.getElementById('a-sym').textContent=a.currency==='KRW'?'₩':'$';}else{document.getElementById('m-acct-title').textContent='Add account';['a-name','a-bal'].forEach(i=>document.getElementById(i).value='');document.getElementById('a-type').value='checking';document.getElementById('a-cur').value='USD';document.getElementById('a-sym').textContent='$';}openModal('m-acct');}
+function saveAcct(){const name=document.getElementById('a-name').value.trim();const type=document.getElementById('a-type').value;let bal=parseFloat(document.getElementById('a-bal').value)||0;const cur=document.getElementById('a-cur').value;if(cur==='KRW')bal=bal/getFX();if(!name)return;if(S.editAcctId){Object.assign(S.accounts.find(x=>x.id===S.editAcctId),{name,type,balance:bal,currency:cur});}else S.accounts.push({id:nextId(S.accounts),name,type,balance:bal,currency:cur});ps();closeModal('m-acct');renderAccounts();}
+function delAcct(id){if(!confirm('Delete?'))return;S.accounts=S.accounts.filter(x=>x.id!==id);ps();renderAccounts();}
+
+// ══════════════════════════════════════════════════════════════
+// PORTFOLIO
+let portView='all';
+function setPortView(v,el){portView=v;S.portView=v;document.querySelectorAll('#tab-portfolio .atab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderPortfolio();}
+function getFunds(view){
+  if(view==='all')return S.funds;
+  return S.funds.filter(f=>f.acct==='BOTH'||f.acct===(view==='roth'?'ROTH':'TAXABLE')).map(f=>{
+    if(f.acct==='BOTH'){const r=(f.rothSplit||40)/100;const v=view==='roth'?f.value*r:f.value*(1-r);return{...f,value:v};}
+    return{...f};
+  });
+}
+function renderPortfolio(){
+  const funds=getFunds(portView);const tot=funds.reduce((s,f)=>s+f.value,0);
+  document.getElementById('port-total').textContent=fmt(tot);
+  // Drift table
+  const tgtSum=funds.reduce((s,f)=>s+f.targetPct,0)||100;
+  document.getElementById('drift-tbl-wrap').innerHTML=`<table class="tbl"><thead><tr><th>Fund</th><th>Current</th><th>Target</th><th>Drift</th><th>Status</th></tr></thead><tbody>${funds.map(f=>{const cur=(f.value/tot)*100;const tgt=f.targetPct*(100/tgtSum);const d=cur-tgt;return`<tr><td style="font-weight:600">${f.ticker}${f.acct==='BOTH'&&portView!=='all'?portView==='roth'?' (R)':' (T)':''}</td><td class="mo">${pct(cur)}</td><td class="mo">${pct(tgt)}</td><td class="mo" style="${Math.abs(d)>2?d>0?'color:var(--acc)':'color:var(--red)':'color:var(--ink3)'}">${d>=0?'+':''}${d.toFixed(1)}%</td><td><span class="tag ${Math.abs(d)<=1?'tg':Math.abs(d)<=3?'tgld':'tr'}">${Math.abs(d)<=1?'On target':d>0?'Overweight':'Underweight'}</span></td></tr>`;}).join('')}</tbody></table>`;
+  dC('alloc');CH['alloc']=new Chart(document.getElementById('allocChart'),{type:'doughnut',data:{labels:funds.map(f=>f.ticker),datasets:[{data:funds.map(f=>f.value),backgroundColor:COLORS.slice(0,funds.length),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:7,color:'#4a4640'}}}}});
+  document.getElementById('fund-tbl').innerHTML=`<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f=>`<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${fmt(f.value)}</td><td class="mo">${pct((f.value/tot)*100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`).join('')}</tbody>`;
+}
+function openFundModal(id){S.editFundId=id;if(id){const f=S.funds.find(x=>x.id===id);document.getElementById('m-fund-title').textContent='Edit fund';document.getElementById('f-tkr').value=f.ticker;document.getElementById('f-name').value=f.name;document.getElementById('f-acct').value=f.acct;document.getElementById('f-val').value=f.value;document.getElementById('f-rs').value=f.rothSplit||40;document.getElementById('f-tgt').value=f.targetPct;document.getElementById('f-ret').value=f.retPct;}else{document.getElementById('m-fund-title').textContent='Add fund';['f-tkr','f-name','f-val','f-tgt','f-ret'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-acct').value='TAXABLE';document.getElementById('f-rs').value='40';}openModal('m-fund');}
+function saveFund(){const ticker=document.getElementById('f-tkr').value.trim().toUpperCase();const name=document.getElementById('f-name').value.trim()||ticker;const acct=document.getElementById('f-acct').value;const value=parseFloat(document.getElementById('f-val').value)||0;const rothSplit=parseFloat(document.getElementById('f-rs').value)||40;const targetPct=parseFloat(document.getElementById('f-tgt').value)||0;const retPct=parseFloat(document.getElementById('f-ret').value)||10;if(!ticker)return;if(S.editFundId){Object.assign(S.funds.find(x=>x.id===S.editFundId),{ticker,name,acct,value,rothSplit,targetPct,retPct});}else S.funds.push({id:nextId(S.funds),ticker,name,acct,value,rothSplit,targetPct,retPct});ps();closeModal('m-fund');renderPortfolio();}
+function delFund(id){if(!confirm('Remove?'))return;S.funds=S.funds.filter(x=>x.id!==id);ps();renderPortfolio();}
+
+// ══════════════════════════════════════════════════════════════
+// REBALANCE
+let rMode='contribution',rAcct='all';
+function setRMode(v,el){rMode=v;document.querySelectorAll('#tab-rebalance .stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');calcRebal();}
+function setRAcct(v,el){rAcct=v;document.querySelectorAll('#tab-rebalance .atab').forEach(t=>t.classList.remove('on'));el.classList.add('on');calcRebal();}
+function calcRebal(){
+  const monthly=parseFloat(document.getElementById('r-contrib')?.value)||3333;
+  const funds=getFunds(rAcct);
+  const tot=funds.reduce((s,f)=>s+f.value,0);
+  const tgtSum=funds.reduce((s,f)=>s+f.targetPct,0)||100;
+  const nFunds=funds.map(f=>({...f,normTgt:(f.targetPct/tgtSum)*100}));
+  let html='',noteHtml='';
+
+  const rowHtml=(f,allocUSD,actionLabel,actionClass,driftAfter)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg2)">
+      <div style="min-width:150px">
+        <div style="font-size:12px;font-weight:600">${f.ticker}${f.acct==='BOTH'&&rAcct!=='all'?rAcct==='roth'?' (Roth)':' (Taxable)':''}</div>
+        <div style="font-size:10px;color:var(--ink3)">Target ${pct(f.normTgt)} · Current ${pct((f.value/tot)*100)}</div>
+      </div>
+      <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px">
+        <div style="height:100%;border-radius:3px;width:${Math.min(100,Math.abs(allocUSD/monthly*100))}%;background:${actionClass==='pos'?'var(--acc)':'var(--red)'}"></div>
+      </div>
+      <span class="tag ${allocUSD>=0?'tg':'tr'}" style="min-width:38px;text-align:center">${actionLabel}</span>
+      <span style="font-family:var(--mo);font-size:13px;font-weight:500;min-width:80px;text-align:right;${allocUSD>=0?'color:var(--acc)':'color:var(--red)'}">${allocUSD>=0?'+':''}${fmtUSD(allocUSD,0)}</span>
+      <span style="font-size:10px;color:var(--ink3);min-width:60px;text-align:right">drift: ${driftAfter>=0?'+':''}${driftAfter.toFixed(1)}%</span>
+    </div>`;
+
+  if(rMode==='contribution'){
+    // Allocate monthly contribution proportionally to target weights
+    const newTot=tot+monthly;
+    const rows=nFunds.map(f=>{
+      const alloc=monthly*(f.normTgt/100);
+      const newPct=((f.value+alloc)/newTot)*100;
+      return rowHtml(f,alloc,'BUY','pos',newPct-f.normTgt);
+    });
+    html=rows.join('');
+    document.getElementById('rebal-totals').style.display='none';
+    document.getElementById('rebal-mode-desc').textContent='Allocate your contribution to stay on target — no selling required.';
+    noteHtml='Contribution-only rebalancing. New money is directed toward underweight funds.';
+  } else if(rMode==='combined'){
+    // Combined: new money + targeted sells to reach exact target
+    const newTot=tot+monthly;
+    let buyTotal=0,sellTotal=0;
+    const rows=nFunds.map(f=>{
+      const targetVal=(f.normTgt/100)*newTot;
+      const diff=targetVal-f.value; // positive = buy, negative = sell
+      if(diff>0)buyTotal+=diff;else sellTotal+=Math.abs(diff);
+      const newPct=(targetVal/newTot)*100;
+      return rowHtml(f,diff,diff>=0?'BUY':'SELL',diff>=0?'pos':'neg',newPct-f.normTgt);
+    });
+    html=rows.join('');
+    document.getElementById('rebal-totals').style.display='flex';
+    document.getElementById('r-buy-total').textContent=fmtUSD(buyTotal,0);
+    document.getElementById('r-sell-total').textContent=fmtUSD(sellTotal,0);
+    document.getElementById('r-net-cash').textContent=fmtUSD(monthly-(buyTotal-sellTotal),0);
+    document.getElementById('rebal-mode-desc').textContent=`After contributing $${monthly.toLocaleString()}, here's the minimum buys & sells to reach exact target.`;
+    noteHtml='Holistic view: your contribution is applied first, then sells/buys fill the remaining gaps. Net cash needed = contribution minus net buys.';
+  } else {
+    // Full rebalance — no contribution
+    let buyTotal=0,sellTotal=0;
+    const rows=nFunds.map(f=>{
+      const targetVal=(f.normTgt/100)*tot;const diff=targetVal-f.value;
+      if(diff>0)buyTotal+=diff;else sellTotal+=Math.abs(diff);
+      return rowHtml(f,diff,diff>=0?'BUY':'SELL',diff>=0?'pos':'neg',0);
+    });
+    html=rows.join('');
+    document.getElementById('rebal-totals').style.display='flex';
+    document.getElementById('r-buy-total').textContent=fmtUSD(buyTotal,0);
+    document.getElementById('r-sell-total').textContent=fmtUSD(sellTotal,0);
+    document.getElementById('r-net-cash').textContent=fmtUSD(0,0);
+    document.getElementById('rebal-mode-desc').textContent='Sell overweight positions, buy underweight — no new money added.';
+    noteHtml='Full rebalance uses existing portfolio only. Sells in taxable account may trigger capital gains.';
+  }
+  document.getElementById('rebal-body').innerHTML=html;
+  document.getElementById('rebal-note').textContent=noteHtml;
+}
+
+// ══════════════════════════════════════════════════════════════
+// PROJECTIONS
+let curScen='base';const SCEN={conservative:-2,base:0,optimistic:2};
+function setScen(s,el){curScen=s;document.querySelectorAll('#tab-projections .stab').forEach(t=>t.classList.remove('on'));el.classList.add('on');updateProj();renderRetTbl();}
+function updateProj(){
+  const c=parseFloat(document.getElementById('sl-c').value),cg=parseFloat(document.getElementById('sl-cg').value)/100,inf=parseFloat(document.getElementById('sl-inf').value)/100,yrs=parseInt(document.getElementById('sl-yrs').value),fx=parseFloat(document.getElementById('sl-fx').value),usfrY=parseFloat(document.getElementById('usfr-inp').value)/100;
+  const off=SCEN[curScen]||0,nr=blendRet(off),rr=(1+nr)/(1+inf)-1;
+  document.getElementById('lc').textContent='$'+c.toLocaleString();document.getElementById('lcg').textContent=(cg*100).toFixed(1)+'%';document.getElementById('linf').textContent=(inf*100).toFixed(1)+'%';document.getElementById('lyrs').textContent=yrs+' yrs';document.getElementById('lfx').textContent=Math.round(fx).toLocaleString();
+  const chqA=S.accounts.find(a=>a.type==='subscription')?.balance||333;const usfrA=S.accounts.find(a=>a.name==='USFR (Fidelity)')?.balance||6721;const cashB=totCash()-usfrA-chqA;
+  const labels=[],nomD=[],realD=[],stD=[];const stByYr={};S.stressEvents.forEach(e=>{if(!stByYr[e.year])stByYr[e.year]=[];stByYr[e.year].push(e.amount);});
+  let stNW=nwTotal();
+  for(let y=0;y<=yrs;y++){
+    const yr=NY+y,co=c*Math.pow(1+cg,y);
+    nomD.push(Math.round(fvCalc(totPort(),nr,y,co)+fvCalc(usfrA,usfrY,y,0)+chqFV(chqA,.045,250000/fx,22,y)+cashB));
+    realD.push(Math.round(fvCalc(totPort(),rr,y,co)+fvCalc(usfrA,usfrY,y,0)+chqFV(chqA,.045,250000/fx,22,y)+cashB));
+    labels.push(y===0?'Now':''+yr);
+    if(y>0){const ev=(stByYr[yr]||[]).reduce((s,x)=>s+x,0);stNW=fvCalc(stNW,nr,1,co)-ev;}else stNW=nomD[0];
+    stD.push(Math.round(stNW));
+  }
+  const nf=nomD[yrs],rf=realD[yrs],tc=Array.from({length:yrs},(_,i)=>c*Math.pow(1+cg,i)).reduce((s,x)=>s+x,0);
+  document.getElementById('p-nom').textContent=fmt(nf);document.getElementById('p-real').textContent=fmt(rf);document.getElementById('p-contrib').textContent=fmt(tc);document.getElementById('p-gains').textContent=fmt(nf-nwTotal()-tc);
+  dC('proj');CH['proj']=new Chart(document.getElementById('projChart'),{type:'line',data:{labels,datasets:[{label:'Nominal',data:nomD.map(v=>cvt(v)),borderColor:'#1a6b3c',backgroundColor:'#1a6b3c0d',fill:true,tension:0.3,pointRadius:0,borderWidth:2},{label:'Real',data:realD.map(v=>cvt(v)),borderColor:'#1a4a7a',backgroundColor:'transparent',tension:0.3,pointRadius:0,borderWidth:1.5,borderDash:[5,4]},{label:'w/ events',data:stD.map(v=>cvt(v)),borderColor:'#c0392b',backgroundColor:'transparent',tension:0.3,pointRadius:0,borderWidth:1.5,borderDash:[3,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y/cvt(1))}}},scales:{x:{grid:{display:false},ticks:{color:'#8a8680',maxTicksLimit:9,font:{size:10}}},y:{ticks:{color:'#8a8680',callback:v=>fmt(v/cvt(1)),font:{size:10}},grid:{color:'#00000008'}}}}});
+}
+function renderRetTbl(){const off=SCEN[curScen]||0;document.getElementById('ret-tbl').innerHTML=`<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f=>`<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct+off).toFixed(1)}% <span class="mut">(${off>=0?'+':''}${off}%)</span></td></tr>`).join('')}</tbody>`;}
+function updRet(id,v){const f=S.funds.find(x=>x.id===id);if(f){f.retPct=parseFloat(v)||10;ps();updateProj();}}
+function renderStress(){document.getElementById('stress-list').innerHTML=S.stressEvents.map((e,i)=>`<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--bg2)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">-${fmtUSD(e.amount)}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('')||'<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>';}
+function addStress(){const n=prompt('Event name:');if(!n)return;const a=parseFloat(prompt('Cost ($):')||'0'),y=parseInt(prompt('Year:')||NY);S.stressEvents.push({name:n,amount:a,year:y});ps();renderStress();updateProj();}
+function delStress(i){S.stressEvents.splice(i,1);ps();renderStress();updateProj();}
+
+// ══════════════════════════════════════════════════════════════
+// GOALS
+function renderGoals(){
+  const nr=blendRet(),t=nwTotal(),yrs=Math.max(...S.goals.map(g=>g.year))-NY+5;
+  const labels=Array.from({length:Math.min(yrs+1,51)},(_,i)=>NY+i);
+  const nwD=labels.map(yr=>cvt(fvCalc(t,nr,yr-NY,S.settings.annualContrib)));
+  dC('goals');CH['goals']=new Chart(document.getElementById('goalsChart'),{type:'line',data:{labels,datasets:[{label:'Projected NW',data:nwD,borderColor:'#1a6b3c',backgroundColor:'#1a6b3c0f',fill:true,tension:0.4,pointRadius:0,borderWidth:2.5},...S.goals.map(g=>({label:g.name,data:labels.map(()=>cvt(g.amount)),borderColor:GCOL[g.cat],borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}))]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.parsed.y/cvt(1))}}},scales:{x:{grid:{display:false},ticks:{color:'#8a8680',font:{size:10},maxTicksLimit:10}},y:{ticks:{color:'#8a8680',font:{size:10},callback:v=>fmt(v/cvt(1))},grid:{color:'#00000008'}}}}});
+  document.getElementById('goals-legend').innerHTML=[{label:'Projected NW',color:'#1a6b3c'},...S.goals.map(g=>({label:g.name,color:GCOL[g.cat]}))].map(x=>`<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
+  document.getElementById('goals-grid').innerHTML=S.goals.map(g=>{const f=Math.min(100,(t/g.amount)*100),yl=g.year-NY,proj=fvCalc(t,nr,yl,S.settings.annualContrib),ok=proj>=g.amount,mn=yl>0&&nr>0?(g.amount-t*Math.pow(1+nr,yl))/(((Math.pow(1+nr/12,yl*12)-1)/(nr/12))):0,col=GCOL[g.cat];return`<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok?'tg':'tr'}">${ok?'On track':'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes?`<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>`:''}<div style="font-family:var(--mo);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${fmt(g.amount)}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl>0?yl+'yr':yl===0?'This yr!':'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--bg);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mo);font-size:12px;color:${ok?'var(--acc)':'var(--red)'}">${fmt(proj)}</div></div><div style="background:var(--bg);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type==='expense'?'Cost':'Monthly needed'}</div><div style="font-family:var(--mo);font-size:12px">${g.type==='expense'?fmt(g.amount):fmt(Math.max(0,mn),0)+'/mo'}</div></div></div></div>`;}).join('')||'<div class="mut">No goals yet.</div>';
+}
+function openGoalModal(id){S.editGoalId=id;if(id){const g=S.goals.find(x=>x.id===id);document.getElementById('m-goal-title').textContent='Edit goal';document.getElementById('g-name').value=g.name;document.getElementById('g-cat').value=g.cat;document.getElementById('g-amt').value=g.amount;document.getElementById('g-yr').value=g.year;document.getElementById('g-type').value=g.type||'savings';document.getElementById('g-notes').value=g.notes||'';}else{document.getElementById('m-goal-title').textContent='Add goal';['g-name','g-amt','g-yr','g-notes'].forEach(i=>document.getElementById(i).value='');document.getElementById('g-cat').value='fire';document.getElementById('g-type').value='savings';}openModal('m-goal');}
+function saveGoal(){const name=document.getElementById('g-name').value.trim(),cat=document.getElementById('g-cat').value,amount=parseFloat(document.getElementById('g-amt').value)||0,year=parseInt(document.getElementById('g-yr').value)||NY+5,type=document.getElementById('g-type').value,notes=document.getElementById('g-notes').value.trim();if(!name)return;if(S.editGoalId){Object.assign(S.goals.find(x=>x.id===S.editGoalId),{name,cat,amount,year,type,notes});}else S.goals.push({id:nextId(S.goals),name,cat,amount,year,type,notes});ps();closeModal('m-goal');renderGoals();}
+function delGoal(id){if(!confirm('Remove?'))return;S.goals=S.goals.filter(x=>x.id!==id);ps();renderGoals();}
+
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// SPREADSHEET ENGINE V2 — Single Overlay Editor Mode
+// ──────────────────────────────────────────────────────────────
+let ssR=0,ssC=0,ssRange=null,ssCopied=null,ssDragCol=null,ssMouseDragging=false;
+let ssEditing=false;
+
+// ── formula evaluation ────────────────────────────────────────
+const SS_FUNCS = {
+  SUM: (args) => args.reduce((a, b) => a + (parseFloat(b) || 0), 0),
+  AVERAGE: (args) => args.length ? args.reduce((a, b) => a + (parseFloat(b) || 0), 0) / args.length : 0,
+  PRODUCT: (args) => args.reduce((a, b) => a * (parseFloat(b) || 0), 1),
+  MIN: (args) => Math.min(...args.map(a => parseFloat(a) || 0)),
+  MAX: (args) => Math.max(...args.map(a => parseFloat(a) || 0)),
+  IF: (args) => args[0] ? args[1] : args[2]
+};
+
+function parseCellRef(ref) {
+  const m = ref.match(/(\$)?([A-Z]+)(\$)?(\d+)/i);
+  if (!m) return null;
+  const colStr = m[2].toUpperCase();
+  let col = 0;
+  for (let i = 0; i < colStr.length; i++) {
+    col = col * 26 + (colStr.charCodeAt(i) - 64);
+  }
+  return {
+    c: col - 1,
+    r: parseInt(m[4]) - 1,
+    absC: !!m[1],
+    absR: !!m[3]
+  };
+}
+
+function parseRange(rangeStr) {
+  const [start, end] = rangeStr.split(':');
+  const s = parseCellRef(start);
+  const e = parseCellRef(end);
+  if (!s || !e) return [];
+  const cells = [];
+  for (let r = Math.min(s.r, e.r); r <= Math.max(s.r, e.r); r++) {
+    for (let c = Math.min(s.c, e.c); c <= Math.max(s.c, e.c); c++) {
+      cells.push({r, c});
+    }
+  }
+  return cells;
+}
+
+function getCellValue(r, c, visited = new Set()) {
+  const key = `${r},${c}`;
+  if (visited.has(key)) return '#CIRC!';
+  visited.add(key);
+  const raw = S.ssData[r]?.[c] ?? '';
+  if (typeof raw === 'string' && raw.startsWith('=')) {
+    return evalFormula(raw, r, c, visited);
+  }
+  return raw;
+}
+
+function evalFormula(formula, ri, ci, visited = new Set()) {
+  try {
+    let expr = formula.substring(1);
+    
+    // Replace functions
+    expr = expr.replace(/([A-Z]+)\s*\(([^)]+)\)/gi, (m, func, argsStr) => {
+      const funcName = func.toUpperCase();
+      if (!SS_FUNCS[funcName]) return '#NAME?';
+      
+      const args = argsStr.split(',').flatMap(arg => {
+        arg = arg.trim();
+        if (arg.includes(':')) {
+          return parseRange(arg).map(cell => getCellValue(cell.r, cell.c, new Set(visited)));
+        }
+        const ref = parseCellRef(arg);
+        if (ref) return getCellValue(ref.r, ref.c, new Set(visited));
+        return parseFloat(arg) || arg;
+      });
+      return SS_FUNCS[funcName](args);
+    });
+
+    // Replace special tokens
+    expr = expr.replace(/\bprev\b/gi, () => getCellValue(ri - 1, ci, new Set(visited)));
+    expr = expr.replace(/\bage\b/gi, () => getCellValue(ri, 0, new Set(visited)));
+
+    // Replace cell references
+    expr = expr.replace(/(\$?[A-Z]+\$?\d+)/gi, (m) => {
+      const ref = parseCellRef(m);
+      if (!ref) return m;
+      const val = getCellValue(ref.r, ref.c, new Set(visited));
+      return isNaN(val) ? `"${val}"` : val;
+    });
+
+    const result = new Function(`return ${expr}`)();
+    return typeof result === 'number' ? Math.round(result * 100) / 100 : result;
+  } catch (e) {
+    return '#ERR!';
+  }
+}
+
+function adjustFormula(formula, dr, dc) {
+  try {
+    if (typeof formula !== 'string' || !formula.startsWith('=')) return formula;
+    return formula.replace(/(\$)?([A-Z]+)(\$)?(\d+)/gi, (m, absC, colStr, absR, rowStr) => {
+      let c = 0;
+      for (let i = 0; i < colStr.length; i++) c = c * 26 + (colStr.charCodeAt(i) - 64);
+      c--;
+      let r = parseInt(rowStr) - 1;
+      
+      if (!absC) c += dc;
+      if (!absR) r += dr;
+      
+      // Convert back to A1 notation
+      let outCol = '';
+      let tempC = c + 1;
+      while (tempC > 0) {
+        let rem = (tempC - 1) % 26;
+        outCol = String.fromCharCode(65 + rem) + outCol;
+        tempC = Math.floor((tempC - rem) / 26);
+      }
+      return (absC ? '$' : '') + outCol + (absR ? '$' : '') + (r + 1);
+    });
+  } catch (e) {
+    return formula;
+  }
+}
+
+// ── UI Helpers ───────────────────────────────────────────────
+function isTextCol(ci) { return ci === 0 || ci === 1 || ci === S.ssCols.length - 1; }
+
+function ssDisplayStr(ri, ci) {
+  const v = getCellValue(ri, ci);
+  if (v === '' || v === null || v === undefined) return '';
+  const n = parseFloat(v);
+  if (!isNaN(n) && !isTextCol(ci)) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return String(v);
+}
+
+// ── Building Table ───────────────────────────────────────────
+function buildSS() {
+  const cols = S.ssCols, rows = S.ssData;
+  const r0 = ssRange ? Math.min(ssRange.r0, ssRange.r1) : ssR;
+  const r1 = ssRange ? Math.max(ssRange.r0, ssRange.r1) : ssR;
+  const c0 = ssRange ? Math.min(ssRange.c0, ssRange.c1) : ssC;
+  const c1 = ssRange ? Math.max(ssRange.c0, ssRange.c1) : ssC;
+
+  let h = `<colgroup><col style="width:32px">`;
+  cols.forEach(() => h += `<col style="min-width:110px;width:120px">`);
+  h += `</colgroup><thead><tr><th class="rh"></th>`;
+  cols.forEach((c, ci) => {
+    h += `<th draggable="true" ondragstart="ssDragStart(event,${ci})" ondragover="ssDragOver(event,this,${ci})" ondragleave="this.classList.remove('drag-over')" ondrop="ssDrop(event,this,${ci})" ondblclick="ssRenameCol(${ci})">
+      <div class="th-inner"><span class="dh">⠿</span><span style="flex:1;text-align:center">${String.fromCharCode(65 + ci)}: ${c}</span></div></th>`;
+  });
+  h += `</tr></thead><tbody>`;
+
+  rows.forEach((row, ri) => {
+    h += `<tr><td class="rn">${ri + 1}</td>`;
+    row.forEach((cell, ci) => {
+      const isActive = ri === ssR && ci === ssC;
+      const inRange = ri >= r0 && ri <= r1 && ci >= c0 && ci <= c1;
+      const isFormula = String(cell).startsWith('=');
+      const isNW = ci === 2;
+      const val = ssDisplayStr(ri, ci);
+      const isMil = isNW && parseFloat(getCellValue(ri, ci)) >= 1000000;
+
+      const cls = [
+        isActive ? 'ss-active' : '',
+        (inRange && !isActive) ? 'ss-range' : '',
+        isFormula ? 'ss-formula' : '',
+        isNW ? 'ss-nw' : '',
+        isMil ? 'ss-mil' : ''
+      ].filter(Boolean).join(' ');
+
+      h += `<td class="${cls}" id="ss_${ri}_${ci}" onmousedown="ssTdDown(event,${ri},${ci})" onmouseover="ssTdOver(event,${ri},${ci})">
+        <div class="ss-cell-content">${val}</div>
+      </td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody>`;
+  document.getElementById('ss-tbl').innerHTML = h;
+  updFBar();
+  if (ssEditing) showOverlayEditor();
+}
+
+// ── Overlay Editor ──────────────────────────────────────────
+function showOverlayEditor() {
+  const td = document.getElementById(`ss_${ssR}_${ssC}`);
+  if (!td) return;
+  
+  let editor = document.getElementById('ss-editor');
+  if (!editor) {
+    editor = document.createElement('input');
+    editor.id = 'ss-editor';
+    editor.className = 'inp inpm ss-editor-overlay';
+    document.body.appendChild(editor);
+    
+    editor.addEventListener('blur', ssCommitEdit);
+    editor.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); ssCommitEdit(); moveSelection(1, 0); }
+      if (e.key === 'Tab') { e.preventDefault(); ssCommitEdit(); moveSelection(0, e.shiftKey ? -1 : 1); }
+      if (e.key === 'Escape') { ssCancelEdit(); }
+    });
+  }
+  
+  const rect = td.getBoundingClientRect();
+  Object.assign(editor.style, {
+    display: 'block',
+    position: 'fixed',
+    top: rect.top + 'px',
+    left: rect.left + 'px',
+    width: rect.width + 'px',
+    height: rect.height + 'px',
+    zIndex: 1000,
+    background: '#fff',
+    border: '2px solid var(--acc)',
+    padding: '2px 5px',
+    outline: 'none',
+    boxSizing: 'border-box'
+  });
+  
+  editor.value = String(S.ssData[ssR]?.[ssC] ?? '');
+  editor.focus();
+  editor.select();
+  ssEditing = true;
+}
+
+function ssCommitEdit() {
+  const editor = document.getElementById('ss-editor');
+  if (!editor || !ssEditing) return;
+  S.ssData[ssR][ssC] = editor.value;
+  editor.style.display = 'none';
+  ssEditing = false;
+  ps();
+  buildSS();
+  renderLifeCharts();
+}
+
+function ssCancelEdit() {
+  const editor = document.getElementById('ss-editor');
+  if (!editor) return;
+  editor.style.display = 'none';
+  ssEditing = false;
+  buildSS();
+}
+
+// ── Events ──────────────────────────────────────────────────
+function ssTdDown(e, ri, ci) {
+  if (ssEditing) ssCommitEdit();
+  if (e.shiftKey) {
+    ssRange = { r0: ssR, c0: ssC, r1: ri, c1: ci };
+  } else {
+    ssR = ri; ssC = ci; ssRange = null;
+    ssMouseDragging = true;
+  }
+  buildSS();
+}
+
+function ssTdOver(e, ri, ci) {
+  if (!ssMouseDragging) return;
+  ssRange = { r0: ssR, c0: ssC, r1: ri, c1: ci };
+  buildSS();
+}
+
+document.addEventListener('mouseup', () => ssMouseDragging = false);
+
+document.addEventListener('copy', (e) => {
+  if (!document.getElementById('tab-life')?.classList.contains('on')) return;
+  if (document.activeElement.tagName !== 'INPUT' || document.activeElement.id === 'ss-editor') {
+    ssCopy(e);
+  }
+});
+
+document.addEventListener('paste', (e) => {
+  if (!document.getElementById('tab-life')?.classList.contains('on')) return;
+  // If editing, let the browser handle standard text paste into the input
+  if (ssEditing || document.activeElement.id === 'ss-editor' || document.activeElement.id === 'ss-fb') return;
+  
+  if (document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    ssPaste(text);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (document.activeElement.tagName === 'INPUT' && document.activeElement.id !== 'ss-editor') return;
+  if (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'TEXTAREA') return;
+  if (document.getElementById('tab-life') && !document.getElementById('tab-life').classList.contains('on')) return;
+
+  if (k === 'arrowup') { e.preventDefault(); moveSelection(-1, 0); }
+  else if (k === 'arrowdown') { e.preventDefault(); moveSelection(1, 0); }
+  else if (k === 'arrowleft') { e.preventDefault(); moveSelection(0, -1); }
+  else if (k === 'arrowright') { e.preventDefault(); moveSelection(0, 1); }
+  else if (k === 'enter' || k === 'f2') { e.preventDefault(); showOverlayEditor(); }
+  else if (k === 'backspace' || k === 'delete') {
+    e.preventDefault();
+    ssRangeOrCell((r, c) => S.ssData[r][c] = '');
+    ps(); buildSS(); renderLifeCharts();
+  }
+  else if ((e.ctrlKey || e.metaKey) && k === 'd') { e.preventDefault(); ssFillDown(); }
+  else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    showOverlayEditor();
+    const editor = document.getElementById('ss-editor');
+    if (editor) editor.value = ''; 
+  }
+});
+
+function moveSelection(dr, dc) {
+  ssR = Math.max(0, Math.min(S.ssData.length - 1, ssR + dr));
+  ssC = Math.max(0, Math.min(S.ssCols.length - 1, ssC + dc));
+  ssRange = null;
+  buildSS();
+  const td = document.getElementById(`ss_${ssR}_${ssC}`);
+  if (td) td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function ssRangeOrCell(fn) {
+  if (ssRange) {
+    const r0 = Math.min(ssRange.r0, ssRange.r1), r1 = Math.max(ssRange.r0, ssRange.r1);
+    const c0 = Math.min(ssRange.c0, ssRange.c1), c1 = Math.max(ssRange.c0, ssRange.c1);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) fn(r, c);
+  } else fn(ssR, ssC);
+}
+
+let ssLastCopiedText = '';
+
+function ssCopy(e) {
+  let text = '';
+  const editing = ssEditing || document.activeElement.id === 'ss-editor';
+  const sourceVal = editing ? document.getElementById('ss-editor').value : S.ssData[ssR][ssC];
+
+  if (ssRange) {
+    const r0 = Math.min(ssRange.r0, ssRange.r1), r1 = Math.max(ssRange.r0, ssRange.r1);
+    const c0 = Math.min(ssRange.c0, ssRange.c1), c1 = Math.max(ssRange.c0, ssRange.c1);
+    const data = S.ssData.slice(r0, r1 + 1).map(row => row.slice(c0, c1 + 1));
+    ssCopied = { type: 'range', r0, c0, data };
+    text = data.map(row => row.join('\t')).join('\n');
+  } else {
+    ssCopied = { type: 'single', val: sourceVal, r: ssR, c: ssC };
+    text = String(sourceVal);
+  }
+  // Normalize for future comparison
+  ssLastCopiedText = text.replace(/\r\n/g, '\n').trim();
+
+  if (e && e.clipboardData) {
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', text);
+  } else {
+    navigator.clipboard.writeText(text).catch(e => console.error('Clipboard copy failed', e));
+  }
+}
+
+async function ssPaste(passedText) {
+  let text = passedText;
+  if (text === undefined) {
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (e) {
+      console.error('Clipboard read failed', e);
+    }
+  }
+
+  if (!text) return;
+  const normalizedText = text.replace(/\r\n/g, '\n').trim();
+  const isInternalVal = ssCopied && (normalizedText === ssLastCopiedText);
+
+  const lines = normalizedText.split('\n');
+  const grid = lines.map(line => line.split('\t'));
+
+  if (grid.length === 1 && grid[0].length === 1) {
+    const val = grid[0][0];
+    ssRangeOrCell((r, c) => {
+      if (isInternalVal && ssCopied.type === 'single') {
+        S.ssData[r][c] = adjustFormula(ssCopied.val, r - ssCopied.r, c - ssCopied.c);
+      } else {
+        S.ssData[r][c] = val;
+      }
+    });
+  } else {
+    const isInternalRange = isInternalVal && ssCopied.type === 'range' && 
+                           ssCopied.data.length === grid.length;
+
+    grid.forEach((row, dr) => {
+      const ri = ssR + dr; if (!S.ssData[ri]) return;
+      row.forEach((cell, dc) => {
+        const ci = ssC + dc; if (ci >= S.ssCols.length) return;
+        if (isInternalRange) {
+          S.ssData[ri][ci] = adjustFormula(ssCopied.data[dr][dc], ri - ssCopied.r0, ci - ssCopied.c0);
+        } else {
+          S.ssData[ri][ci] = cell.trim();
+        }
+      });
+    });
+  }
+  ps(); buildSS(); renderLifeCharts();
+}
+
+function ssFillDown() {
+  if (!ssRange) {
+    // If no range, fill from cell above
+    if (ssR > 0) {
+      const baseVal = S.ssData[ssR - 1][ssC];
+      S.ssData[ssR][ssC] = adjustFormula(baseVal, 1, 0);
+    }
+  } else {
+    const r0 = Math.min(ssRange.r0, ssRange.r1), r1 = Math.max(ssRange.r0, ssRange.r1);
+    const c0 = Math.min(ssRange.c0, ssRange.c1), c1 = Math.max(ssRange.c0, ssRange.c1);
+    for (let c = c0; c <= c1; c++) {
+      const baseVal = S.ssData[r0][c];
+      for (let r = r0 + 1; r <= r1; r++) {
+        S.ssData[r][c] = adjustFormula(baseVal, r - r0, 0);
+      }
+    }
+  }
+  ps(); buildSS(); renderLifeCharts();
+}
+
+function updFBar() {
+  const ref = document.getElementById('ss-ref');
+  const bar = document.getElementById('ss-fb');
+  if (ref) ref.value = String.fromCharCode(65 + ssC) + (ssR + 1);
+  if (bar) bar.value = String(S.ssData[ssR]?.[ssC] ?? '');
+}
+
+function initFBar() {
+  const bar = document.getElementById('ss-fb');
+  if (!bar) return;
+  bar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      S.ssData[ssR][ssC] = bar.value;
+      ps(); buildSS(); renderLifeCharts();
+      bar.blur();
+    }
+  });
+}
+
+function ssDragStart(e, ci) { ssDragCol = ci; e.dataTransfer.effectAllowed = 'move'; }
+function ssDragOver(e, th, ci) { e.preventDefault(); th.classList.add('drag-over'); }
+function ssDrop(e, th, ci) {
+  e.preventDefault();
+  th.classList.remove('drag-over');
+  if (ssDragCol === null || ssDragCol === ci) return;
+  const from = ssDragCol, to = ci;
+  const nc = [...S.ssCols]; const [mc] = nc.splice(from, 1); nc.splice(to, 0, mc); S.ssCols = nc;
+  S.ssData = S.ssData.map(row => { const nr = [...row]; const [mv] = nr.splice(from, 1); nr.splice(to, 0, mv); return nr; });
+  ps(); buildSS();
+}
+function ssRenameCol(ci) { const n = prompt('Rename:', S.ssCols[ci]); if (n) { S.ssCols[ci] = n; ps(); buildSS(); } }
+function ssAddRow() { S.ssData.push(new Array(S.ssCols.length).fill('')); ps(); buildSS(); }
+function ssDelRow() { if (S.ssData.length > 1) { S.ssData.pop(); ps(); buildSS(); } }
+function ssAddCol() { const n = prompt('Col name:'); if (n) { S.ssCols.push(n); S.ssData.forEach(r => r.push('')); ps(); buildSS(); } }
+function ssDelCol() { if (S.ssCols.length > 1 && confirm('Delete col?')) { S.ssCols.pop(); S.ssData.forEach(r => r.pop()); ps(); buildSS(); } }
+function ssRecalc() { buildSS(); renderLifeCharts(); }
+
+function renderLife() { buildSS(); renderLifeCharts(); }
+
+function renderLifeCharts() {
+  const rows = S.ssData;
+  const labels = rows.map((r, i) => String(getCellValue(i, 0) || r[0] || ''));
+  const nwVals = rows.map((r, i) => cvt(parseFloat(getCellValue(i, 2)) || 0));
+  const incVals = rows.map((r, i) => cvt((parseFloat(getCellValue(i, 3)) || 0) + (parseFloat(getCellValue(i, 4)) || 0) + (parseFloat(getCellValue(i, 5)) || 0)));
+  const expVals = rows.map((r, i) => cvt(-(parseFloat(getCellValue(i, 6)) || 0) + -(parseFloat(getCellValue(i, 7)) || 0)));
+  
+  const nwCanvas = document.getElementById('lifeNW');
+  if (nwCanvas) {
+    dC('lifeNW');
+    CH['lifeNW'] = new Chart(nwCanvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ data: nwVals, borderColor: '#1a6b3c', backgroundColor: '#1a6b3c12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { ticks: { color: '#8a8680', font: { size: 10 }, callback: v => fmt(v / cvt(1)) } } }
+      }
+    });
+  }
+
+  const incCanvas = document.getElementById('lifeInc');
+  if (incCanvas) {
+    dC('lifeInc');
+    CH['lifeInc'] = new Chart(incCanvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Income', data: incVals, backgroundColor: '#1a6b3c55', stack: 'a' },
+          { label: 'Expenses', data: expVals, backgroundColor: '#c0392b44', stack: 'a' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { stacked: true, ticks: { color: '#8a8680', font: { size: 10 }, callback: v => fmt(Math.abs(v) / cvt(1)) } } }
+      }
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS
+function updFX(v) { S.settings.fx = parseFloat(v) || 1370; ps(); reRender(); }
+function renderSettings() {
+  const fxSet = document.getElementById('fx-set');
+  if (fxSet) fxSet.value = S.settings.fx;
+  const list = document.getElementById('snap-list');
+  if (list) list.innerHTML = S.snapshots.length === 0 ? '<div class="mut">No snapshots.</div>' : [...S.snapshots].reverse().map((s, i) => `<div class="fb" style="padding:6px 0;border-bottom:1px solid var(--bg2)"><div><div style="font-size:12px;font-weight:500">${new Date(s.date).toLocaleDateString()}</div><div style="font-size:10px;color:var(--ink3)">${s.note}</div></div><div class="flex gsm"><span class="snum">${fmtUSD(s.nw)}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delSnap(${S.snapshots.length - 1 - i})">✕</button></div></div>`).join('');
+}
+function delSnap(i) { S.snapshots.splice(i, 1); ps(); renderSettings(); }
+function exportData() { const a = document.createElement('a'); a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(S, null, 2)); a.download = 'moola.json'; a.click(); }
+function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { S = JSON.parse(ev.target.result); ps(); location.reload(); } catch (e) { alert('Invalid file.'); } }; r.readAsText(f); }
+
+// ══════════════════════════════════════════════════════════════
+// MODALS
+function openModal(id) { document.getElementById(id).classList.add('on'); }
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+document.querySelectorAll('.mo-ov').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+const navDate = document.getElementById('nav-date');
+if (navDate) navDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+if (S.settings.currency === 'KRW') { dispCur = 'KRW'; const curTabs = document.querySelectorAll('#cur-tabs .stab'); if (curTabs.length > 1) { curTabs[0].classList.remove('on'); curTabs[1].classList.add('on'); } if (document.getElementById('krw-fmt-tabs')) document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
+krwFmt = S.settings.krwFmt || 'short';
+initFBar();
+renderOverview();
+</script>
+</body>
+</html>
