@@ -1157,6 +1157,13 @@
       background: #EAF2FF
     }
 
+    /* Cell reference highlight during formula editing */
+    td.ss-ref-hl {
+      background: #FFF3CD;
+      outline: 1px dashed #B07D2E;
+      outline-offset: -1px;
+    }
+
     td.ss-active {
       outline: 2px solid var(--fm);
       outline-offset: -2px;
@@ -1179,6 +1186,20 @@
 
     td.ss-mil {
       background: var(--fll)
+    }
+
+    /* Fill handle — small square in bottom-right of active cell */
+    .ss-fill-handle {
+      position: absolute;
+      bottom: -3px;
+      right: -3px;
+      width: 7px;
+      height: 7px;
+      background: var(--fm);
+      border: 1.5px solid #fff;
+      border-radius: 1px;
+      cursor: crosshair;
+      z-index: 20;
     }
 
     #ss-editor {
@@ -2690,7 +2711,7 @@
     // ── state ─────────────────────────────────────────────────────
     let ssR = 0, ssC = 0;
     let ssSelR0 = 0, ssSelC0 = 0, ssSelR1 = 0, ssSelC1 = 0;
-    let ssEditing = false, ssDragging = false, ssDragCol = null, ssCopied = null;
+    let ssEditing = false, ssDragging = false, ssFilling = false, ssDragCol = null, ssCopied = null;
     let ssInited = false;
     const D = () => S.ssData, C = () => S.ssCols, NR = () => D().length, NC = () => C().length;
 
@@ -2788,7 +2809,7 @@
           const isMil = isNW && parseFloat(cellComputed(ri, ci)) >= 1e6;
           const cls = [isAct ? 'ss-active' : '', isAct && ssEditing ? 'ss-active-editing' : '', inSel && !isAct ? 'ss-range' : '', isF ? 'ss-formula' : '', isNW ? 'ss-nw' : '', isMil ? 'ss-mil' : ''].filter(Boolean).join(' ');
           const dv = isAct && ssEditing ? '' : (ssEditing ? cellDisplay(ri, ci) : cellDisplay(ri, ci));
-          h += `<td class="${cls}" data-r="${ri}" data-c="${ci}"><div class="ss-cv">${escHtml(cellDisplay(ri, ci))}</div></td>`;
+          h += `<td class="${cls}" data-r="${ri}" data-c="${ci}" style="position:relative"><div class="ss-cv">${escHtml(cellDisplay(ri, ci))}</div>${isAct && !ssEditing ? '<div class="ss-fill-handle" data-fill="1"></div>' : ''}</td>`;
         });
         h += '</tr>';
       });
@@ -2833,6 +2854,7 @@
       const val = ED().value;
       if (D()[ssR]) D()[ssR][ssC] = val;
       ED().style.display = 'none';
+      document.querySelectorAll('#ss-tbl .ss-ref-hl').forEach(t => t.classList.remove('ss-ref-hl'));
       ps();
       if (rebuild !== false) { buildSS(); renderLifeCharts(); }
     }
@@ -2842,6 +2864,7 @@
       ED().style.display = 'none';
       // restore original value (undo any formula-bar live writes)
       if (D()[ssR]) D()[ssR][ssC] = ssPreEditVal;
+      document.querySelectorAll('#ss-tbl .ss-ref-hl').forEach(t => t.classList.remove('ss-ref-hl'));
       const td = getActiveTD();
       if (td) { const cv = td.querySelector('.ss-cv'); if (cv) cv.textContent = cellDisplay(ssR, ssC); }
       updFBar();
@@ -2861,10 +2884,45 @@
       const outer = OUTER(), ed = ED();
 
       outer.addEventListener('mousedown', e => {
+        // ── Fill handle drag ──────────────────────────────────────
+        if (e.target.dataset.fill === '1') {
+          ssFilling = true;
+          // anchor stays at current active cell; selection will extend on mousemove
+          ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+          e.preventDefault();
+          return;
+        }
+
         const td = e.target.closest('td[data-r]');
         if (!td) return;
         const ri = +td.dataset.r, ci = +td.dataset.c;
-        if (ssEditing) commitEdit(false);
+
+        // ── Formula-mode click: insert cell reference into editor ──
+        // When editing a formula (starts with =), clicking any cell
+        // inserts its address at the cursor rather than committing.
+        if (ssEditing) {
+          const ed = ED();
+          const val = ed.value;
+          if (val.startsWith('=')) {
+            // Insert the cell reference at the current cursor position
+            const ref = colLetter(ci) + (ri + 1);
+            const start = ed.selectionStart, end = ed.selectionEnd;
+            ed.value = val.slice(0, start) + ref + val.slice(end);
+            ed.selectionStart = ed.selectionEnd = start + ref.length;
+            // Sync formula bar
+            document.getElementById('ss-fb').value = ed.value;
+            // Highlight the referenced cell visually (temporary)
+            document.querySelectorAll('#ss-tbl td').forEach(t => t.classList.remove('ss-ref-hl'));
+            const refTd = document.querySelector(`#ss-tbl td[data-r="${ri}"][data-c="${ci}"]`);
+            if (refTd) refTd.classList.add('ss-ref-hl');
+            e.preventDefault();
+            ed.focus();
+            return;
+          }
+          // Non-formula edit: commit before moving
+          commitEdit(false);
+        }
+
         if (e.shiftKey) {
           ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
           ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
@@ -2878,15 +2936,45 @@
 
       let ssDragRAF = null;
       outer.addEventListener('mousemove', e => {
-        if (!ssDragging) return;
+        if (!ssDragging && !ssFilling) return;
         const td = e.target.closest('td[data-r]'); if (!td) return;
         const ri = +td.dataset.r, ci = +td.dataset.c;
-        ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
-        ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+        if (ssFilling) {
+          // Fill extends only down OR right from the anchor, not both at once.
+          // Whichever axis moved more is the fill direction.
+          const dr = Math.abs(ri - ssR), dc = Math.abs(ci - ssC);
+          if (dr >= dc) {
+            // Fill down/up
+            ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
+            ssSelC0 = ssC; ssSelC1 = ssC;
+          } else {
+            // Fill right/left
+            ssSelR0 = ssR; ssSelR1 = ssR;
+            ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+          }
+        } else {
+          ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
+          ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+        }
         if (!ssDragRAF) { ssDragRAF = requestAnimationFrame(() => { buildSS(); ssDragRAF = null; }); }
       });
 
-      document.addEventListener('mouseup', () => ssDragging = false);
+      document.addEventListener('mouseup', () => {
+        if (ssFilling) {
+          ssFilling = false;
+          // Fill the selection from the anchor cell (ssR, ssC)
+          const srcR = ssR, srcC = ssC;
+          const srcVal = D()[srcR]?.[srcC] ?? '';
+          for (let r = ssSelR0; r <= ssSelR1; r++) {
+            for (let c = ssSelC0; c <= ssSelC1; c++) {
+              if (r === srcR && c === srcC) continue; // skip source cell
+              D()[r][c] = adjustFormula(srcVal, srcR, srcC, r, c);
+            }
+          }
+          ps(); buildSS(); renderLifeCharts();
+        }
+        ssDragging = false;
+      });
 
       outer.addEventListener('dblclick', e => {
         const td = e.target.closest('td[data-r]'); if (!td) return;
@@ -2987,14 +3075,32 @@
 
     function ssPaste() {
       if (!ssCopied) return;
-      ssCopied.data.forEach((row, dr) => {
-        const ri = ssR + dr;
-        if (ri >= NR()) D().push(new Array(NC()).fill(''));
-        row.forEach((cell, dc) => {
-          const ci = ssC + dc; if (ci >= NC()) return;
-          D()[ri][ci] = adjustFormula(cell, ssCopied.fromR + dr, ssCopied.fromC + dc, ri, ci);
-        });
-      });
+      const copyRows = ssCopied.data.length;
+      const copyCols = ssCopied.data[0]?.length || 0;
+
+      // Determine paste region:
+      // If selection is larger than copied data, tile the copy to fill selection.
+      // If selection is exactly one cell, paste starting from ssR/ssC (normal).
+      const selH = ssSelR1 - ssSelR0 + 1;
+      const selW = ssSelC1 - ssSelC0 + 1;
+      const useSelection = selH > 1 || selW > 1;
+
+      const destR0 = useSelection ? ssSelR0 : ssR;
+      const destC0 = useSelection ? ssSelC0 : ssC;
+      const destR1 = useSelection ? ssSelR1 : ssR + copyRows - 1;
+      const destC1 = useSelection ? ssSelC1 : ssC + copyCols - 1;
+
+      for (let r = destR0; r <= destR1; r++) {
+        while (r >= NR()) D().push(new Array(NC()).fill(''));
+        for (let c = destC0; c <= destC1; c++) {
+          if (c >= NC()) continue;
+          // Tile: wrap copy row/col indices
+          const cr = (r - destR0) % copyRows;
+          const cc = (c - destC0) % copyCols;
+          const cell = ssCopied.data[cr][cc];
+          D()[r][c] = adjustFormula(cell, ssCopied.fromR + cr, ssCopied.fromC + cc, r, c);
+        }
+      }
       ps(); buildSS(); renderLifeCharts();
     }
 
