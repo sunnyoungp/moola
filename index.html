@@ -1377,6 +1377,77 @@
       background: var(--s2);
       color: var(--ink)
     }
+
+    /* ════════════════════════════════════════════════════════════
+       PRIVACY / VISIBILITY TOGGLES
+       ════════════════════════════════════════════════════════════ */
+
+    /* The toggle button itself — pill-shaped, lightweight */
+    .vis-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      border: 1px solid var(--line-s);
+      background: var(--white);
+      color: var(--ink3);
+      cursor: pointer;
+      transition: all .15s;
+      box-shadow: var(--sh1);
+      flex-shrink: 0;
+    }
+
+    .vis-toggle:hover {
+      background: var(--s2);
+      color: var(--ink2);
+    }
+
+    .vis-toggle.is-hidden {
+      background: var(--s2);
+      color: var(--ink2);
+      border-color: var(--line-s);
+    }
+
+    .vis-toggle svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+    }
+
+    /* Inline "Hidden" placeholder — plain text like 하나은행 금액 숨김 */
+    .hval {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink4);
+      letter-spacing: .04em;
+    }
+
+    /* Dashboard widget area: dims when dash-hidden */
+    #ov-widgets.dash-hidden {
+      opacity: .35;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity .2s;
+    }
+
+    /* Life spreadsheet: blur when global hidden */
+    #ss-outer.life-blurred {
+      filter: blur(6px);
+      pointer-events: none;
+      user-select: none;
+      transition: filter .2s;
+    }
+
+    /* Keep toolbar readable so user knows they can unblur */
+    .ss-toolbar {
+      position: relative;
+      z-index: 1;
+    }
   </style>
 </head>
 
@@ -1489,6 +1560,14 @@
           <div class="page-sub">Your financial snapshot</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="dash-toggle-btn" onclick="toggleDash()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="dash-eye-icon">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="dash-toggle-lbl">Hide dashboard</span>
+          </button>
           <button class="btn" onclick="openWidgets()">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"
               stroke-linecap="round">
@@ -1515,6 +1594,16 @@
           <div class="nw-hero-label">Total net worth</div>
           <div class="nw-hero-value" id="ov-total">&#8212;</div>
           <div class="nw-hero-gain" id="ov-gain"></div>
+        </div>
+        <div class="nw-hero-right">
+          <button class="vis-toggle" id="nw-toggle-btn" onclick="toggleNW()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="nw-eye-icon">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="nw-toggle-lbl">Hide</span>
+          </button>
         </div>
       </div>
       <div id="ov-widgets"></div>
@@ -1790,6 +1879,61 @@
         </div>
       </div>
       <div style="height:20px"></div>
+
+      <!-- Privacy & Visibility card -->
+      <div class="card mb-2">
+        <div class="sec">Privacy &amp; Visibility</div>
+        <div>
+          <!-- Global -->
+          <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--s2)">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--ink)">Hide all numbers</div>
+              <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">Applies to every tab across the entire app
+              </div>
+            </div>
+            <button class="vis-toggle" id="s-global-btn" onclick="toggleGlobal()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="s-global-icon">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="s-global-lbl">Numbers visible</span>
+            </button>
+          </div>
+          <!-- Dashboard -->
+          <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--s2)">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--ink)">Hide dashboard widgets</div>
+              <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">Collapses metrics, charts &amp; goal bars
+                on Overview</div>
+            </div>
+            <button class="vis-toggle" id="s-dash-btn" onclick="toggleDash()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="s-dash-icon">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="s-dash-lbl">Widgets visible</span>
+            </button>
+          </div>
+          <!-- NW override -->
+          <div class="fb" style="padding:11px 0">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--ink)">Hide net worth</div>
+              <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">Overrides the dashboard toggle for the NW
+                value only</div>
+            </div>
+            <button class="vis-toggle" id="s-nw-btn" onclick="toggleNW()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="s-nw-icon">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="s-nw-lbl">NW visible</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Appearance card (full-width) -->
       <div class="card mb-2">
@@ -2183,7 +2327,7 @@
           { date: '2025-12-25', nw: 109471, contributed: 30000, note: '' },
         ],
         stressEvents: [],
-        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 40000, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short' },
+        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 40000, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short', privacy: { global: false, dashboard: false, nw: false } },
         widgetVis: { metrics: true, history: true, breakdown: true, goals: true },
         editAcctId: null, editFundId: null, editGoalId: null,
         ssCols: ['Age', 'Year', 'NW', 'Income KR', 'Income US', 'Spouse', 'Expenses', 'Housing', 'Kids', 'Note'],
@@ -2228,6 +2372,91 @@
     function getFX() { return parseFloat(S.settings.fx || 1370); }
     function cvt(usd) { return dispCur === 'KRW' ? usd * getFX() : usd; }
     function sym() { return dispCur === 'KRW' ? '₩' : '$'; }
+    // ══════════════════════════════════════════════════════════════
+    // PRIVACY / VISIBILITY ENGINE
+    //
+    // Rule: most recent action always wins. Cascades on write:
+    //   toggleGlobal → overwrites dashboard + NW state
+    //   toggleDash   → overwrites NW state (NW nested in dash)
+    //   toggleNW     → only touches NW
+    //
+    // State: S.settings.privacy = { global, dashboard, nw }
+    // Each field is simply true/false. No priority logic needed at
+    // read time — cascading at write time keeps state consistent.
+    // ══════════════════════════════════════════════════════════════
+
+    const EYE_OPEN = '<path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z"/><circle cx="7" cy="7" r="1.8"/>';
+    const EYE_SHUT = '<line x1="1" y1="1" x2="13" y2="13" stroke-width="1.8"/><path d="M6.3 3.2A6 6 0 0 1 7 3c2.8 0 5 1.5 6 4a9.2 9.2 0 0 1-1.6 2.7M9.9 9.9A5.5 5.5 0 0 1 7 11c-2.8 0-5-1.5-6-4a9 9 0 0 1 2.1-2.9"/>';
+
+    // Ensure privacy sub-object exists (handles old localStorage data without it)
+    function pv() {
+      if (!S.settings.privacy) S.settings.privacy = { global: false, dashboard: false, nw: false };
+      return S.settings.privacy;
+    }
+
+    function isGlobalHidden() { return !!pv().global; }
+    function isDashHidden() { return !!pv().dashboard; }
+    function isNWHidden() { return !!pv().nw; }
+
+    // Masking helpers — wrap any already-formatted string
+    const HIDDEN_PLACEHOLDER = '———';
+    function M(str) { return isGlobalHidden() ? HIDDEN_PLACEHOLDER : str; }
+    function MN(str) { return isNWHidden() ? HIDDEN_PLACEHOLDER : str; }
+    function MD(str) { return isDashHidden() ? HIDDEN_PLACEHOLDER : str; }
+
+    function toggleGlobal() {
+      const next = !pv().global;
+      // Global cascades to everything
+      pv().global = next;
+      pv().dashboard = next;
+      pv().nw = next;
+      ps(); syncPrivacyUI(); reRender();
+    }
+
+    function toggleDash() {
+      const next = !pv().dashboard;
+      // Dashboard cascades to NW (NW is nested inside dashboard)
+      pv().dashboard = next;
+      pv().nw = next;
+      ps(); syncPrivacyUI(); renderOverview();
+    }
+
+    function toggleNW() {
+      // NW only — no cascade
+      pv().nw = !pv().nw;
+      ps(); syncPrivacyUI(); renderOverview();
+    }
+
+    function syncPrivacyUI() {
+      const g = isGlobalHidden(), d = isDashHidden(), n = isNWHidden();
+
+      function upd(btnId, iconId, lblId, isHidden, showLabel, hideLabel) {
+        const btn = document.getElementById(btnId);
+        const ico = document.getElementById(iconId);
+        const lbl = document.getElementById(lblId);
+        if (btn) btn.classList.toggle('is-hidden', isHidden);
+        if (ico) ico.innerHTML = isHidden ? EYE_SHUT : EYE_OPEN;
+        if (lbl) lbl.textContent = isHidden ? hideLabel : showLabel;
+      }
+
+      // Inline NW hero button
+      upd('nw-toggle-btn', 'nw-eye-icon', 'nw-toggle-lbl', n, 'Hide', 'Show');
+      // Overview header button
+      upd('dash-toggle-btn', 'dash-eye-icon', 'dash-toggle-lbl', d, 'Hide dashboard', 'Show dashboard');
+      // Settings mirrors
+      upd('s-global-btn', 's-global-icon', 's-global-lbl', g, 'Numbers visible', 'Numbers hidden');
+      upd('s-dash-btn', 's-dash-icon', 's-dash-lbl', d, 'Widgets visible', 'Widgets hidden');
+      upd('s-nw-btn', 's-nw-icon', 's-nw-lbl', n, 'NW visible', 'NW hidden');
+
+      // Dashboard widget dim
+      const ow = document.getElementById('ov-widgets');
+      if (ow) ow.classList.toggle('dash-hidden', d);
+
+      // Life spreadsheet blur
+      const ss = document.getElementById('ss-outer');
+      if (ss) ss.classList.toggle('life-blurred', g);
+    }
+
     function fmt(v, dec = 0) {
       if (v === null || v === undefined || isNaN(v)) return '—';
       const c = cvt(parseFloat(v)); const abs = Math.abs(c); const sign = c < 0 ? '-' : '';
@@ -2277,19 +2506,20 @@
     // ══════════════════════════════════════════════════════════════
     // OVERVIEW
     function renderOverview() {
-      document.getElementById('ov-total').textContent = fmt(nwTotal());
+      syncPrivacyUI();
+      document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
       const snaps = S.snapshots;
       const tc = snaps.slice(1).reduce((s, sn) => s + (sn.contributed || 0), 0);
       const gain = nwTotal() - (snaps[0]?.nw || nwTotal()) - tc;
-      document.getElementById('ov-gain').innerHTML = snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`;
+      document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
       const vis = S.widgetVis; let h = '';
-      if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${fmt(totInv())}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${fmt(totCash())}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${fmt(totPort())}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">since ${snaps.length ? new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}</div></div></div>`;
+      if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">since ${snaps.length ? new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}</div></div></div>`;
       if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec">Net worth history</div>${snaps.length >= 2 ? '<div style="position:relative;height:170px"><canvas id="snapChart"></canvas></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:170px"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
       if (vis.goals) h += `<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
       document.getElementById('ov-widgets').innerHTML = h;
-      if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } }); }
+      if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => isGlobalHidden() ? '—' : fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } }); }
       if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const d = [{ l: 'Taxable', v: S.accounts.find(a => a.name === 'Taxable')?.balance || 0, c: tc[1] }, { l: 'Roth IRA', v: S.accounts.find(a => a.name === 'Roth IRA')?.balance || 0, c: tc[0] }, { l: '연금보험', v: S.accounts.find(a => a.name === '한국 연금보험')?.balance || 0, c: tc[4] }, { l: 'USFR', v: S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0, c: tc[2] }, { l: 'Cash', v: totCash() - (S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0), c: '#c0bbb0' }].filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } } } } }); }
-      if (vis.goals) { const el = document.getElementById('ov-goals'); if (el) { const t = nwTotal(); el.innerHTML = S.goals.slice(0, 5).map(g => { const f = Math.min(100, (t / g.amount) * 100); const yl = g.year - NY; return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${fmt(g.amount)} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`; }).join(''); } }
+      if (vis.goals) { const el = document.getElementById('ov-goals'); if (el) { const t = nwTotal(); el.innerHTML = S.goals.slice(0, 5).map(g => { const f = Math.min(100, (t / g.amount) * 100); const yl = g.year - NY; return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`; }).join(''); } }
     }
     function logSnap() { const note = prompt('Note (optional):', '') || ''; const c = parseFloat(prompt('Contributions since last snapshot ($):', '0')) || 0; S.snapshots.push({ date: new Date().toISOString().split('T')[0], nw: nwTotal(), contributed: c, note }); ps(); renderOverview(); }
     function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--forest-mid)' : 'var(--line)'};background:${v ? 'var(--fl)' : '#fff'};color:${v ? 'var(--forest-mid)' : 'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
@@ -2298,11 +2528,11 @@
     // ══════════════════════════════════════════════════════════════
     // ACCOUNTS
     function renderAccounts() {
-      const t = nwTotal(); document.getElementById('acc-total').textContent = fmt(t);
+      const t = nwTotal(); document.getElementById('acc-total').innerHTML = M(fmt(t));
       document.getElementById('cash-tbl').innerHTML = accRows(S.accounts.filter(a => ['checking', 'savings', 'subscription'].includes(a.type)), t);
       document.getElementById('inv-tbl').innerHTML = accRows(S.accounts.filter(a => ['brokerage-taxable', 'brokerage-roth', 'pension'].includes(a.type)), t);
     }
-    function accRows(accs, t) { return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a => `<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type] || a.type}</span></td><td class="mo">${fmt(a.balance)}</td><td class="mo">${pct((a.balance / t) * 100)}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`; }
+    function accRows(accs, t) { return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a => `<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type] || a.type}</span></td><td class="mo">${M(fmt(a.balance))}</td><td class="mo">${M(pct((a.balance / t) * 100))}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`; }
     function openAcctModal(id) { S.editAcctId = id; if (id) { const a = S.accounts.find(x => x.id === id); document.getElementById('m-acct-title').textContent = 'Edit account'; document.getElementById('a-name').value = a.name; document.getElementById('a-type').value = a.type; document.getElementById('a-bal').value = a.balance; document.getElementById('a-cur').value = a.currency || 'USD'; document.getElementById('a-sym').textContent = a.currency === 'KRW' ? '₩' : '$'; } else { document.getElementById('m-acct-title').textContent = 'Add account';['a-name', 'a-bal'].forEach(i => document.getElementById(i).value = ''); document.getElementById('a-type').value = 'checking'; document.getElementById('a-cur').value = 'USD'; document.getElementById('a-sym').textContent = '$'; } openModal('m-acct'); }
     function saveAcct() { const name = document.getElementById('a-name').value.trim(); const type = document.getElementById('a-type').value; let bal = parseFloat(document.getElementById('a-bal').value) || 0; const cur = document.getElementById('a-cur').value; if (cur === 'KRW') bal = bal / getFX(); if (!name) return; if (S.editAcctId) { Object.assign(S.accounts.find(x => x.id === S.editAcctId), { name, type, balance: bal, currency: cur }); } else S.accounts.push({ id: nextId(S.accounts), name, type, balance: bal, currency: cur }); ps(); closeModal('m-acct'); renderAccounts(); }
     function delAcct(id) { if (!confirm('Delete?')) return; S.accounts = S.accounts.filter(x => x.id !== id); ps(); renderAccounts(); }
@@ -2320,12 +2550,12 @@
     }
     function renderPortfolio() {
       const funds = getFunds(portView); const tot = funds.reduce((s, f) => s + f.value, 0);
-      document.getElementById('port-total').textContent = fmt(tot);
+      document.getElementById('port-total').innerHTML = M(fmt(tot));
       // Drift table
       const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
       document.getElementById('drift-tbl-wrap').innerHTML = `<table class="tbl"><thead><tr><th>Fund</th><th>Current</th><th>Target</th><th>Drift</th><th>Status</th></tr></thead><tbody>${funds.map(f => { const cur = (f.value / tot) * 100; const tgt = f.targetPct * (100 / tgtSum); const d = cur - tgt; return `<tr><td style="font-weight:600">${f.ticker}${f.acct === 'BOTH' && portView !== 'all' ? portView === 'roth' ? ' (R)' : ' (T)' : ''}</td><td class="mo">${pct(cur)}</td><td class="mo">${pct(tgt)}</td><td class="mo" style="${Math.abs(d) > 2 ? d > 0 ? 'color:var(--fm)' : 'color:var(--red)' : 'color:var(--ink3)'}">${d >= 0 ? '+' : ''}${d.toFixed(1)}%</td><td><span class="tag ${Math.abs(d) <= 1 ? 'tg' : Math.abs(d) <= 3 ? 'tgld' : 'tr'}">${Math.abs(d) <= 1 ? 'On target' : d > 0 ? 'Overweight' : 'Underweight'}</span></td></tr>`; }).join('')}</tbody></table>`;
       dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } } } } });
-      document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${fmt(f.value)}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`).join('')}</tbody>`;
+      document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${M(fmt(f.value))}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`).join('')}</tbody>`;
     }
     function openFundModal(id) { S.editFundId = id; if (id) { const f = S.funds.find(x => x.id === id); document.getElementById('m-fund-title').textContent = 'Edit fund'; document.getElementById('f-tkr').value = f.ticker; document.getElementById('f-name').value = f.name; document.getElementById('f-acct').value = f.acct; document.getElementById('f-val').value = f.value; document.getElementById('f-rs').value = f.rothSplit || 40; document.getElementById('f-tgt').value = f.targetPct; document.getElementById('f-ret').value = f.retPct; } else { document.getElementById('m-fund-title').textContent = 'Add fund';['f-tkr', 'f-name', 'f-val', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = ''); document.getElementById('f-acct').value = 'TAXABLE'; document.getElementById('f-rs').value = '40'; } openModal('m-fund'); }
     function saveFund() { const ticker = document.getElementById('f-tkr').value.trim().toUpperCase(); const name = document.getElementById('f-name').value.trim() || ticker; const acct = document.getElementById('f-acct').value; const value = parseFloat(document.getElementById('f-val').value) || 0; const rothSplit = parseFloat(document.getElementById('f-rs').value) || 40; const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0; const retPct = parseFloat(document.getElementById('f-ret').value) || 10; if (!ticker) return; if (S.editFundId) { Object.assign(S.funds.find(x => x.id === S.editFundId), { ticker, name, acct, value, rothSplit, targetPct, retPct }); } else S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, rothSplit, targetPct, retPct }); ps(); closeModal('m-fund'); renderPortfolio(); }
@@ -2383,9 +2613,9 @@
         });
         html = rows.join('');
         document.getElementById('rebal-totals').style.display = 'flex';
-        document.getElementById('r-buy-total').textContent = fmtUSD(buyTotal, 0);
-        document.getElementById('r-sell-total').textContent = fmtUSD(sellTotal, 0);
-        document.getElementById('r-net-cash').textContent = fmtUSD(monthly - (buyTotal - sellTotal), 0);
+        document.getElementById('r-buy-total').innerHTML = M(fmtUSD(buyTotal, 0));
+        document.getElementById('r-sell-total').innerHTML = M(fmtUSD(sellTotal, 0));
+        document.getElementById('r-net-cash').innerHTML = M(fmtUSD(monthly - (buyTotal - sellTotal), 0));
         document.getElementById('rebal-mode-desc').textContent = `After contributing $${monthly.toLocaleString()}, here's the minimum buys & sells to reach exact target.`;
         noteHtml = 'Holistic view: your contribution is applied first, then sells/buys fill the remaining gaps. Net cash needed = contribution minus net buys.';
       } else {
@@ -2398,9 +2628,9 @@
         });
         html = rows.join('');
         document.getElementById('rebal-totals').style.display = 'flex';
-        document.getElementById('r-buy-total').textContent = fmtUSD(buyTotal, 0);
-        document.getElementById('r-sell-total').textContent = fmtUSD(sellTotal, 0);
-        document.getElementById('r-net-cash').textContent = fmtUSD(0, 0);
+        document.getElementById('r-buy-total').innerHTML = M(fmtUSD(buyTotal, 0));
+        document.getElementById('r-sell-total').innerHTML = M(fmtUSD(sellTotal, 0));
+        document.getElementById('r-net-cash').innerHTML = M(fmtUSD(0, 0));
         document.getElementById('rebal-mode-desc').textContent = 'Sell overweight positions, buy underweight — no new money added.';
         noteHtml = 'Full rebalance uses existing portfolio only. Sells in taxable account may trigger capital gains.';
       }
@@ -2428,12 +2658,12 @@
         stD.push(Math.round(stNW));
       }
       const nf = nomD[yrs], rf = realD[yrs], tc = Array.from({ length: yrs }, (_, i) => c * Math.pow(1 + cg, i)).reduce((s, x) => s + x, 0);
-      document.getElementById('p-nom').textContent = fmt(nf); document.getElementById('p-real').textContent = fmt(rf); document.getElementById('p-contrib').textContent = fmt(tc); document.getElementById('p-gains').textContent = fmt(nf - nwTotal() - tc);
-      dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', maxTicksLimit: 9, font: { size: 10 } } }, y: { ticks: { color: '#9A958E', callback: v => fmt(v / cvt(1)), font: { size: 10 } }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
+      document.getElementById('p-nom').innerHTML = M(fmt(nf)); document.getElementById('p-real').innerHTML = M(fmt(rf)); document.getElementById('p-contrib').innerHTML = M(fmt(tc)); document.getElementById('p-gains').innerHTML = M(fmt(nf - nwTotal() - tc));
+      dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isGlobalHidden() ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', maxTicksLimit: 9, font: { size: 10 } } }, y: { ticks: { color: '#9A958E', callback: v => isGlobalHidden() ? '—' : fmt(v / cvt(1)), font: { size: 10 } }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
     }
     function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`).join('')}</tbody>`; }
     function updRet(id, v) { const f = S.funds.find(x => x.id === id); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
-    function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--s2)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">-${fmtUSD(e.amount)}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
+    function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--s2)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
     function addStress() { const n = prompt('Event name:'); if (!n) return; const a = parseFloat(prompt('Cost ($):') || '0'), y = parseInt(prompt('Year:') || NY); S.stressEvents.push({ name: n, amount: a, year: y }); ps(); renderStress(); updateProj(); }
     function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
 
@@ -2443,9 +2673,9 @@
       const nr = blendRet(), t = nwTotal(), yrs = Math.max(...S.goals.map(g => g.year)) - NY + 5;
       const labels = Array.from({ length: Math.min(yrs + 1, 51) }, (_, i) => NY + i);
       const nwD = labels.map(yr => cvt(fvCalc(t, nr, yr - NY, S.settings.annualContrib)));
-      dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, maxTicksLimit: 10 } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
+      dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isGlobalHidden() ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, maxTicksLimit: 10 } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
       document.getElementById('goals-legend').innerHTML = [{ label: 'Projected NW', color: gtc[0] }, ...S.goals.map(g => ({ label: g.name, color: GCOL[g.cat] }))].map(x => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
-      document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${fmt(g.amount)}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${fmt(proj)}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? fmt(g.amount) : fmt(Math.max(0, mn), 0) + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
+      document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${M(fmt(g.amount))}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${M(fmt(proj))}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? M(fmt(g.amount)) : M(fmt(Math.max(0, mn), 0)) + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
     }
     function openGoalModal(id) { S.editGoalId = id; if (id) { const g = S.goals.find(x => x.id === id); document.getElementById('m-goal-title').textContent = 'Edit goal'; document.getElementById('g-name').value = g.name; document.getElementById('g-cat').value = g.cat; document.getElementById('g-amt').value = g.amount; document.getElementById('g-yr').value = g.year; document.getElementById('g-type').value = g.type || 'savings'; document.getElementById('g-notes').value = g.notes || ''; } else { document.getElementById('m-goal-title').textContent = 'Add goal';['g-name', 'g-amt', 'g-yr', 'g-notes'].forEach(i => document.getElementById(i).value = ''); document.getElementById('g-cat').value = 'fire'; document.getElementById('g-type').value = 'savings'; } openModal('m-goal'); }
     function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => x.id === S.editGoalId), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes }); ps(); closeModal('m-goal'); renderGoals(); }
@@ -3105,7 +3335,8 @@
     // ── renderSettings extension ──────────────────────────────────
     function renderSettings() {
       document.getElementById('fx-set').value = S.settings.fx;
-      document.getElementById('snap-list').innerHTML = S.snapshots.length === 0 ? '<div class="mut" style="font-size:12px">No snapshots yet.</div>' : [...S.snapshots].reverse().map((s, i) => `<div class="fb" style="padding:6px 0;border-bottom:1px solid var(--s2)"><div><div style="font-size:12px;font-weight:500">${new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>${s.note ? `<div style="font-size:10px;color:var(--ink3)">${s.note}</div>` : ''}</div><div class="flex gsm"><span class="snum">${fmtUSD(s.nw)}</span>${s.contributed ? `<span class="snum pos">+${fmtUSD(s.contributed)}</span>` : ''}<button class="btn bsm bgh" style="color:var(--red)" onclick="delSnap(${S.snapshots.length - 1 - i})">✕</button></div></div>`).join('');
+      syncPrivacyUI();
+      document.getElementById('snap-list').innerHTML = S.snapshots.length === 0 ? '<div class="mut" style="font-size:12px">No snapshots yet.</div>' : [...S.snapshots].reverse().map((s, i) => `<div class="fb" style="padding:6px 0;border-bottom:1px solid var(--s2)"><div><div style="font-size:12px;font-weight:500">${new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>${s.note ? `<div style="font-size:10px;color:var(--ink3)">${s.note}</div>` : ''}</div><div class="flex gsm"><span class="snum">${M(fmtUSD(s.nw))}</span>${s.contributed ? `<span class="snum pos">${M('+' + fmtUSD(s.contributed))}</span>` : ''}<button class="btn bsm bgh" style="color:var(--red)" onclick="delSnap(${S.snapshots.length - 1 - i})">✕</button></div></div>`).join('');
       buildPresets();
       syncAllInputsFromDOM();
     }
@@ -3130,6 +3361,7 @@
     if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
     krwFmt = S.settings.krwFmt || 'short';
     // initSS wired lazily on first renderLife(); nothing to call here
+    syncPrivacyUI();
     renderOverview();
 
   </script>
