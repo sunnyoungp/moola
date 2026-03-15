@@ -62,6 +62,8 @@
       --mono: 'DM Mono', 'JetBrains Mono', monospace;
       /* Layout */
       --sb: 228px;
+      --sb-collapsed: 56px;
+      --mob-nav-h: 62px;
       /* Compatibility aliases */
       --red: #A83D5C;
       --blush: #A83D5C;
@@ -263,6 +265,14 @@
       opacity: .5
     }
 
+    .nt-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      min-width: 0;
+    }
+
     .nt:hover .ni {
       opacity: .65
     }
@@ -318,7 +328,10 @@
       background: var(--s2);
       border-radius: var(--rs);
       padding: 2px;
-      gap: 1px
+      gap: 1px;
+      min-width: 0;
+      flex-wrap: wrap;
+      /* allow wrapping rather than clipping */
     }
 
     #cur-tabs,
@@ -349,10 +362,14 @@
     #main {
       margin-left: var(--sb);
       flex: 1;
+      min-width: 0;
+      /* critical: prevent flex child from overflowing */
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      background: var(--page)
+      background: var(--page);
+      overflow-x: hidden;
+      /* clip anything that still escapes */
     }
 
     .page-hdr {
@@ -361,7 +378,10 @@
       justify-content: space-between;
       padding: 40px 44px 0;
       gap: 16px;
-      flex-shrink: 0
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      /* wraps at any width before items clip */
+      min-width: 0;
     }
 
     .page-title {
@@ -369,7 +389,8 @@
       font-weight: 650;
       letter-spacing: -.5px;
       color: var(--ink);
-      line-height: 1.15
+      line-height: 1.15;
+      min-width: 0;
     }
 
     .page-sub {
@@ -416,7 +437,9 @@
       border: 1px solid var(--line);
       border-radius: var(--rl);
       padding: 22px 24px;
-      box-shadow: var(--sh1)
+      box-shadow: var(--sh1);
+      min-width: 0;
+      /* allow shrinking in grid/flex */
     }
 
     .csm {
@@ -424,7 +447,8 @@
       border: 1px solid var(--line);
       border-radius: var(--r);
       padding: 16px 18px;
-      box-shadow: var(--sh1)
+      box-shadow: var(--sh1);
+      min-width: 0;
     }
 
     .sec {
@@ -467,19 +491,30 @@
     .g2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px
+      gap: 14px;
+      min-width: 0;
     }
+
+    .g2>*,
+    .g3>*,
+    .g4>* {
+      min-width: 0;
+    }
+
+    /* children shrink in grid */
 
     .g3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 14px
+      gap: 14px;
+      min-width: 0;
     }
 
     .g4 {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px
+      gap: 12px;
+      min-width: 0;
     }
 
     /* ═══ TYPE ══════════════════════════════════════════════════ */
@@ -917,6 +952,10 @@
       border: 1px solid #E8D490
     }
 
+    .banner-amber:empty {
+      display: none;
+    }
+
     .banner-sage {
       background: var(--fll);
       color: var(--f);
@@ -985,7 +1024,8 @@
       justify-content: space-between;
       gap: 20px;
       position: relative;
-      overflow: hidden
+      overflow: hidden;
+      min-width: 0;
     }
 
     .nw-hero::before {
@@ -1014,7 +1054,10 @@
       font-weight: 400;
       letter-spacing: -1.5px;
       color: var(--ink);
-      line-height: 1
+      line-height: 1;
+      min-width: 0;
+      word-break: break-all;
+      /* prevent number overflow */
     }
 
     .nw-hero-gain {
@@ -1230,7 +1273,9 @@
       border: 1px solid var(--line);
       border-bottom: none;
       border-radius: var(--r) var(--r) 0 0;
-      flex-wrap: wrap
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .ss-ref-box {
@@ -1449,6 +1494,11 @@
     }
 
     /* Dashboard widget area: dims when dash-hidden */
+    #ov-widgets {
+      min-width: 0;
+      overflow: hidden;
+    }
+
     #ov-widgets.dash-hidden {
       opacity: .35;
       pointer-events: none;
@@ -1469,6 +1519,623 @@
       position: relative;
       z-index: 1;
     }
+
+    /* ════════════════════════════════════════════════════════════
+       SIDEBAR COLLAPSE (desktop)
+       ════════════════════════════════════════════════════════════ */
+    .sb-collapse-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--ink3);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .12s, color .12s;
+      margin-left: auto;
+    }
+
+    .sb-collapse-btn:hover {
+      background: var(--s2);
+      color: var(--ink);
+    }
+
+    .sb-collapse-btn svg {
+      width: 14px;
+      height: 14px;
+      transition: transform .2s;
+    }
+
+    /* ── Collapsed sidebar state ─────────────────────────────── */
+    body.sb-collapsed #sidebar {
+      width: var(--sb-collapsed);
+      /* No overflow:hidden — it clips the collapse button */
+    }
+
+    body.sb-collapsed #main {
+      margin-left: var(--sb-collapsed);
+    }
+
+    /* Logo row: center the mark, hide wordmark, keep collapse btn */
+    body.sb-collapsed .sb-logo {
+      padding: 16px 0;
+      justify-content: center;
+      gap: 0;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body.sb-collapsed .sb-wordmark {
+      display: none;
+    }
+
+    body.sb-collapsed .sb-collapse-btn {
+      margin-left: 0;
+      margin-top: 8px;
+      width: 24px;
+      height: 24px;
+    }
+
+    body.sb-collapsed .sb-collapse-btn svg {
+      transform: rotate(180deg);
+    }
+
+    /* Nav items: icon-only centered */
+    body.sb-collapsed .nt {
+      padding: 8px;
+      justify-content: center;
+    }
+
+    body.sb-collapsed .nt-label {
+      display: none;
+    }
+
+    /* Footer: stack currency controls vertically, centered */
+    body.sb-collapsed .sb-foot {
+      padding: 10px 6px;
+      align-items: center;
+    }
+
+    body.sb-collapsed .sb-cur {
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
+
+    body.sb-collapsed .sb-cur-label {
+      display: none;
+    }
+
+    body.sb-collapsed .sb-date {
+      display: none;
+    }
+
+    /* SCOPED: only sidebar stabs go vertical — not global stabs */
+    body.sb-collapsed #sidebar .stabs {
+      flex-direction: column;
+      padding: 2px;
+      width: 100%;
+    }
+
+    body.sb-collapsed #sidebar .stab {
+      padding: 3px 4px;
+      font-size: 9px;
+      text-align: center;
+      width: 100%;
+    }
+
+    body.sb-collapsed .priv-section {
+      display: none;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       MOBILE BOTTOM NAV
+       ════════════════════════════════════════════════════════════ */
+    #mob-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 300;
+      background: var(--white);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .mob-nav-bar {
+      display: flex;
+      align-items: stretch;
+      height: var(--mob-nav-h);
+    }
+
+    .mob-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: none;
+      background: none;
+      color: var(--ink3);
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      cursor: pointer;
+      padding: 8px 4px;
+      transition: color .12s;
+      position: relative;
+    }
+
+    .mob-tab svg {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .mob-tab.on {
+      color: var(--fm);
+    }
+
+    .mob-tab.on::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--fm);
+      border-radius: 0 0 2px 2px;
+    }
+
+    /* "All" tray — slides up above bottom nav */
+    #mob-tray {
+      position: fixed;
+      bottom: calc(var(--mob-nav-h) + env(safe-area-inset-bottom, 0px));
+      left: 0;
+      right: 0;
+      z-index: 299;
+      background: var(--white);
+      border-top: 1px solid var(--line);
+      border-radius: 16px 16px 0 0;
+      padding: 16px;
+      box-shadow: 0 -4px 24px rgba(26, 25, 23, .10);
+      transform: translateY(110%);
+      transition: transform .22s cubic-bezier(.25, .46, .45, .94), visibility 0s linear .22s;
+      visibility: hidden;
+      pointer-events: none;
+      /* Only active on mobile — desktop overrides below */
+      display: none;
+    }
+
+    #mob-tray.open {
+      transform: translateY(0);
+      visibility: visible;
+      pointer-events: auto;
+      transition: transform .22s cubic-bezier(.25, .46, .45, .94), visibility 0s;
+    }
+
+    #mob-tray-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 298;
+      background: rgba(26, 25, 23, .2);
+    }
+
+    #mob-tray-backdrop.open {
+      display: block;
+    }
+
+    .mob-tray-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--ink4);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+
+    .mob-tray-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mob-tray-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 14px;
+      border-radius: var(--r);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background .12s;
+      font-family: var(--sans);
+    }
+
+    .mob-tray-item:hover {
+      background: var(--s2);
+    }
+
+    .mob-tray-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--fm);
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       TABLET & MOBILE RESPONSIVE
+       ════════════════════════════════════════════════════════════ */
+
+    /* ── Goals grid base (non-media) ─────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      /* prevents canvas from escaping its container */
+    }
+
+    .goals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 12px;
+    }
+
+    /* ── 900px: Projections sliders+chart go vertical ─────────── */
+    @media (max-width: 900px) {
+      #tab-projections .g2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── 768px: Tablet ────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      :root {
+        --sb: 190px;
+      }
+
+      .page-hdr {
+        padding: 24px 24px 0;
+        gap: 12px;
+      }
+
+      .tc {
+        padding: 20px 24px 48px;
+      }
+
+      .g4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .nw-hero {
+        padding: 22px 24px;
+      }
+
+      .nw-hero-value {
+        font-size: 32px;
+      }
+
+      /* Portfolio drift+chart side by side is fine at 768, but collapse if tight */
+      #tab-portfolio .g2 {
+        grid-template-columns: 1fr;
+      }
+
+      /* Rebalance mode atabs wrap on tablet */
+      #rebal-mode-tabs {
+        flex-wrap: wrap;
+      }
+
+      /* Settings collapses to single col */
+      #tab-settings .g2 {
+        grid-template-columns: 1fr;
+      }
+
+      /* Life tab charts go single col */
+      #tab-life .g2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── 480px: Mobile ────────────────────────────────────────── */
+    @media (max-width: 480px) {
+
+      /* Nav: hide sidebar, show bottom bar */
+      #sidebar {
+        display: none !important;
+      }
+
+      #mob-nav {
+        display: block;
+      }
+
+      #mob-tray {
+        display: block;
+      }
+
+      /* visibility+transform controls show/hide */
+
+      #main {
+        margin-left: 0 !important;
+        padding-bottom: calc(var(--mob-nav-h) + env(safe-area-inset-bottom, 0px));
+      }
+
+      /* Page chrome */
+      .page-hdr {
+        padding: 18px 14px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .page-title {
+        font-size: 19px;
+      }
+
+      .page-sub {
+        font-size: 12px;
+      }
+
+      .page-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .page-actions .btn {
+        min-width: 0;
+      }
+
+      /* Spacing */
+      .tc {
+        padding: 14px 14px 20px;
+      }
+
+      .card {
+        padding: 14px 14px;
+      }
+
+      .csm {
+        padding: 10px 12px;
+      }
+
+      /* Grids → single column */
+      .g2,
+      .g3 {
+        grid-template-columns: 1fr;
+      }
+
+      .g4 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      /* NW hero stacks */
+      .nw-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 18px 16px;
+      }
+
+      .nw-hero-value {
+        font-size: 26px;
+        letter-spacing: -.8px;
+      }
+
+      .nw-hero-right {
+        align-self: flex-start;
+      }
+
+      /* Table horizontal scroll (explicit wrappers per section) */
+      .cash-tbl-wrap,
+      .inv-tbl-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .tbl {
+        min-width: 440px;
+      }
+
+      /* Segment controls wrap */
+      .stabs {
+        flex-wrap: wrap;
+      }
+
+      /* Rebalance: mode atabs wrap on mobile */
+      #rebal-mode-tabs {
+        flex-wrap: wrap;
+      }
+
+      #rebal-mode-tabs .atab {
+        font-size: 12px;
+        padding: 5px 10px;
+      }
+
+      /* Projections: slider label font */
+      .fr label {
+        font-size: 11px;
+      }
+
+      /* Modals → bottom sheet */
+      .modal {
+        padding: 20px 16px 24px;
+        border-radius: 18px 18px 0 0;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+      }
+
+      .mo-ov {
+        align-items: flex-end;
+        padding: 0;
+      }
+
+      /* Life: spreadsheet toolbar compact */
+      .ss-toolbar {
+        padding: 5px 7px;
+        gap: 4px;
+        flex-wrap: nowrap;
+      }
+
+      .ss-ref-box {
+        width: 36px;
+        font-size: 10px;
+      }
+
+      .ss-fbar {
+        min-width: 80px;
+        font-size: 11px;
+        flex: 1;
+      }
+
+      .ss-outer {
+        max-height: 45vh;
+      }
+
+      /* Goals: single column on small screens */
+      .goals-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       LIVE PRICES — sync indicator
+       ════════════════════════════════════════════════════════════ */
+    #price-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 44px;
+      background: var(--fll);
+      border-bottom: 1px solid var(--fl);
+      font-size: 12px;
+      color: var(--f);
+      flex-wrap: wrap;
+    }
+
+    #price-bar.error {
+      background: var(--gold-l);
+      border-bottom-color: #E8D490;
+      color: var(--gold);
+    }
+
+    #price-bar.hidden {
+      display: none;
+    }
+
+    .price-bar-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--fm);
+      flex-shrink: 0;
+      animation: pulseDot 1.4s ease-in-out infinite;
+    }
+
+    #price-bar.error .price-bar-dot {
+      background: var(--gold);
+      animation: none;
+    }
+
+    @keyframes pulseDot {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .3;
+      }
+    }
+
+    .price-bar-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .price-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, .6);
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .price-chip .chg {
+      font-size: 10px;
+    }
+
+    .price-chip .chg.pos {
+      color: var(--fm);
+    }
+
+    .price-chip .chg.neg {
+      color: var(--rose);
+    }
+
+    .sync-refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--fl);
+      background: rgba(255, 255, 255, .7);
+      color: var(--f);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .12s;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .sync-refresh-btn:hover {
+      background: var(--white);
+    }
+
+    .sync-refresh-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .sync-refresh-btn.spinning svg {
+      animation: spinIcon .7s linear infinite;
+    }
+
+    @keyframes spinIcon {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* mobile: price bar full padding reset */
+    @media (max-width: 480px) {
+      #price-bar {
+        padding: 8px 14px;
+        gap: 8px;
+      }
+    }
   </style>
 </head>
 
@@ -1483,6 +2150,11 @@
         </svg>
       </div>
       <div class="sb-wordmark">mool<em>a</em></div>
+      <button class="sb-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <polyline points="10,4 6,8 10,12" />
+        </svg>
+      </button>
     </div>
 
     <div class="sb-nav">
@@ -1493,7 +2165,7 @@
             <rect x="2" y="9" width="5" height="5" rx="1.2" />
             <rect x="9" y="9" width="5" height="5" rx="1.2" />
           </svg></span>
-        Overview
+        <span class="nt-label">Overview</span>
       </button>
       <button class="nt" onclick="showTab('accounts',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
@@ -1501,14 +2173,14 @@
             <path d="M5 4.5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
             <line x1="2" y1="8" x2="14" y2="8" />
           </svg></span>
-        Accounts
+        <span class="nt-label">Accounts</span>
       </button>
       <button class="nt" onclick="showTab('portfolio',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
             <polyline points="2,12 5.5,7.5 8,10 10.5,5.5 14,3" />
             <circle cx="14" cy="3" r="1.5" fill="currentColor" stroke="none" />
           </svg></span>
-        Portfolio
+        <span class="nt-label">Portfolio</span>
       </button>
       <button class="nt" onclick="showTab('rebalance',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
@@ -1516,14 +2188,14 @@
             <polyline points="5,5.5 8,2.5 11,5.5" />
             <polyline points="5,10.5 8,13.5 11,10.5" />
           </svg></span>
-        Rebalance
+        <span class="nt-label">Rebalance</span>
       </button>
       <button class="nt" onclick="showTab('projections',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
             <path d="M2 12 Q4.5 7 7 8.5 Q9.5 10 13 3" stroke-dasharray="2 1.5" />
             <circle cx="13" cy="3" r="1.2" fill="currentColor" stroke="none" />
           </svg></span>
-        Projections
+        <span class="nt-label">Projections</span>
       </button>
       <button class="nt" onclick="showTab('goals',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
@@ -1534,7 +2206,7 @@
             <line x1="1" y1="8" x2="2.5" y2="8" />
             <line x1="13.5" y1="8" x2="15" y2="8" />
           </svg></span>
-        Goals
+        <span class="nt-label">Goals</span>
       </button>
       <button class="nt" onclick="showTab('life',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
@@ -1542,7 +2214,7 @@
             <line x1="2" y1="6.5" x2="14" y2="6.5" />
             <line x1="6.5" y1="6.5" x2="6.5" y2="14" />
           </svg></span>
-        Life
+        <span class="nt-label">Life</span>
       </button>
       <button class="nt" onclick="showTab('settings',this)">
         <span class="ni"><svg viewBox="0 0 16 16">
@@ -1550,7 +2222,7 @@
             <path
               d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4" />
           </svg></span>
-        Settings
+        <span class="nt-label">Settings</span>
       </button>
     </div>
 
@@ -1570,8 +2242,120 @@
     </div>
   </nav>
 
+
+  <!-- ═══ MOBILE BOTTOM NAV ══════════════════════════════════════ -->
+  <div id="mob-nav">
+    <div class="mob-nav-bar">
+      <button class="mob-tab on" id="mob-overview" onclick="mobNav('overview', this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <rect x="2" y="2" width="5" height="5" rx="1.2" />
+          <rect x="9" y="2" width="5" height="5" rx="1.2" />
+          <rect x="2" y="9" width="5" height="5" rx="1.2" />
+          <rect x="9" y="9" width="5" height="5" rx="1.2" />
+        </svg>
+        Overview
+      </button>
+      <button class="mob-tab" id="mob-portfolio" onclick="mobNav('portfolio', this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <polyline points="2,12 5.5,7.5 8,10 10.5,5.5 14,3" />
+          <circle cx="14" cy="3" r="1.5" fill="currentColor" stroke="none" />
+        </svg>
+        Portfolio
+      </button>
+      <button class="mob-tab" id="mob-rebalance" onclick="mobNav('rebalance', this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <line x1="8" y1="2.5" x2="8" y2="13.5" />
+          <polyline points="5,5.5 8,2.5 11,5.5" />
+          <polyline points="5,10.5 8,13.5 11,10.5" />
+        </svg>
+        Rebalance
+      </button>
+      <button class="mob-tab" id="mob-life" onclick="mobNav('life', this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <rect x="2" y="2" width="12" height="12" rx="1.5" />
+          <line x1="2" y1="6.5" x2="14" y2="6.5" />
+          <line x1="6.5" y1="6.5" x2="6.5" y2="14" />
+        </svg>
+        Life
+      </button>
+      <button class="mob-tab" id="mob-all" onclick="toggleMobTray()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="4" cy="8" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="8" r="1.2" fill="currentColor" stroke="none" />
+        </svg>
+        All
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ MOBILE TRAY (All) ══════════════════════════════════════ -->
+  <div id="mob-tray-backdrop" onclick="closeMobTray()"></div>
+  <div id="mob-tray">
+    <div class="mob-tray-handle"></div>
+    <div class="mob-tray-grid">
+      <button class="mob-tray-item" onclick="mobNav('accounts', null); closeMobTray()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <rect x="2" y="4.5" width="12" height="8.5" rx="1.5" />
+          <path d="M5 4.5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
+          <line x1="2" y1="8" x2="14" y2="8" />
+        </svg>
+        Accounts
+      </button>
+      <button class="mob-tray-item" onclick="mobNav('goals', null); closeMobTray()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="8" cy="8" r="5.5" />
+          <circle cx="8" cy="8" r="2.8" />
+          <line x1="8" y1="1" x2="8" y2="2.5" />
+          <line x1="8" y1="13.5" x2="8" y2="15" />
+          <line x1="1" y1="8" x2="2.5" y2="8" />
+          <line x1="13.5" y1="8" x2="15" y2="8" />
+        </svg>
+        Goals
+      </button>
+      <button class="mob-tray-item" onclick="mobNav('projections', null); closeMobTray()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M2 12 Q4.5 7 7 8.5 Q9.5 10 13 3" stroke-dasharray="2 1.5" />
+          <circle cx="13" cy="3" r="1.2" fill="currentColor" stroke="none" />
+        </svg>
+        Projections
+      </button>
+      <button class="mob-tray-item" onclick="mobNav('settings', null); closeMobTray()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="8" cy="8" r="2.2" />
+          <path
+            d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4" />
+        </svg>
+        Settings
+      </button>
+    </div>
+  </div>
+
   <!-- ═══ MAIN ══════════════════════════════════════════════════ -->
   <div id="main">
+    <!-- Live price/FX bar — shown after sync, hidden initially -->
+    <div id="price-bar" class="hidden">
+      <div class="price-bar-dot"></div>
+      <span id="price-bar-msg">Fetching prices&#8230;</span>
+      <div class="price-bar-chips" id="price-chips"></div>
+      <button class="sync-refresh-btn" id="sync-btn" onclick="syncPrices()" title="Refresh prices">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M12 2.5A5.5 5.5 0 1 1 6.5 1c1.6 0 3 .65 4.1 1.7" />
+          <polyline points="9.5,1 13.5,1 13.5,5" />
+        </svg>
+        Refresh
+      </button>
+    </div>
 
     <!-- OVERVIEW -->
     <div id="tab-overview" class="tc on">
@@ -1638,6 +2422,14 @@
           <div class="page-sub">All balances in one place</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-accounts" onclick="toggleTab('accounts')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-accounts">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-accounts">Hide</span>
+          </button>
           <div class="bnum" id="acc-total" style="font-size:22px;margin-right:8px">&#8212;</div>
           <button class="btn bp" onclick="openAcctModal(null)">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
@@ -1652,11 +2444,15 @@
       <div style="height:24px"></div>
       <div class="card mb-2">
         <div class="sec">Cash &amp; Savings</div>
-        <table class="tbl" id="cash-tbl"></table>
+        <div class="cash-tbl-wrap">
+          <table class="tbl" id="cash-tbl"></table>
+        </div>
       </div>
       <div class="card">
         <div class="sec">Investments &amp; Pension</div>
-        <table class="tbl" id="inv-tbl"></table>
+        <div class="inv-tbl-wrap">
+          <table class="tbl" id="inv-tbl"></table>
+        </div>
       </div>
     </div>
 
@@ -1668,6 +2464,14 @@
           <div class="page-sub">Fund allocation &amp; drift tracking</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-portfolio" onclick="toggleTab('portfolio')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-portfolio">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-portfolio">Hide</span>
+          </button>
           <div class="bnum" id="port-total" style="font-size:22px;margin-right:8px">&#8212;</div>
           <button class="btn" onclick="openFundModal(null)">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
@@ -1692,12 +2496,14 @@
         </div>
         <div class="card">
           <div class="sec">Allocation</div>
-          <div style="position:relative;height:230px"><canvas id="allocChart"></canvas></div>
+          <div class="chart-wrap" style="position:relative;height:230px"><canvas id="allocChart"></canvas></div>
         </div>
       </div>
       <div class="card">
         <div class="sec">Holdings</div>
-        <table class="tbl" id="fund-tbl"></table>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table class="tbl" id="fund-tbl"></table>
+        </div>
       </div>
     </div>
 
@@ -1708,33 +2514,46 @@
           <div class="page-title">Rebalance</div>
           <div class="page-sub">Contribution &amp; rebalancing calculator</div>
         </div>
+        <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-rebalance" onclick="toggleTab('rebalance')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-rebalance">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-rebalance">Hide</span>
+          </button>
+        </div>
       </div>
       <div style="height:20px"></div>
-      <div class="flex gmd mb-3" style="flex-wrap:wrap;gap:12px">
+      <div class="flex gmd mb-3" style="flex-wrap:wrap;gap:10px;align-items:flex-start">
         <div class="atab-group">
           <button class="atab on" onclick="setRAcct('all',this)">All</button>
           <button class="atab" onclick="setRAcct('roth',this)">Roth IRA</button>
           <button class="atab" onclick="setRAcct('taxable',this)">Taxable</button>
         </div>
-        <div class="stabs">
-          <button class="stab on" onclick="setRMode('contribution',this)">Contribution only</button>
-          <button class="stab" onclick="setRMode('combined',this)">Contribution + rebalance</button>
-          <button class="stab" onclick="setRMode('full',this)">Full rebalance</button>
+        <div class="atab-group" id="rebal-mode-tabs">
+          <button class="atab on" onclick="setRMode('contribution',this)">Contribution only</button>
+          <button class="atab" onclick="setRMode('combined',this)">Contribution + rebalance</button>
+          <button class="atab" onclick="setRMode('full',this)">Full rebalance</button>
         </div>
       </div>
       <div class="card mb-2">
         <div class="flex gmd mb-4" style="align-items:center;flex-wrap:wrap;gap:14px">
           <div class="flex gsm" id="contrib-input-row" style="align-items:center">
-            <label style="font-size:12px;color:var(--ink2);white-space:nowrap;font-weight:600">Monthly contribution
+            <label style="font-size:12px;color:var(--ink2);white-space:nowrap;font-weight:600">Amount to invest
               ($)</label>
             <input type="number" class="inp inpm inpsm" style="width:120px" id="r-contrib" value="3333"
               oninput="calcRebal()">
           </div>
           <div style="font-size:12px;color:var(--ink2)" id="rebal-mode-desc"></div>
         </div>
+        <div id="rebal-acct-ctx"
+          style="font-size:11px;color:var(--ink3);margin-bottom:10px;padding:7px 10px;background:var(--s2);border-radius:var(--rs)">
+        </div>
         <div id="rebal-body"></div>
         <div id="rebal-totals"
-          style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;gap:24px;font-size:13px">
+          style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);gap:24px;font-size:13px">
           <span>Buy: <strong class="pos" id="r-buy-total" style="font-family:var(--mono)">&#8212;</strong></span>
           <span>Sell: <strong class="neg" id="r-sell-total" style="font-family:var(--mono)">&#8212;</strong></span>
           <span>Net cash: <strong id="r-net-cash" style="font-family:var(--mono)">&#8212;</strong></span>
@@ -1751,6 +2570,14 @@
           <div class="page-sub">Long-term wealth modeling</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-projections" onclick="toggleTab('projections')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-projections">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-projections">Hide</span>
+          </button>
           <div class="stabs">
             <button class="stab on" onclick="setScen('base',this)">Base</button>
             <button class="stab" onclick="setScen('conservative',this)">Conservative</button>
@@ -1804,7 +2631,7 @@
         <div class="card">
           <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <span>Growth Chart</span>
-            <div style="display:flex;gap:14px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
               <span style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink3)"><span
                   style="width:14px;height:2px;background:var(--fm);display:inline-block;border-radius:1px"></span>Nominal</span>
               <span style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink3)"><span
@@ -1814,12 +2641,14 @@
                 events</span>
             </div>
           </div>
-          <div style="position:relative;height:290px"><canvas id="projChart"></canvas></div>
+          <div class="chart-wrap" style="position:relative;height:290px"><canvas id="projChart"></canvas></div>
         </div>
       </div>
       <div class="card">
         <div class="sec">Per-Asset Return Assumptions</div>
-        <table class="tbl" id="ret-tbl"></table>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table class="tbl" id="ret-tbl"></table>
+        </div>
       </div>
     </div>
 
@@ -1831,6 +2660,14 @@
           <div class="page-sub">Track progress toward your life milestones</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-goals" onclick="toggleTab('goals')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-goals">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-goals">Hide</span>
+          </button>
           <button class="btn bp" onclick="openGoalModal(null)">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round">
@@ -1847,9 +2684,9 @@
           <span>NW vs Goal Targets</span>
           <div style="display:flex;gap:10px;flex-wrap:wrap" id="goals-legend"></div>
         </div>
-        <div style="position:relative;height:300px"><canvas id="goalsChart"></canvas></div>
+        <div class="chart-wrap" style="position:relative;height:300px"><canvas id="goalsChart"></canvas></div>
       </div>
-      <div id="goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px">
+      <div id="goals-grid" class="goals-grid">
       </div>
     </div>
 
@@ -1862,6 +2699,14 @@
             Ctrl+D fill-down</div>
         </div>
         <div class="page-actions">
+          <button class="vis-toggle" id="tab-hide-life" onclick="toggleTab('life')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" id="tab-hide-icon-life">
+              <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+              <circle cx="7" cy="7" r="1.8" />
+            </svg>
+            <span id="tab-hide-lbl-life">Hide</span>
+          </button>
           <button class="btn bsm" onclick="ssAddRow()">+ Row</button>
           <button class="btn bsm" onclick="ssAddCol()">+ Col</button>
           <button class="btn bsm" onclick="ssDelRow()">&#8722; Row</button>
@@ -1873,11 +2718,11 @@
       <div class="g2 mb-3">
         <div class="card">
           <div class="sec">Net Worth Trajectory</div>
-          <div style="position:relative;height:200px"><canvas id="lifeNW"></canvas></div>
+          <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeNW"></canvas></div>
         </div>
         <div class="card">
           <div class="sec">Income vs Expenses</div>
-          <div style="position:relative;height:200px"><canvas id="lifeInc"></canvas></div>
+          <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeInc"></canvas></div>
         </div>
       </div>
       <div class="ss-toolbar" id="ss-tb">
@@ -2239,7 +3084,17 @@
           <option value="ROTH">Roth IRA</option>
           <option value="BOTH">Both</option>
         </select></div>
-      <div class="fr"><label>Current value ($)</label><input class="inp inpm" id="f-val" type="number" step="0.01">
+      <div class="fr">
+        <label>Shares held <span style="font-size:10px;color:var(--ink3);font-weight:400">— enables auto price
+            sync</span></label>
+        <input class="inp inpm" id="f-shares" type="number" step="0.001" placeholder="e.g. 12.5"
+          oninput="updateFundValHint(parseFloat(this.value)||null, S.funds.find(x=>x.id===S.editFundId)?.lastPrice||null)">
+      </div>
+      <div class="fr">
+        <label>Current value ($) <span style="font-size:10px;color:var(--ink3);font-weight:400">— set manually, or
+            auto-computed from shares</span></label>
+        <input class="inp inpm" id="f-val" type="number" step="0.01" placeholder="0.00">
+        <div id="f-val-hint" style="display:none;font-size:11px;color:var(--fm);margin-top:4px;font-weight:500"></div>
       </div>
       <div class="fr"><label>% in Roth (if BOTH)</label><input class="inp inpm" id="f-rs" type="number" value="40"
           step="1"></div>
@@ -2415,6 +3270,21 @@
       return S.settings.privacy;
     }
 
+    function isTabHidden(tabId) {
+      // Global overrides everything
+      if (isGlobalHidden()) return true;
+      // Individual tab toggle
+      return !!(pv()[tabId]);
+    }
+
+    function toggleTab(tabId) {
+      pv()[tabId] = !pv()[tabId];
+      ps();
+      syncPrivacyUI();
+      reRender();
+      updateAllChartAxes();
+    }
+
     function isGlobalHidden() { return !!pv().global; }
     function isDashHidden() { return !!pv().dashboard; }
     function isNWHidden() { return !!pv().nw; }
@@ -2424,22 +3294,49 @@
     function M(str) { return isGlobalHidden() ? HIDDEN_PLACEHOLDER : str; }
     function MN(str) { return isNWHidden() ? HIDDEN_PLACEHOLDER : str; }
     function MD(str) { return isDashHidden() ? HIDDEN_PLACEHOLDER : str; }
+    function MT(str, tabId) { return isTabHidden(tabId) ? HIDDEN_PLACEHOLDER : str; }
+
+
+    // Update all live Chart.js y-axes based on current privacy state
+    function updateAllChartAxes() {
+      const allCharts = {
+        snap: 'dashboard',
+        donut: null,         // doughnut — no y-axis
+        alloc: null,         // doughnut — no y-axis
+        proj: 'projections',
+        goals: 'goals',
+        lifeNW: 'life',
+        lifeInc: 'life',
+      };
+      Object.entries(allCharts).forEach(([key, tabId]) => {
+        const ch = CH[key];
+        if (!ch) return;
+        const hide = tabId ? isTabHidden(tabId) : isGlobalHidden();
+        if (ch.config.type === 'doughnut' || ch.config.type === 'pie') {
+          ch.update(); return;
+        }
+        if (ch.options.scales?.y) {
+          ch.options.scales.y.display = !hide;
+          ch.update();
+        }
+      });
+    }
 
     function toggleGlobal() {
       const next = !pv().global;
-      // Global cascades to everything
       pv().global = next;
       pv().dashboard = next;
       pv().nw = next;
       ps(); syncPrivacyUI(); reRender();
+      updateAllChartAxes();
     }
 
     function toggleDash() {
       const next = !pv().dashboard;
-      // Dashboard cascades to NW (NW is nested inside dashboard)
       pv().dashboard = next;
       pv().nw = next;
       ps(); syncPrivacyUI(); renderOverview();
+      updateAllChartAxes();
     }
 
     function toggleNW() {
@@ -2473,9 +3370,25 @@
       const ow = document.getElementById('ov-widgets');
       if (ow) ow.classList.toggle('dash-hidden', d);
 
-      // Life spreadsheet blur
+      // Life spreadsheet blur: when global OR life tab hidden
       const ss = document.getElementById('ss-outer');
-      if (ss) ss.classList.toggle('life-blurred', g);
+      if (ss) ss.classList.toggle('life-blurred', g || !!pv().life);
+
+      // Update per-tab toggle buttons
+      ['accounts', 'portfolio', 'rebalance', 'projections', 'goals', 'life'].forEach(tab => {
+        const hidden = isTabHidden(tab);
+        const btn = document.getElementById(`tab-hide-${tab}`);
+        const ico = document.getElementById(`tab-hide-icon-${tab}`);
+        const lbl = document.getElementById(`tab-hide-lbl-${tab}`);
+        if (btn) btn.classList.toggle('is-hidden', hidden);
+        if (ico) ico.innerHTML = hidden ? EYE_SHUT : EYE_OPEN;
+        if (lbl) lbl.textContent = hidden ? 'Show' : 'Hide';
+      });
+
+      // Re-render price chips to reflect privacy state
+      if (typeof lastSyncTime !== 'undefined' && lastSyncTime) {
+        if (window._lastQuotes) renderPriceChips(window._lastQuotes);
+      }
     }
 
     function fmt(v, dec = 0) {
@@ -2518,14 +3431,66 @@
       document.getElementById('tab-' + id).classList.add('on');
       if (el) el.classList.add('on');
       renderTab(id);
+      // Sync mobile nav
+      const MOB_PRIMARY_IDS = ['overview', 'portfolio', 'rebalance', 'life'];
+      document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('on'));
+      if (MOB_PRIMARY_IDS.includes(id)) {
+        document.getElementById('mob-' + id)?.classList.add('on');
+      } else {
+        document.getElementById('mob-all')?.classList.add('on');
+      }
+      closeMobTray();
     }
-    function reRender() { const t = document.querySelector('.nt.on'); if (t) { const id = t.onclick.toString().match(/'(\w+)'/)?.[1]; if (id) renderTab(id); } }
+    function syncAccountsFromPortfolio() {
+      // Compute account balances from fund values
+      let rothTotal = 0, taxableTotal = 0;
+      S.funds.forEach(f => {
+        if (f.acct === 'ROTH') {
+          rothTotal += f.value;
+        } else if (f.acct === 'TAXABLE') {
+          taxableTotal += f.value;
+        } else if (f.acct === 'BOTH') {
+          const r = (f.rothSplit || 40) / 100;
+          rothTotal += f.value * r;
+          taxableTotal += f.value * (1 - r);
+        }
+      });
+      const rothAcct = S.accounts.find(a => a.type === 'brokerage-roth');
+      const taxableAcct = S.accounts.find(a => a.type === 'brokerage-taxable');
+      if (rothAcct) rothAcct.balance = Math.round(rothTotal * 100) / 100;
+      if (taxableAcct) taxableAcct.balance = Math.round(taxableTotal * 100) / 100;
+      ps();
+    }
+
+    function reRender() {
+      // Find the active tab from the DOM (works on both desktop and mobile)
+      const activeTC = document.querySelector('.tc.on');
+      if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
+    }
     function renderTab(id) {
       ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, settings: renderSettings })[id]?.();
     }
 
     // ══════════════════════════════════════════════════════════════
     // OVERVIEW
+    // ── Chart helper: consistent tooltip + y-axis config ────────
+    // chartYAxis / chartTooltipLabel accept an optional tabId.
+    // When that tab (or global) is hidden, the y-axis is suppressed entirely.
+    function chartYAxis(fmtFn, tabId) {
+      if (tabId ? isTabHidden(tabId) : isGlobalHidden()) return { display: false };
+      return {
+        ticks: { color: '#9A958E', font: { size: 10 }, callback: fmtFn },
+        grid: { color: 'rgba(26,25,23,.04)' }
+      };
+    }
+    function chartTooltipLabel(datasetLabel, value, tabId) {
+      if (tabId ? isTabHidden(tabId) : isGlobalHidden()) return '—';
+      return datasetLabel ? datasetLabel + ': ' + value : value;
+    }
+    function chartXAxis(opts = {}) {
+      return { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, ...opts } };
+    }
+
     function renderOverview() {
       syncPrivacyUI();
       document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
@@ -2535,11 +3500,11 @@
       document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
       const vis = S.widgetVis; let h = '';
       if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">since ${snaps.length ? new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}</div></div></div>`;
-      if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec">Net worth history</div>${snaps.length >= 2 ? '<div style="position:relative;height:170px"><canvas id="snapChart"></canvas></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:170px"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
+      if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec">Net worth history</div>${snaps.length >= 2 ? '<div style="position:relative;height:160px;min-width:0"><canvas id="snapChart"></canvas></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:160px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
       if (vis.goals) h += `<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
       document.getElementById('ov-widgets').innerHTML = h;
-      if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => isGlobalHidden() ? '—' : fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } }); }
-      if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const d = [{ l: 'Taxable', v: S.accounts.find(a => a.name === 'Taxable')?.balance || 0, c: tc[1] }, { l: 'Roth IRA', v: S.accounts.find(a => a.name === 'Roth IRA')?.balance || 0, c: tc[0] }, { l: '연금보험', v: S.accounts.find(a => a.name === '한국 연금보험')?.balance || 0, c: tc[4] }, { l: 'USFR', v: S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0, c: tc[2] }, { l: 'Cash', v: totCash() - (S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0), c: '#c0bbb0' }].filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } } } } }); }
+      if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
+      if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const d = [{ l: 'Taxable', v: S.accounts.find(a => a.name === 'Taxable')?.balance || 0, c: tc[1] }, { l: 'Roth IRA', v: S.accounts.find(a => a.name === 'Roth IRA')?.balance || 0, c: tc[0] }, { l: '연금보험', v: S.accounts.find(a => a.name === '한국 연금보험')?.balance || 0, c: tc[4] }, { l: 'USFR', v: S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0, c: tc[2] }, { l: 'Cash', v: totCash() - (S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 0), c: '#c0bbb0' }].filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } }); }
       if (vis.goals) { const el = document.getElementById('ov-goals'); if (el) { const t = nwTotal(); el.innerHTML = S.goals.slice(0, 5).map(g => { const f = Math.min(100, (t / g.amount) * 100); const yl = g.year - NY; return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`; }).join(''); } }
     }
     function logSnap() { const note = prompt('Note (optional):', '') || ''; const c = parseFloat(prompt('Contributions since last snapshot ($):', '0')) || 0; S.snapshots.push({ date: new Date().toISOString().split('T')[0], nw: nwTotal(), contributed: c, note }); ps(); renderOverview(); }
@@ -2549,11 +3514,11 @@
     // ══════════════════════════════════════════════════════════════
     // ACCOUNTS
     function renderAccounts() {
-      const t = nwTotal(); document.getElementById('acc-total').innerHTML = M(fmt(t));
+      const t = nwTotal(); document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
       document.getElementById('cash-tbl').innerHTML = accRows(S.accounts.filter(a => ['checking', 'savings', 'subscription'].includes(a.type)), t);
       document.getElementById('inv-tbl').innerHTML = accRows(S.accounts.filter(a => ['brokerage-taxable', 'brokerage-roth', 'pension'].includes(a.type)), t);
     }
-    function accRows(accs, t) { return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a => `<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type] || a.type}</span></td><td class="mo">${M(fmt(a.balance))}</td><td class="mo">${M(pct((a.balance / t) * 100))}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`; }
+    function accRows(accs, t) { return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a => `<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type] || a.type}</span></td><td class="mo">${MT(fmt(a.balance), 'accounts')}</td><td class="mo">${MT(pct((a.balance / t) * 100), 'accounts')}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`; }
     function openAcctModal(id) { S.editAcctId = id; if (id) { const a = S.accounts.find(x => x.id === id); document.getElementById('m-acct-title').textContent = 'Edit account'; document.getElementById('a-name').value = a.name; document.getElementById('a-type').value = a.type; document.getElementById('a-bal').value = a.balance; document.getElementById('a-cur').value = a.currency || 'USD'; document.getElementById('a-sym').textContent = a.currency === 'KRW' ? '₩' : '$'; } else { document.getElementById('m-acct-title').textContent = 'Add account';['a-name', 'a-bal'].forEach(i => document.getElementById(i).value = ''); document.getElementById('a-type').value = 'checking'; document.getElementById('a-cur').value = 'USD'; document.getElementById('a-sym').textContent = '$'; } openModal('m-acct'); }
     function saveAcct() { const name = document.getElementById('a-name').value.trim(); const type = document.getElementById('a-type').value; let bal = parseFloat(document.getElementById('a-bal').value) || 0; const cur = document.getElementById('a-cur').value; if (cur === 'KRW') bal = bal / getFX(); if (!name) return; if (S.editAcctId) { Object.assign(S.accounts.find(x => x.id === S.editAcctId), { name, type, balance: bal, currency: cur }); } else S.accounts.push({ id: nextId(S.accounts), name, type, balance: bal, currency: cur }); ps(); closeModal('m-acct'); renderAccounts(); }
     function delAcct(id) { if (!confirm('Delete?')) return; S.accounts = S.accounts.filter(x => x.id !== id); ps(); renderAccounts(); }
@@ -2571,92 +3536,253 @@
     }
     function renderPortfolio() {
       const funds = getFunds(portView); const tot = funds.reduce((s, f) => s + f.value, 0);
-      document.getElementById('port-total').innerHTML = M(fmt(tot));
+      document.getElementById('port-total').innerHTML = MT(fmt(tot), 'portfolio');
       // Drift table
       const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
       document.getElementById('drift-tbl-wrap').innerHTML = `<table class="tbl"><thead><tr><th>Fund</th><th>Current</th><th>Target</th><th>Drift</th><th>Status</th></tr></thead><tbody>${funds.map(f => { const cur = (f.value / tot) * 100; const tgt = f.targetPct * (100 / tgtSum); const d = cur - tgt; return `<tr><td style="font-weight:600">${f.ticker}${f.acct === 'BOTH' && portView !== 'all' ? portView === 'roth' ? ' (R)' : ' (T)' : ''}</td><td class="mo">${pct(cur)}</td><td class="mo">${pct(tgt)}</td><td class="mo" style="${Math.abs(d) > 2 ? d > 0 ? 'color:var(--fm)' : 'color:var(--red)' : 'color:var(--ink3)'}">${d >= 0 ? '+' : ''}${d.toFixed(1)}%</td><td><span class="tag ${Math.abs(d) <= 1 ? 'tg' : Math.abs(d) <= 3 ? 'tgld' : 'tr'}">${Math.abs(d) <= 1 ? 'On target' : d > 0 ? 'Overweight' : 'Underweight'}</span></td></tr>`; }).join('')}</tbody></table>`;
-      dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } } } } });
-      document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${M(fmt(f.value))}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`).join('')}</tbody>`;
+      dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } });
+      document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
+        const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
+        const sharesHint = f.shares ? `<span style="font-size:10px;color:var(--ink3)"> · ${f.shares} sh</span>` : '';
+        return `<tr><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${MT(fmt(f.value), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
+      }).join('')}</tbody>`;
     }
-    function openFundModal(id) { S.editFundId = id; if (id) { const f = S.funds.find(x => x.id === id); document.getElementById('m-fund-title').textContent = 'Edit fund'; document.getElementById('f-tkr').value = f.ticker; document.getElementById('f-name').value = f.name; document.getElementById('f-acct').value = f.acct; document.getElementById('f-val').value = f.value; document.getElementById('f-rs').value = f.rothSplit || 40; document.getElementById('f-tgt').value = f.targetPct; document.getElementById('f-ret').value = f.retPct; } else { document.getElementById('m-fund-title').textContent = 'Add fund';['f-tkr', 'f-name', 'f-val', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = ''); document.getElementById('f-acct').value = 'TAXABLE'; document.getElementById('f-rs').value = '40'; } openModal('m-fund'); }
-    function saveFund() { const ticker = document.getElementById('f-tkr').value.trim().toUpperCase(); const name = document.getElementById('f-name').value.trim() || ticker; const acct = document.getElementById('f-acct').value; const value = parseFloat(document.getElementById('f-val').value) || 0; const rothSplit = parseFloat(document.getElementById('f-rs').value) || 40; const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0; const retPct = parseFloat(document.getElementById('f-ret').value) || 10; if (!ticker) return; if (S.editFundId) { Object.assign(S.funds.find(x => x.id === S.editFundId), { ticker, name, acct, value, rothSplit, targetPct, retPct }); } else S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, rothSplit, targetPct, retPct }); ps(); closeModal('m-fund'); renderPortfolio(); }
+    function openFundModal(id) {
+      S.editFundId = id;
+      if (id) {
+        const f = S.funds.find(x => x.id === id);
+        document.getElementById('m-fund-title').textContent = 'Edit fund';
+        document.getElementById('f-tkr').value = f.ticker;
+        document.getElementById('f-name').value = f.name;
+        document.getElementById('f-acct').value = f.acct;
+        document.getElementById('f-val').value = f.value;
+        document.getElementById('f-shares').value = f.shares || '';
+        document.getElementById('f-rs').value = f.rothSplit || 40;
+        document.getElementById('f-tgt').value = f.targetPct;
+        document.getElementById('f-ret').value = f.retPct;
+        // Show hint if shares + price known
+        updateFundValHint(f.shares, f.lastPrice);
+      } else {
+        document.getElementById('m-fund-title').textContent = 'Add fund';
+        ['f-tkr', 'f-name', 'f-val', 'f-shares', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = '');
+        document.getElementById('f-acct').value = 'TAXABLE';
+        document.getElementById('f-rs').value = '40';
+        updateFundValHint(null, null);
+      }
+      openModal('m-fund');
+    }
+
+    function updateFundValHint(shares, lastPrice) {
+      const hint = document.getElementById('f-val-hint');
+      const valInput = document.getElementById('f-val');
+      if (!hint) return;
+      if (shares && lastPrice) {
+        const computed = (shares * lastPrice).toFixed(2);
+        hint.textContent = `Auto-computed: ${shares} shares × $${lastPrice.toFixed(2)} = $${computed}`;
+        hint.style.display = 'block';
+        valInput.style.opacity = '.5';
+        valInput.title = 'Overridden by shares × live price';
+      } else if (shares) {
+        hint.textContent = 'Value will be set after next price sync';
+        hint.style.display = 'block';
+        valInput.style.opacity = '.5';
+      } else {
+        hint.textContent = '';
+        hint.style.display = 'none';
+        valInput.style.opacity = '1';
+        valInput.title = '';
+      }
+    }
+    function saveFund() {
+      const ticker = document.getElementById('f-tkr').value.trim().toUpperCase();
+      const name = document.getElementById('f-name').value.trim() || ticker;
+      const acct = document.getElementById('f-acct').value;
+      const shares = parseFloat(document.getElementById('f-shares').value) || null;
+      const rothSplit = parseFloat(document.getElementById('f-rs').value) || 40;
+      const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0;
+      const retPct = parseFloat(document.getElementById('f-ret').value) || 10;
+      if (!ticker) return;
+
+      // Value resolution:
+      // If shares are set, prefer shares × known price (from last sync or existing fund).
+      // If no price known yet, keep existing value or use manual input as fallback.
+      let value;
+      const manualVal = parseFloat(document.getElementById('f-val').value) || 0;
+      if (shares) {
+        // Look for existing lastPrice (from previous sync) on this fund
+        const existing = S.funds.find(x => x.id === S.editFundId);
+        const knownPrice = existing?.lastPrice || null;
+        if (knownPrice) {
+          value = Math.round(shares * knownPrice * 100) / 100;
+        } else {
+          // No price yet — use manual entry if provided, else 0 (sync will fix it)
+          value = manualVal;
+        }
+      } else {
+        value = manualVal;
+      }
+
+      if (S.editFundId) {
+        Object.assign(S.funds.find(x => x.id === S.editFundId), { ticker, name, acct, value, shares, rothSplit, targetPct, retPct });
+      } else {
+        S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, shares, rothSplit, targetPct, retPct });
+      }
+      syncAccountsFromPortfolio();
+      ps();
+      closeModal('m-fund');
+      renderPortfolio();
+      // If shares are set but we don't have a price yet, sync immediately
+      if (shares && !S.funds.find(x => x.ticker === ticker)?.lastPrice) {
+        syncPrices();
+      }
+    }
     function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); ps(); renderPortfolio(); }
 
     // ══════════════════════════════════════════════════════════════
     // REBALANCE
     let rMode = 'contribution', rAcct = 'all';
-    function setRMode(v, el) { rMode = v; document.querySelectorAll('#tab-rebalance .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); calcRebal(); }
-    function setRAcct(v, el) { rAcct = v; document.querySelectorAll('#tab-rebalance .atab').forEach(t => t.classList.remove('on')); el.classList.add('on'); calcRebal(); }
+    function setRMode(v, el) {
+      rMode = v;
+      document.querySelectorAll('#rebal-mode-tabs .atab').forEach(t => t.classList.remove('on'));
+      el.classList.add('on');
+      // Hide contribution input for full rebalance (no new money)
+      const contribRow = document.getElementById('contrib-input-row');
+      if (contribRow) contribRow.style.display = v === 'full' ? 'none' : 'flex';
+      calcRebal();
+    }
+    function setRAcct(v, el) { rAcct = v; document.querySelectorAll('#tab-rebalance .atab-group:not(#rebal-mode-tabs) .atab').forEach(t => t.classList.remove('on')); el.classList.add('on'); calcRebal(); }
     function calcRebal() {
-      const monthly = parseFloat(document.getElementById('r-contrib')?.value) || 3333;
+      const monthly = parseFloat(document.getElementById('r-contrib')?.value) || 0;
       const funds = getFunds(rAcct);
+      if (!funds.length) {
+        document.getElementById('rebal-body').innerHTML = '<div class="mut" style="padding:20px 0;text-align:center">No funds in this account view.</div>';
+        document.getElementById('rebal-note').textContent = '';
+        return;
+      }
       const tot = funds.reduce((s, f) => s + f.value, 0);
+      // Normalize targets so they sum to 100% within the filtered view
       const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
       const nFunds = funds.map(f => ({ ...f, normTgt: (f.targetPct / tgtSum) * 100 }));
+
+      // ── Row renderer ──────────────────────────────────────────
+      const rowHtml = (f, allocUSD, tag, tagCls, driftBefore, driftAfter) => {
+        const barMax = rMode === 'full' ? tot : monthly || 1;
+        const barW = Math.min(100, Math.abs(allocUSD) / barMax * 100);
+        const barCol = allocUSD >= 0 ? 'var(--fm)' : 'var(--rose)';
+        const driftColor = Math.abs(driftBefore) > 3 ? (driftBefore > 0 ? 'color:var(--gold)' : 'color:var(--rose)') : 'color:var(--ink3)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2);flex-wrap:wrap">
+          <div style="min-width:120px;flex-shrink:0">
+            <div style="font-size:13px;font-weight:650">${MT(f.ticker, 'rebalance')}${f.acct === 'BOTH' && rAcct !== 'all' ? rAcct === 'roth' ? '<span style="font-size:9px;color:var(--ink3);margin-left:4px">ROTH</span>' : '<span style="font-size:9px;color:var(--ink3);margin-left:4px">TAX</span>' : ''}</div>
+            <div style="font-size:10px;margin-top:1px">
+              <span style="${driftColor};font-weight:600">${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}% now</span>
+              <span style="color:var(--ink4)"> → </span>
+              <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : 'var(--ink3)'}">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
+            </div>
+          </div>
+          <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px">
+            <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
+          </div>
+          <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
+          <span style="font-family:var(--mono);font-size:13px;font-weight:600;min-width:72px;text-align:right;flex-shrink:0;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</span>
+        </div>`;
+      };
+
       let html = '', noteHtml = '';
 
-      const rowHtml = (f, allocUSD, actionLabel, actionClass, driftAfter) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--s2)">
-      <div style="min-width:150px">
-        <div style="font-size:12px;font-weight:600">${f.ticker}${f.acct === 'BOTH' && rAcct !== 'all' ? rAcct === 'roth' ? ' (Roth)' : ' (Taxable)' : ''}</div>
-        <div style="font-size:10px;color:var(--ink3)">Target ${pct(f.normTgt)} · Current ${pct((f.value / tot) * 100)}</div>
-      </div>
-      <div style="flex:1;height:5px;background:var(--s3);border-radius:3px">
-        <div style="height:100%;border-radius:3px;width:${Math.min(100, Math.abs(allocUSD / monthly * 100))}%;background:${actionClass === 'pos' ? 'var(--forest-mid)' : 'var(--blush)'}"></div>
-      </div>
-      <span class="tag ${allocUSD >= 0 ? 'tg' : 'tr'}" style="min-width:38px;text-align:center">${actionLabel}</span>
-      <span style="font-family:var(--mono);font-size:13px;font-weight:500;min-width:80px;text-align:right;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--red)'}">${allocUSD >= 0 ? '+' : ''}${fmtUSD(allocUSD, 0)}</span>
-      <span style="font-size:10px;color:var(--ink3);min-width:60px;text-align:right">drift: ${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}%</span>
-    </div>`;
-
       if (rMode === 'contribution') {
-        // Allocate monthly contribution proportionally to target weights
+        // ── Contribution only ────────────────────────────────────
+        // Goal: allocate exactly `monthly` across funds, no selling.
+        // Strategy: prioritize underweight funds. Two-pass:
+        //   Pass 1 — fill each fund's shortfall (vs target in new total), capped at monthly.
+        //   Pass 2 — distribute any leftover pro-rata by target weight.
         const newTot = tot + monthly;
-        const rows = nFunds.map(f => {
-          const alloc = monthly * (f.normTgt / 100);
-          const newPct = ((f.value + alloc) / newTot) * 100;
-          return rowHtml(f, alloc, 'BUY', 'pos', newPct - f.normTgt);
+        // Compute how much each fund is short of its target in the new total
+        const shortfalls = nFunds.map(f => Math.max(0, (f.normTgt / 100) * newTot - f.value));
+        const totalShortfall = shortfalls.reduce((s, x) => s + x, 0);
+
+        let allocs;
+        if (totalShortfall <= 0 || monthly <= 0) {
+          // All funds at/above target — just invest pro-rata
+          allocs = nFunds.map(f => monthly * (f.normTgt / 100));
+        } else if (totalShortfall <= monthly) {
+          // Contribution more than covers all shortfalls.
+          // Pass 1: fill every fund's shortfall exactly.
+          // Pass 2: distribute remainder pro-rata.
+          const remainder = monthly - totalShortfall;
+          allocs = nFunds.map((f, i) => shortfalls[i] + remainder * (f.normTgt / 100));
+        } else {
+          // Contribution not enough to fill all shortfalls.
+          // Distribute proportionally to shortfall size.
+          allocs = nFunds.map((f, i) => (shortfalls[i] / totalShortfall) * monthly);
+        }
+
+        const rows = nFunds.map((f, i) => {
+          const alloc = allocs[i];
+          const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+          const newPct = newTot > 0 ? ((f.value + alloc) / newTot) * 100 : 0;
+          return rowHtml(f, alloc, 'BUY', 'tg', curPct - f.normTgt, newPct - f.normTgt);
         });
         html = rows.join('');
+        const totalAlloc = allocs.reduce((s, x) => s + x, 0);
         document.getElementById('rebal-totals').style.display = 'none';
-        document.getElementById('rebal-mode-desc').textContent = 'Allocate your contribution to stay on target — no selling required.';
-        noteHtml = 'Contribution-only rebalancing. New money is directed toward underweight funds.';
+        document.getElementById('rebal-mode-desc').textContent =
+          monthly > 0
+            ? `Investing ${fmtUSD(monthly, 0)} — no selling. Underweight funds get priority.`
+            : 'Enter a monthly contribution above to see where to invest.';
+        noteHtml = 'No selling required. Overweight funds still receive some allocation to avoid zero contributions, but underweight funds get the largest share.';
+
       } else if (rMode === 'combined') {
-        // Combined: new money + targeted sells to reach exact target
+        // ── Contribution + rebalance ────────────────────────────
+        // Goal: hit exact targets using new money + targeted sells.
+        // Each fund's target value = normTgt% of (current total + contribution).
         const newTot = tot + monthly;
         let buyTotal = 0, sellTotal = 0;
         const rows = nFunds.map(f => {
           const targetVal = (f.normTgt / 100) * newTot;
-          const diff = targetVal - f.value; // positive = buy, negative = sell
+          const diff = targetVal - f.value;
+          const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
           if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
-          const newPct = (targetVal / newTot) * 100;
-          return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'pos' : 'neg', newPct - f.normTgt);
+          return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
         });
         html = rows.join('');
         document.getElementById('rebal-totals').style.display = 'flex';
-        document.getElementById('r-buy-total').innerHTML = M(fmtUSD(buyTotal, 0));
-        document.getElementById('r-sell-total').innerHTML = M(fmtUSD(sellTotal, 0));
-        document.getElementById('r-net-cash').innerHTML = M(fmtUSD(monthly - (buyTotal - sellTotal), 0));
-        document.getElementById('rebal-mode-desc').textContent = `After contributing $${monthly.toLocaleString()}, here's the minimum buys & sells to reach exact target.`;
-        noteHtml = 'Holistic view: your contribution is applied first, then sells/buys fill the remaining gaps. Net cash needed = contribution minus net buys.';
+        document.getElementById('r-buy-total').innerHTML = MT(fmtUSD(buyTotal, 0), 'rebalance');
+        document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
+        document.getElementById('r-net-cash').innerHTML = MT(fmtUSD(monthly - buyTotal + sellTotal, 0), 'rebalance');
+        document.getElementById('rebal-mode-desc').textContent =
+          `Contribute ${fmtUSD(monthly, 0)} + strategic sells to hit exact targets.`;
+        noteHtml = 'Sells proceeds + your contribution together buy the underweight funds. Net cash is what you need from your bank after sells are settled.';
+
       } else {
-        // Full rebalance — no contribution
+        // ── Full rebalance ──────────────────────────────────────
+        // Goal: hit exact targets using only current holdings — no new money.
         let buyTotal = 0, sellTotal = 0;
         const rows = nFunds.map(f => {
-          const targetVal = (f.normTgt / 100) * tot; const diff = targetVal - f.value;
+          const targetVal = (f.normTgt / 100) * tot;
+          const diff = targetVal - f.value;
+          const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
           if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
-          return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'pos' : 'neg', 0);
+          return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
         });
         html = rows.join('');
         document.getElementById('rebal-totals').style.display = 'flex';
-        document.getElementById('r-buy-total').innerHTML = M(fmtUSD(buyTotal, 0));
-        document.getElementById('r-sell-total').innerHTML = M(fmtUSD(sellTotal, 0));
-        document.getElementById('r-net-cash').innerHTML = M(fmtUSD(0, 0));
-        document.getElementById('rebal-mode-desc').textContent = 'Sell overweight positions, buy underweight — no new money added.';
-        noteHtml = 'Full rebalance uses existing portfolio only. Sells in taxable account may trigger capital gains.';
+        document.getElementById('r-buy-total').innerHTML = MT(fmtUSD(buyTotal, 0), 'rebalance');
+        document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
+        document.getElementById('r-net-cash').innerHTML = '$0';
+        document.getElementById('rebal-mode-desc').textContent =
+          'Sell overweight positions and buy underweight — no new money required.';
+        noteHtml = 'Sells in your taxable account may trigger capital gains tax. Consider doing full rebalances inside your Roth IRA to avoid this.';
       }
+
       document.getElementById('rebal-body').innerHTML = html;
-      document.getElementById('rebal-note').textContent = noteHtml;
+      const ctxEl = document.getElementById('rebal-acct-ctx');
+      if (ctxEl) ctxEl.textContent = {
+        all: `All accounts · ${nFunds.length} funds · ${MT(fmt(tot), 'rebalance')} total · targets normalized across all funds`,
+        roth: `Roth IRA only · ${nFunds.length} fund(s) · ${MT(fmt(tot), 'rebalance')} · contribution limits apply · no capital gains on sells`,
+        taxable: `Taxable only · ${nFunds.length} fund(s) · ${MT(fmt(tot), 'rebalance')} · sells may trigger capital gains tax`,
+      }[rAcct] || '';
+      document.getElementById('rebal-note').innerHTML =
+        noteHtml ? `<span style="color:var(--gold);font-weight:600">ℹ︎</span> ${noteHtml}` : '';
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -2679,8 +3805,8 @@
         stD.push(Math.round(stNW));
       }
       const nf = nomD[yrs], rf = realD[yrs], tc = Array.from({ length: yrs }, (_, i) => c * Math.pow(1 + cg, i)).reduce((s, x) => s + x, 0);
-      document.getElementById('p-nom').innerHTML = M(fmt(nf)); document.getElementById('p-real').innerHTML = M(fmt(rf)); document.getElementById('p-contrib').innerHTML = M(fmt(tc)); document.getElementById('p-gains').innerHTML = M(fmt(nf - nwTotal() - tc));
-      dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isGlobalHidden() ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', maxTicksLimit: 9, font: { size: 10 } } }, y: { ticks: { color: '#9A958E', callback: v => isGlobalHidden() ? '—' : fmt(v / cvt(1)), font: { size: 10 } }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
+      document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections');
+      dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
     }
     function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`).join('')}</tbody>`; }
     function updRet(id, v) { const f = S.funds.find(x => x.id === id); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
@@ -2694,9 +3820,9 @@
       const nr = blendRet(), t = nwTotal(), yrs = Math.max(...S.goals.map(g => g.year)) - NY + 5;
       const labels = Array.from({ length: Math.min(yrs + 1, 51) }, (_, i) => NY + i);
       const nwD = labels.map(yr => cvt(fvCalc(t, nr, yr - NY, S.settings.annualContrib)));
-      dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isGlobalHidden() ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, maxTicksLimit: 10 } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
+      dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isTabHidden('goals') ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'goals') } } });
       document.getElementById('goals-legend').innerHTML = [{ label: 'Projected NW', color: gtc[0] }, ...S.goals.map(g => ({ label: g.name, color: GCOL[g.cat] }))].map(x => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
-      document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${M(fmt(g.amount))}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${M(fmt(proj))}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? M(fmt(g.amount)) : M(fmt(Math.max(0, mn), 0)) + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
+      document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${MT(fmt(g.amount), 'goals')}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${MT(fmt(proj), 'goals')}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? MT(fmt(g.amount), 'goals') : MT(fmt(Math.max(0, mn), 0), 'goals') + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
     }
     function openGoalModal(id) { S.editGoalId = id; if (id) { const g = S.goals.find(x => x.id === id); document.getElementById('m-goal-title').textContent = 'Edit goal'; document.getElementById('g-name').value = g.name; document.getElementById('g-cat').value = g.cat; document.getElementById('g-amt').value = g.amount; document.getElementById('g-yr').value = g.year; document.getElementById('g-type').value = g.type || 'savings'; document.getElementById('g-notes').value = g.notes || ''; } else { document.getElementById('m-goal-title').textContent = 'Add goal';['g-name', 'g-amt', 'g-yr', 'g-notes'].forEach(i => document.getElementById(i).value = ''); document.getElementById('g-cat').value = 'fire'; document.getElementById('g-type').value = 'savings'; } openModal('m-goal'); }
     function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => x.id === S.editGoalId), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes }); ps(); closeModal('m-goal'); renderGoals(); }
@@ -3162,11 +4288,14 @@
     function renderLifeCharts() {
       const rows = S.ssData;
       const labels = rows.map((r, i) => String(evalCell(r[0], i, 0) || r[0] || ''));
-      const nwVals = rows.map((r, i) => { const v = evalCell(r[2], i, 2); return cvt(parseFloat(v) || 0); });
-      const incVals = rows.map((r, i) => { const kr = parseFloat(evalCell(r[3], i, 3)) || 0, us = parseFloat(evalCell(r[4], i, 4)) || 0, sp = parseFloat(evalCell(r[5], i, 5)) || 0; return cvt(kr + us + sp); });
-      const expVals = rows.map((r, i) => { const ex = parseFloat(evalCell(r[6], i, 6)) || 0, hs = parseFloat(evalCell(r[7], i, 7)) || 0; return cvt(-(ex + hs)); });
-      dC('lifeNW'); CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: getThemeColors()[0], backgroundColor: getThemeColors()[0] + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => 'NW: ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, maxTicksLimit: 10 } }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(v / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' } } } } });
-      dC('lifeInc'); CH['lifeInc'] = new Chart(document.getElementById('lifeInc'), { type: 'bar', data: { labels, datasets: [{ label: 'Income', data: incVals, backgroundColor: getThemeColors()[0] + '55', stack: 'a' }, { label: 'Expenses', data: expVals, backgroundColor: getThemeColors()[3] + '44', stack: 'b' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, maxTicksLimit: 10 }, stacked: true }, y: { ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmt(Math.abs(v) / cvt(1)) }, grid: { color: 'rgba(26,25,23,.04)' }, stacked: true } } } });
+      // Clamp values to ±1 trillion to prevent blown-up formulas from destroying chart scale
+      const CHART_MAX = 1e12;
+      const clamp = v => Math.max(-CHART_MAX, Math.min(CHART_MAX, v));
+      const nwVals = rows.map((r, i) => { const v = evalCell(r[2], i, 2); const n = parseFloat(v); return cvt(isFinite(n) ? clamp(n) : 0); });
+      const incVals = rows.map((r, i) => { const kr = parseFloat(evalCell(r[3], i, 3)) || 0, us = parseFloat(evalCell(r[4], i, 4)) || 0, sp = parseFloat(evalCell(r[5], i, 5)) || 0; return cvt(clamp(kr + us + sp)); });
+      const expVals = rows.map((r, i) => { const ex = parseFloat(evalCell(r[6], i, 6)) || 0, hs = parseFloat(evalCell(r[7], i, 7)) || 0; return cvt(clamp(-(ex + hs))); });
+      dC('lifeNW'); CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: getThemeColors()[0], backgroundColor: getThemeColors()[0] + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'life') } } });
+      dC('lifeInc'); CH['lifeInc'] = new Chart(document.getElementById('lifeInc'), { type: 'bar', data: { labels, datasets: [{ label: 'Income', data: incVals, backgroundColor: getThemeColors()[0] + '55', stack: 'a' }, { label: 'Expenses', data: expVals, backgroundColor: getThemeColors()[3] + '44', stack: 'b' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel(c.dataset.label, fmt(Math.abs(c.parsed.y) / cvt(1)), 'life') } } }, scales: { x: { ...chartXAxis({ maxTicksLimit: 10 }), stacked: true }, y: { ...chartYAxis(v => fmt(Math.abs(v) / cvt(1)), 'life'), stacked: true } } } });
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -3462,6 +4591,175 @@
     document.querySelectorAll('.mo-ov').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
 
     // ══════════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════════
+    // LIVE PRICE & FX SYNC
+    // ══════════════════════════════════════════════════════════════
+    // Currency: Frankfurter (ECB data, no key needed, daily rate)
+    // Stocks:   Yahoo Finance unofficial quote endpoint (no key,
+    //           15-min delayed, best free option for a local file)
+    // ══════════════════════════════════════════════════════════════
+
+    let syncInProgress = false;
+    let lastSyncTime = null;
+
+    function showPriceBar(msg, isError = false) {
+      const bar = document.getElementById('price-bar');
+      bar.classList.remove('hidden', 'error');
+      if (isError) bar.classList.add('error');
+      document.getElementById('price-bar-msg').textContent = msg;
+    }
+    function hidePriceBar() {
+      document.getElementById('price-bar').classList.add('hidden');
+    }
+
+    async function fetchFX() {
+      // Frankfurter.app — ECB rate, updated daily, no auth needed
+      const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+      if (!res.ok) throw new Error('FX fetch failed');
+      const data = await res.json();
+      const rate = data.rates?.KRW;
+      if (!rate) throw new Error('KRW rate missing');
+      return rate;
+    }
+
+    async function fetchQuotes(tickers) {
+      // Yahoo Finance quote endpoint (unofficial, no key, 15-min delayed)
+      // Tries direct first; falls back to allorigins CORS proxy for file:// context
+      const symbols = tickers.join(',');
+      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${symbols}&range=1d&interval=1d`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+
+      async function parseYahoo(json) {
+        // v8 spark endpoint returns { spark: { result: [{ symbol, response: [{ meta }] }] } }
+        const results = json?.spark?.result || [];
+        const out = {};
+        results.forEach(r => {
+          const meta = r?.response?.[0]?.meta;
+          if (!meta) return;
+          out[r.symbol] = {
+            price: meta.regularMarketPrice,
+            change: meta.regularMarketPrice - meta.chartPreviousClose,
+            changePct: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100,
+          };
+        });
+        return out;
+      }
+
+      // Try direct
+      try {
+        const res = await fetch(yahooUrl, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          const result = await parseYahoo(data);
+          if (Object.keys(result).length > 0) return result;
+        }
+      } catch (_) { /* fall through to proxy */ }
+
+      // Fallback: allorigins proxy (handles CORS in file:// context)
+      const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+      if (!proxyRes.ok) throw new Error('Quote fetch failed');
+      const proxyData = await proxyRes.json();
+      const inner = JSON.parse(proxyData.contents);
+      return parseYahoo(inner);
+    }
+
+    function renderPriceChips(quotes) {
+      const chips = document.getElementById('price-chips');
+      if (!chips) return;
+      const hideVal = isGlobalHidden();
+      chips.innerHTML = Object.entries(quotes).map(([ticker, q]) => {
+        if (!q.price) return '';
+        const sign = q.changePct >= 0 ? '+' : '';
+        const cls = q.changePct >= 0 ? 'pos' : 'neg';
+        const priceStr = hideVal ? '———' : `$${q.price.toFixed(2)}`;
+        const chgStr = q.changePct != null ? `<span class="chg ${cls}">${sign}${q.changePct.toFixed(2)}%</span>` : '';
+        return `<span class="price-chip"><strong>${ticker}</strong> ${priceStr} ${chgStr}</span>`;
+      }).join('');
+    }
+
+    async function syncPrices() {
+      if (syncInProgress) return;
+      syncInProgress = true;
+      const btn = document.getElementById('sync-btn');
+      if (btn) btn.classList.add('spinning');
+
+      showPriceBar('Fetching prices…');
+
+      const tickers = [...new Set(S.funds.map(f => f.ticker))];
+      const errors = [];
+      let fxRate = null;
+      let quotes = {};
+
+      // ── FX rate ───────────────────────────────────────────────
+      try {
+        fxRate = await fetchFX();
+        S.settings.fx = Math.round(fxRate * 10) / 10;
+        const fxEl = document.getElementById('fx-set');
+        if (fxEl) fxEl.value = S.settings.fx;
+        ps();
+      } catch (e) {
+        errors.push('FX unavailable');
+      }
+
+      // ── Stock quotes ──────────────────────────────────────────
+      try {
+        quotes = await fetchQuotes(tickers);
+        let updatedCount = 0;
+        S.funds.forEach(f => {
+          const q = quotes[f.ticker];
+          if (!q?.price) return;
+          if (f.shares && f.shares > 0) {
+            // Update value from shares × live price
+            f.value = Math.round(f.shares * q.price * 100) / 100;
+            updatedCount++;
+          }
+          // Always store last known price even without shares
+          f.lastPrice = q.price;
+          f.lastChange = q.changePct;
+        });
+        if (updatedCount > 0) { syncAccountsFromPortfolio(); ps(); }
+      } catch (e) {
+        errors.push('Quotes unavailable');
+      }
+
+      // ── Update UI ─────────────────────────────────────────────
+      lastSyncTime = new Date();
+      const timeStr = lastSyncTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      window._lastQuotes = quotes;
+      renderPriceChips(quotes);
+
+      if (errors.length === 2) {
+        // Both FX and quotes failed — likely offline or CORS blocked
+        showPriceBar('Offline or prices unavailable — stored values shown', true);
+      } else if (errors.length === 1) {
+        showPriceBar(errors[0] + ' — other data updated successfully', true);
+      } else {
+        const fxStr = fxRate ? ` · ₩${Math.round(fxRate).toLocaleString()}/$` : '';
+        showPriceBar(`Updated ${timeStr}${fxStr} · 15-min delayed`);
+      }
+
+      // Re-render if we updated any fund values
+      const activeId = document.querySelector('.tc.on')?.id?.replace('tab-', '');
+      if (activeId) renderTab(activeId);
+      if (activeId !== 'overview') renderOverview();
+
+      // If fund modal is open, refresh the value hint with new prices
+      const fundModal = document.getElementById('m-fund');
+      if (fundModal?.classList.contains('on')) {
+        const editFund = S.funds.find(x => x.id === S.editFundId);
+        if (editFund) {
+          if (editFund.shares && editFund.lastPrice) {
+            document.getElementById('f-val').value = editFund.value;
+          }
+          updateFundValHint(editFund.shares, editFund.lastPrice);
+        }
+      }
+
+      syncInProgress = false;
+      if (btn) btn.classList.remove('spinning');
+    }
+
     // INIT
     document.getElementById('nav-date').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
@@ -3469,6 +4767,72 @@
     // initSS wired lazily on first renderLife(); nothing to call here
     syncPrivacyUI();
     renderOverview();
+    // Auto-fetch live prices and FX on load (non-blocking)
+    setTimeout(syncPrices, 800); // slight delay so UI renders first
+
+
+    // ══════════════════════════════════════════════════════════════
+    // RESPONSIVE: SIDEBAR COLLAPSE
+    // ══════════════════════════════════════════════════════════════
+    function toggleSidebar() {
+      document.body.classList.toggle('sb-collapsed');
+      localStorage.setItem('sb-collapsed', document.body.classList.contains('sb-collapsed') ? '1' : '0');
+    }
+    // Restore collapse state on load
+    if (localStorage.getItem('sb-collapsed') === '1') {
+      document.body.classList.add('sb-collapsed');
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // RESPONSIVE: MOBILE BOTTOM NAV + TRAY
+    // ══════════════════════════════════════════════════════════════
+    // Map of which bottom-tab IDs map to which app tab IDs
+    const MOB_PRIMARY = ['overview', 'portfolio', 'rebalance', 'life'];
+
+    function mobNav(tabId, mobEl) {
+      // Navigate to the tab (reuse existing showTab but pass null for el
+      // since mobile buttons aren't .nt elements)
+      document.querySelectorAll('.tc').forEach(t => t.classList.remove('on'));
+      document.querySelectorAll('.nt').forEach(t => t.classList.remove('on'));
+      // Also sync the desktop sidebar active state
+      const desktopBtn = document.querySelector(`.nt[onclick*="'${tabId}'"]`);
+      if (desktopBtn) desktopBtn.classList.add('on');
+      document.getElementById('tab-' + tabId)?.classList.add('on');
+      renderTab(tabId);
+
+      // Update mobile tab active state
+      document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('on'));
+      if (mobEl) {
+        mobEl.classList.add('on');
+      } else {
+        // Tab came from tray — activate the "All" button to signal we're in that group
+        document.getElementById('mob-all')?.classList.add('on');
+      }
+    }
+
+    function toggleMobTray() {
+      const tray = document.getElementById('mob-tray');
+      const backdrop = document.getElementById('mob-tray-backdrop');
+      const isOpen = tray.classList.contains('open');
+      if (isOpen) {
+        closeMobTray();
+      } else {
+        tray.classList.add('open');
+        backdrop.classList.add('open');
+        document.getElementById('mob-all')?.classList.add('on');
+      }
+    }
+
+    function closeMobTray() {
+      document.getElementById('mob-tray')?.classList.remove('open');
+      document.getElementById('mob-tray-backdrop')?.classList.remove('open');
+      // If a primary tab is active, deactivate the All button
+      const activeTab = document.querySelector('.tc.on')?.id?.replace('tab-', '');
+      if (activeTab && MOB_PRIMARY.includes(activeTab)) {
+        document.getElementById('mob-all')?.classList.remove('on');
+      }
+    }
+
 
   </script>
 </body>
