@@ -4204,7 +4204,7 @@
       // Clamp values to ±1 trillion to prevent blown-up formulas from destroying chart scale
       const CHART_MAX = 1e12;
       const clamp = v => Math.max(-CHART_MAX, Math.min(CHART_MAX, v));
-      const nwVals = rows.map((r, i) => { const v = evalCell(r[2], i, 2); const n = parseFloat(v); return cvt(isFinite(n) ? clamp(n) : 0); });
+      const nwVals = rows.map((r, i) => { const v = evalCell(r[1], i, 1); const n = parseFloat(v); return cvt(isFinite(n) ? clamp(n) : 0); });
       const incVals = rows.map((r, i) => { const kr = parseFloat(evalCell(r[3], i, 3)) || 0, us = parseFloat(evalCell(r[4], i, 4)) || 0, sp = parseFloat(evalCell(r[5], i, 5)) || 0; return cvt(clamp(kr + us + sp)); });
       const expVals = rows.map((r, i) => { const ex = parseFloat(evalCell(r[6], i, 6)) || 0, hs = parseFloat(evalCell(r[7], i, 7)) || 0; return cvt(clamp(-(ex + hs))); });
       dC('lifeNW'); CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: getThemeColors()[0], backgroundColor: getThemeColors()[0] + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'life') } } });
@@ -4904,7 +4904,7 @@
     function updateSyncTimeDisplay() {
       const el = document.getElementById('port-sync-time');
       const statusEl = document.getElementById('port-sync-status');
-      
+
       // Hydrate status context string if available
       if (statusEl && S.settings.lastPriceSyncStatus && !statusEl.textContent.includes('Syncing')) {
         statusEl.textContent = S.settings.lastPriceSyncStatus;
@@ -5037,7 +5037,7 @@
         const updNote = fundsWithShares.length > 0
           ? `${fundsUpdated.length}/${fundsWithShares.length} values updated · ${note}`
           : `prices loaded · add shares to calculate values on sync`;
-          
+
         S.settings.lastPriceSyncStatus = `${timeStr} · ${updNote}`;
         showPriceBar(S.settings.lastPriceSyncStatus);
         ps();
