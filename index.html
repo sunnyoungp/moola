@@ -153,7 +153,7 @@
     #sidebar {
       width: var(--sb);
       min-height: 100vh;
-      background: var(--white);
+      background: var(--surface);
       border-right: 1px solid var(--line);
       display: flex;
       flex-direction: column;
@@ -322,6 +322,13 @@
       color: var(--ink4)
     }
 
+    .sb-fx-info {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+
     /* Segment tabs */
     .stabs {
       display: flex;
@@ -353,7 +360,7 @@
     }
 
     .stab.on {
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink);
       box-shadow: var(--sh1)
     }
@@ -376,7 +383,7 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      padding: 40px 44px 0;
+      padding: 40px 4px 0;
       gap: 16px;
       flex-shrink: 0;
       flex-wrap: wrap;
@@ -433,7 +440,7 @@
 
     /* ═══ CARDS ═════════════════════════════════════════════════ */
     .card {
-      background: var(--white);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--rl);
       padding: 22px 24px;
@@ -443,7 +450,7 @@
     }
 
     .csm {
-      background: var(--white);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--r);
       padding: 16px 18px;
@@ -606,7 +613,7 @@
       font-weight: 500;
       letter-spacing: -.15px;
       border: 1px solid var(--line-s);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink2);
       transition: background .12s, border-color .12s, box-shadow .12s;
       cursor: pointer;
@@ -666,7 +673,7 @@
       padding: 7px 11px;
       border: 1px solid var(--line-s);
       border-radius: var(--rs);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink);
       font-size: 13px;
       outline: none;
@@ -703,6 +710,7 @@
 
     input[type=range] {
       -webkit-appearance: none;
+      appearance: none;
       width: 100%;
       height: 3px;
       border-radius: 2px;
@@ -713,12 +721,13 @@
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
+      appearance: none;
       width: 14px;
       height: 14px;
       border-radius: 50%;
       background: var(--f);
       cursor: pointer;
-      border: 2.5px solid var(--white);
+      border: 2.5px solid var(--surface);
       box-shadow: 0 0 0 1.5px var(--f), var(--sh1)
     }
 
@@ -853,7 +862,7 @@
     }
 
     .modal {
-      background: var(--white);
+      background: var(--surface);
       border-radius: var(--rxl);
       padding: 28px;
       width: 440px;
@@ -898,7 +907,7 @@
 
     /* ═══ GOAL CARDS ════════════════════════════════════════════ */
     .gc {
-      background: var(--white);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--rl);
       padding: 20px 22px;
@@ -1013,7 +1022,7 @@
 
     /* ═══ NW HERO ═══════════════════════════════════════════════ */
     .nw-hero {
-      background: var(--white);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--rxl);
       padding: 30px 36px;
@@ -1082,7 +1091,7 @@
       border-radius: 0 0 var(--r) var(--r);
       position: relative;
       outline: none;
-      background: var(--white)
+      background: var(--surface)
     }
 
     .ss-tbl {
@@ -1269,7 +1278,7 @@
       align-items: center;
       gap: 8px;
       padding: 8px 10px;
-      background: var(--white);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-bottom: none;
       border-radius: var(--r) var(--r) 0 0;
@@ -1298,7 +1307,7 @@
       padding: 4px 9px;
       border: 1px solid var(--line-s);
       border-radius: var(--rx);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink);
       outline: none;
       min-width: 180px;
@@ -1344,7 +1353,7 @@
       border: 1.5px solid var(--line-s);
       border-radius: var(--rs);
       padding: 2px;
-      background: var(--white);
+      background: var(--surface);
       cursor: pointer;
       flex-shrink: 0
     }
@@ -1366,7 +1375,7 @@
       padding: 6px 8px;
       border: 1.5px solid var(--line-s);
       border-radius: var(--rs);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink);
       outline: none;
       transition: border-color .12s;
@@ -1459,7 +1468,7 @@
       font-weight: 600;
       letter-spacing: .02em;
       border: 1px solid var(--line-s);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink3);
       cursor: pointer;
       transition: all .15s;
@@ -1531,7 +1540,7 @@
       height: 28px;
       border-radius: 6px;
       border: 1px solid var(--line);
-      background: var(--white);
+      background: var(--surface);
       color: var(--ink3);
       cursor: pointer;
       flex-shrink: 0;
@@ -1615,6 +1624,10 @@
       display: none;
     }
 
+    body.sb-collapsed .sb-fx-info {
+      display: none !important;
+    }
+
     /* SCOPED: only sidebar stabs go vertical — not global stabs */
     body.sb-collapsed #sidebar .stabs {
       flex-direction: column;
@@ -1643,7 +1656,7 @@
       left: 0;
       right: 0;
       z-index: 300;
-      background: var(--white);
+      background: var(--surface);
       border-top: 1px solid var(--line);
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
@@ -1702,7 +1715,7 @@
       left: 0;
       right: 0;
       z-index: 299;
-      background: var(--white);
+      background: var(--surface);
       border-top: 1px solid var(--line);
       border-radius: 16px 16px 0 0;
       padding: 16px;
@@ -2014,71 +2027,18 @@
     /* ════════════════════════════════════════════════════════════
        LIVE PRICES — sync indicator
        ════════════════════════════════════════════════════════════ */
-    #price-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 44px;
-      background: var(--fll);
-      border-bottom: 1px solid var(--fl);
-      font-size: 12px;
-      color: var(--f);
-      flex-wrap: wrap;
-    }
-
-    #price-bar.error {
-      background: var(--gold-l);
-      border-bottom-color: #E8D490;
-      color: var(--gold);
-    }
-
-    #price-bar.hidden {
-      display: none;
-    }
-
-    .price-bar-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--fm);
-      flex-shrink: 0;
-      animation: pulseDot 1.4s ease-in-out infinite;
-    }
-
-    #price-bar.error .price-bar-dot {
-      background: var(--gold);
-      animation: none;
-    }
-
-    @keyframes pulseDot {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: .3;
-      }
-    }
-
-    .price-bar-chips {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      flex: 1;
-    }
-
+    /* Price chips — used inside Portfolio tab sync row */
     .price-chip {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      background: rgba(255, 255, 255, .6);
+      background: var(--s2);
       border-radius: 20px;
       font-family: var(--mono);
       font-size: 11px;
       font-weight: 500;
+      color: var(--ink2);
     }
 
     .price-chip .chg {
@@ -2093,48 +2053,14 @@
       color: var(--rose);
     }
 
-    .sync-refresh-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--fl);
-      background: rgba(255, 255, 255, .7);
-      color: var(--f);
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .12s;
-      margin-left: auto;
-      flex-shrink: 0;
-    }
-
-    .sync-refresh-btn:hover {
-      background: var(--white);
-    }
-
-    .sync-refresh-btn svg {
-      width: 12px;
-      height: 12px;
-    }
-
-    .sync-refresh-btn.spinning svg {
-      animation: spinIcon .7s linear infinite;
-    }
-
     @keyframes spinIcon {
       to {
         transform: rotate(360deg);
       }
     }
 
-    /* mobile: price bar full padding reset */
-    @media (max-width: 480px) {
-      #price-bar {
-        padding: 8px 14px;
-        gap: 8px;
-      }
+    .spinning svg {
+      animation: spinIcon .7s linear infinite;
     }
   </style>
 </head>
@@ -2238,7 +2164,10 @@
           <button class="stab" onclick="setKrwFmt('full',this)">Full &#8361;</button>
         </div>
       </div>
-      <div class="sb-date" id="nav-date"></div>
+      <div class="sb-fx-info" id="sb-fx-info" style="display:none">
+        <span id="sb-fx-rate" style="font-family:var(--mono);font-size:10.5px;color:var(--ink3)"></span>
+        <span id="sb-fx-updated" style="font-size:10px;color:var(--ink4);margin-left:4px"></span>
+      </div>
     </div>
   </nav>
 
@@ -2342,20 +2271,6 @@
 
   <!-- ═══ MAIN ══════════════════════════════════════════════════ -->
   <div id="main">
-    <!-- Live price/FX bar — shown after sync, hidden initially -->
-    <div id="price-bar" class="hidden">
-      <div class="price-bar-dot"></div>
-      <span id="price-bar-msg">Fetching prices&#8230;</span>
-      <div class="price-bar-chips" id="price-chips"></div>
-      <button class="sync-refresh-btn" id="sync-btn" onclick="syncPrices()" title="Refresh prices">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-          stroke-linejoin="round">
-          <path d="M12 2.5A5.5 5.5 0 1 1 6.5 1c1.6 0 3 .65 4.1 1.7" />
-          <polyline points="9.5,1 13.5,1 13.5,5" />
-        </svg>
-        Refresh
-      </button>
-    </div>
 
     <!-- OVERVIEW -->
     <div id="tab-overview" class="tc on">
@@ -2484,6 +2399,21 @@
         </div>
       </div>
       <div style="height:20px"></div>
+
+      <!-- ── Sync row ─────────────────────────────────────────── -->
+      <div id="port-sync-row" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn bsm" id="port-sync-btn" onclick="syncPrices()" style="gap:6px;flex-shrink:0">
+          <svg id="port-sync-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px">
+            <path d="M12 2.5A5.5 5.5 0 1 1 6.5 1c1.6 0 3 .65 4.1 1.7" />
+            <polyline points="9.5,1 13.5,1 13.5,5" />
+          </svg>
+          Sync prices
+        </button>
+        <div id="port-sync-chips" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0"></div>
+        <span id="port-sync-status" style="font-size:11px;color:var(--ink4);flex-shrink:0;white-space:nowrap"></span>
+      </div>
+
       <div class="atab-group mb-3">
         <button class="atab on" onclick="setPortView('all',this)">All</button>
         <button class="atab" onclick="setPortView('roth',this)">Roth IRA</button>
@@ -3546,6 +3476,8 @@
         const sharesHint = f.shares ? `<span style="font-size:10px;color:var(--ink3)"> · ${f.shares} sh</span>` : '';
         return `<tr><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${f.acct}</span></td><td class="mo">${MT(fmt(f.value), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
       }).join('')}</tbody>`;
+      // Re-render price chips if we have cached quotes
+      if (window._lastQuotes) renderPriceChips(window._lastQuotes);
     }
     function openFundModal(id) {
       S.editFundId = id;
@@ -3631,10 +3563,7 @@
       ps();
       closeModal('m-fund');
       renderPortfolio();
-      // If shares are set but we don't have a price yet, sync immediately
-      if (shares && !S.funds.find(x => x.ticker === ticker)?.lastPrice) {
-        syncPrices();
-      }
+      // Manual sync only — user can press Sync in Portfolio tab after saving
     }
     function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); ps(); renderPortfolio(); }
 
@@ -4603,14 +4532,17 @@
     let syncInProgress = false;
     let lastSyncTime = null;
 
+    // Update the inline portfolio sync status (replaces the old global bar)
     function showPriceBar(msg, isError = false) {
-      const bar = document.getElementById('price-bar');
-      bar.classList.remove('hidden', 'error');
-      if (isError) bar.classList.add('error');
-      document.getElementById('price-bar-msg').textContent = msg;
+      const status = document.getElementById('port-sync-status');
+      if (status) {
+        status.textContent = msg;
+        status.style.color = isError ? 'var(--rose)' : 'var(--ink4)';
+      }
     }
     function hidePriceBar() {
-      document.getElementById('price-bar').classList.add('hidden');
+      const status = document.getElementById('port-sync-status');
+      if (status) status.textContent = '';
     }
 
     async function fetchFX() {
@@ -4623,57 +4555,95 @@
       return rate;
     }
 
-    async function fetchQuotes(tickers) {
-      // Yahoo Finance quote endpoint (unofficial, no key, 15-min delayed)
-      // Tries direct first; falls back to allorigins CORS proxy for file:// context
-      const symbols = tickers.join(',');
-      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${symbols}&range=1d&interval=1d`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+    // ── Quote fetching ─────────────────────────────────────────────
+    // Tries 3 sources per ticker until one works:
+    //   1. Financial Modeling Prep (demo key, CORS-safe, 250 req/day free)
+    //   2. Yahoo Finance via allorigins CORS proxy
+    //   3. Yahoo Finance direct (works when served over http://)
 
-      async function parseYahoo(json) {
-        // v8 spark endpoint returns { spark: { result: [{ symbol, response: [{ meta }] }] } }
-        const results = json?.spark?.result || [];
-        const out = {};
-        results.forEach(r => {
-          const meta = r?.response?.[0]?.meta;
-          if (!meta) return;
-          out[r.symbol] = {
-            price: meta.regularMarketPrice,
-            change: meta.regularMarketPrice - meta.chartPreviousClose,
-            changePct: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100,
-          };
-        });
-        return out;
-      }
+    function fetchWithTimeout(url, ms) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), ms);
+      return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
+    }
 
-      // Try direct
+    async function fetchSingleQuote(ticker) {
+      // Source 1: FMP /quote — returns last price + day change even after hours
+      // Free demo key, CORS-safe, 250 req/day, no signup needed
       try {
-        const res = await fetch(yahooUrl, { signal: AbortSignal.timeout(5000) });
+        const res = await fetchWithTimeout(
+          `https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=demo`, 7000);
         if (res.ok) {
           const data = await res.json();
-          const result = await parseYahoo(data);
-          if (Object.keys(result).length > 0) return result;
+          const q = Array.isArray(data) ? data[0] : data;
+          // q.price = last trade price (works after hours — returns latest close)
+          // q.changesPercentage = % change from previous close (always populated)
+          if (q?.price) {
+            return {
+              price: q.price,
+              change: q.change ?? 0,
+              changePct: q.changesPercentage ?? 0,
+            };
+          }
         }
-      } catch (_) { /* fall through to proxy */ }
+      } catch (_) { }
 
-      // Fallback: allorigins proxy (handles CORS in file:// context)
-      const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-      if (!proxyRes.ok) throw new Error('Quote fetch failed');
-      const proxyData = await proxyRes.json();
-      const inner = JSON.parse(proxyData.contents);
-      return parseYahoo(inner);
+      // Source 2: Yahoo via allorigins proxy (handles CORS for file:// context)
+      try {
+        const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`;
+        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
+        const res = await fetchWithTimeout(proxy, 10000);
+        if (res.ok) {
+          const w = await res.json();
+          if (w.contents) {
+            const meta = JSON.parse(w.contents)?.chart?.result?.[0]?.meta;
+            if (meta?.regularMarketPrice) {
+              const p = meta.regularMarketPrice, prev = meta.chartPreviousClose || p;
+              return { price: p, change: p - prev, changePct: prev ? ((p - prev) / prev) * 100 : 0 };
+            }
+          }
+        }
+      } catch (_) { }
+
+      // Source 3: Yahoo direct (works when opened via http server, not file://)
+      try {
+        const res = await fetchWithTimeout(
+          `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`, 6000);
+        if (res.ok) {
+          const meta = (await res.json())?.chart?.result?.[0]?.meta;
+          if (meta?.regularMarketPrice) {
+            const p = meta.regularMarketPrice, prev = meta.chartPreviousClose || p;
+            return { price: p, change: p - prev, changePct: prev ? ((p - prev) / prev) * 100 : 0 };
+          }
+        }
+      } catch (_) { }
+
+      return null; // all sources failed for this ticker
+    }
+
+    async function fetchQuotes(tickers) {
+      // Fetch all tickers in parallel for speed
+      const settled = await Promise.allSettled(
+        tickers.map(t => fetchSingleQuote(t).then(q => ({ ticker: t, q })))
+      );
+      const out = {};
+      settled.forEach(r => {
+        if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
+      });
+      return out;
     }
 
     function renderPriceChips(quotes) {
-      const chips = document.getElementById('price-chips');
+      const chips = document.getElementById('port-sync-chips');
       if (!chips) return;
-      const hideVal = isGlobalHidden();
+      const hideVal = isTabHidden('portfolio');
       chips.innerHTML = Object.entries(quotes).map(([ticker, q]) => {
-        if (!q.price) return '';
+        if (!q?.price) return '';
         const sign = q.changePct >= 0 ? '+' : '';
         const cls = q.changePct >= 0 ? 'pos' : 'neg';
         const priceStr = hideVal ? '———' : `$${q.price.toFixed(2)}`;
-        const chgStr = q.changePct != null ? `<span class="chg ${cls}">${sign}${q.changePct.toFixed(2)}%</span>` : '';
+        const chgStr = q.changePct != null
+          ? `<span class="chg ${cls}">${sign}${q.changePct.toFixed(2)}%</span>` : '';
         return `<span class="price-chip"><strong>${ticker}</strong> ${priceStr} ${chgStr}</span>`;
       }).join('');
     }
@@ -4681,10 +4651,12 @@
     async function syncPrices() {
       if (syncInProgress) return;
       syncInProgress = true;
-      const btn = document.getElementById('sync-btn');
-      if (btn) btn.classList.add('spinning');
+      const btn = document.getElementById('port-sync-btn');
+      const icon = document.getElementById('port-sync-icon');
+      if (icon) icon.style.animation = 'spinIcon .7s linear infinite';
+      if (btn) btn.disabled = true;
 
-      showPriceBar('Fetching prices…');
+      showPriceBar('Syncing…');
 
       const tickers = [...new Set(S.funds.map(f => f.ticker))];
       const errors = [];
@@ -4697,30 +4669,42 @@
         S.settings.fx = Math.round(fxRate * 10) / 10;
         const fxEl = document.getElementById('fx-set');
         if (fxEl) fxEl.value = S.settings.fx;
+        // Update sidebar FX display
+        const fxInfo = document.getElementById('sb-fx-info');
+        const fxRate_ = document.getElementById('sb-fx-rate');
+        const fxUpd = document.getElementById('sb-fx-updated');
+        if (fxInfo) fxInfo.style.display = 'flex';
+        if (fxRate_) fxRate_.textContent = `₩${Math.round(fxRate).toLocaleString()} / $1`;
+        if (fxUpd) fxUpd.textContent = 'updated';
         ps();
       } catch (e) {
         errors.push('FX unavailable');
       }
 
       // ── Stock quotes ──────────────────────────────────────────
+      const failedTickers = [];
       try {
         quotes = await fetchQuotes(tickers);
-        let updatedCount = 0;
+        let valueUpdates = 0;
         S.funds.forEach(f => {
           const q = quotes[f.ticker];
-          if (!q?.price) return;
-          if (f.shares && f.shares > 0) {
-            // Update value from shares × live price
-            f.value = Math.round(f.shares * q.price * 100) / 100;
-            updatedCount++;
-          }
-          // Always store last known price even without shares
+          if (!q?.price) { failedTickers.push(f.ticker); return; }
           f.lastPrice = q.price;
           f.lastChange = q.changePct;
+          if (f.shares && f.shares > 0) {
+            f.value = Math.round(f.shares * q.price * 100) / 100;
+            valueUpdates++;
+          }
         });
-        if (updatedCount > 0) { syncAccountsFromPortfolio(); ps(); }
+        if (valueUpdates > 0) { syncAccountsFromPortfolio(); ps(); }
+        if (failedTickers.length === tickers.length) {
+          errors.push('No quotes received — prices may be delayed or market closed');
+        } else if (failedTickers.length > 0) {
+          errors.push(`Partial: no data for ${failedTickers.join(', ')}`);
+        }
       } catch (e) {
-        errors.push('Quotes unavailable');
+        errors.push(`Quotes error: ${e.message || String(e)}`);
+        console.error('[moola] syncPrices error:', e);
       }
 
       // ── Update UI ─────────────────────────────────────────────
@@ -4729,14 +4713,22 @@
       window._lastQuotes = quotes;
       renderPriceChips(quotes);
 
-      if (errors.length === 2) {
-        // Both FX and quotes failed — likely offline or CORS blocked
-        showPriceBar('Offline or prices unavailable — stored values shown', true);
-      } else if (errors.length === 1) {
-        showPriceBar(errors[0] + ' — other data updated successfully', true);
+      const fundsWithShares = S.funds.filter(f => f.shares && f.shares > 0);
+      const fundsUpdated = fundsWithShares.filter(f => quotes[f.ticker]?.price);
+
+      if (!fxRate && Object.keys(quotes).length === 0) {
+        showPriceBar('Could not reach price servers', true);
+      } else if (errors.length > 0) {
+        showPriceBar(errors.join(' · '), true);
       } else {
-        const fxStr = fxRate ? ` · ₩${Math.round(fxRate).toLocaleString()}/$` : '';
-        showPriceBar(`Updated ${timeStr}${fxStr} · 15-min delayed`);
+        const h = new Date().getUTCHours();
+        const isWeekend = [0, 6].includes(new Date().getUTCDay());
+        const isOpen = !isWeekend && h >= 14 && h < 21;
+        const note = isOpen ? '15-min delayed' : 'closing price';
+        const updNote = fundsWithShares.length > 0
+          ? `${fundsUpdated.length}/${fundsWithShares.length} values updated · ${note}`
+          : `prices loaded · add shares to auto-update values`;
+        showPriceBar(`${timeStr} · ${updNote}`);
       }
 
       // Re-render if we updated any fund values
@@ -4757,18 +4749,19 @@
       }
 
       syncInProgress = false;
-      if (btn) btn.classList.remove('spinning');
+      if (icon) icon.style.animation = '';
+      if (btn) btn.disabled = false;
     }
 
     // INIT
-    document.getElementById('nav-date').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // nav-date removed — date shown via sb-fx-info instead
     if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
     krwFmt = S.settings.krwFmt || 'short';
     // initSS wired lazily on first renderLife(); nothing to call here
     syncPrivacyUI();
     renderOverview();
     // Auto-fetch live prices and FX on load (non-blocking)
-    setTimeout(syncPrices, 800); // slight delay so UI renders first
+    // Sync is manual — user presses Sync in Portfolio tab
 
 
     // ══════════════════════════════════════════════════════════════
