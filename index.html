@@ -2136,7 +2136,7 @@
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.href
+        redirectTo: window.location.origin + window.location.pathname
       }
     });
     if (error) console.error('Login error:', error.message);
@@ -2144,7 +2144,7 @@
 
   async function signOut() {
     await db.auth.signOut();
-    window.location.reload();
+    window.location.replace(window.location.origin + window.location.pathname);
   }
 
   async function getCurrentUser() {
