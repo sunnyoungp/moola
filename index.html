@@ -134,7 +134,24 @@
 
     body {
       min-height: 100vh;
-      display: flex
+      display: flex;
+      flex-direction: column
+    }
+
+    #login-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh
+    }
+
+    #app-screen {
+      display: flex;
+      flex: 1;
+      min-height: 100vh;
+      width: 100%
     }
 
     button {
@@ -2139,7 +2156,7 @@
   db.auth.onAuthStateChange((event, session) => {
   if (session?.user) {
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('app-screen').style.display = 'flex';
     initApp(); // loads their data from Supabase
   } else {
     document.getElementById('login-screen').style.display = 'block';
@@ -2150,7 +2167,7 @@
 </head>
 
 <body>
-  <div id="login-screen" style="display:none; text-align:center; padding:100px;">
+  <div id="login-screen" style="display:none;">
     <h1>Moola</h1>
     <p>Sign in to access your finances</p>
     <button onclick="signInWithGoogle()">Sign in with Google</button>
@@ -2615,7 +2632,7 @@
         </div>
       </div>
       <div style="height:20px"></div>
-
+      <div class="card mb-3" id="settings-user-info"></div>
       <!-- Privacy & Visibility card -->
       <div class="card mb-2">
         <div class="sec">Privacy &amp; Visibility</div>
@@ -4612,6 +4629,25 @@
 
     // ── renderSettings extension ──────────────────────────────────
     function renderSettings() {
+      // Show logged-in user info
+getCurrentUser().then(user => {
+  const el = document.getElementById('settings-user-info');
+  if (el && user) {
+    el.innerHTML = `
+      <div class="lbl" style="margin-bottom:10px">ACCOUNT</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--ink3);width:52px;flex-shrink:0">Email</span>
+          <span style="font-size:12px;font-family:var(--mono)">${user.email}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:baseline">
+          <span style="font-size:11px;color:var(--ink3);width:52px;flex-shrink:0">User ID</span>
+          <span style="font-size:11px;font-family:var(--mono);color:var(--ink3);word-break:break-all">${user.id}</span>
+        </div>
+      </div>
+    `;
+    }
+  });
       document.getElementById('fx-set').value = S.settings.fx;
       syncPrivacyUI();
       document.getElementById('snap-list').innerHTML = S.snapshots.length === 0 ? '<div class="mut" style="font-size:12px">No snapshots yet.</div>' : [...S.snapshots].reverse().map((s, i) => `<div class="fb" style="padding:6px 0;border-bottom:1px solid var(--s2)"><div><div style="font-size:12px;font-weight:500">${new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>${s.note ? `<div style="font-size:10px;color:var(--ink3)">${s.note}</div>` : ''}</div><div class="flex gsm"><span class="snum">${M(fmtUSD(s.nw))}</span>${s.contributed ? `<span class="snum pos">${M('+' + fmtUSD(s.contributed))}</span>` : ''}<button class="btn bsm bgh" style="color:var(--red)" onclick="delSnap(${S.snapshots.length - 1 - i})">✕</button></div></div>`).join('');
