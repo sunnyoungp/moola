@@ -134,7 +134,24 @@
 
     body {
       min-height: 100vh;
-      display: flex
+      display: flex;
+      flex-direction: column
+    }
+
+    #login-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh
+    }
+
+    #app-screen {
+      display: flex;
+      flex: 1;
+      min-height: 100vh;
+      width: 100%
     }
 
     button {
@@ -2104,10 +2121,58 @@
       animation: spinIcon .7s linear infinite;
     }
   </style>
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const db = createClient(
+      'https://hbdyztbxxivrmmxyhmuj.supabase.co',  // replace this
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhiZHl6dGJ4eGl2cm1teHlobXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTUyNjksImV4cCI6MjA4OTYzMTI2OX0.CQF0nuREuntrCX9NhYr1C1_Z9dwFevKsDP3j7AlvGIE'                    // replace this
+    );
+  </script>
+  <script>
+  // Auth helpers
+  async function signInWithGoogle() {
+    const { error } = await db.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.href
+      }
+    });
+    if (error) console.error('Login error:', error.message);
+  }
+
+  async function signOut() {
+    await db.auth.signOut();
+    window.location.reload();
+  }
+
+  async function getCurrentUser() {
+    const { data: { user } } = await db.auth.getUser();
+    return user;
+  }
+
+  // Check auth state on page load
+  db.auth.onAuthStateChange((event, session) => {
+  if (session?.user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+    initApp(); // loads their data from Supabase
+  } else {
+    document.getElementById('login-screen').style.display = 'block';
+    document.getElementById('app-screen').style.display = 'none';
+  }
+  });
+</script>
 </head>
 
 <body>
-
+  <div id="login-screen" style="display:none;">
+    <h1>Moola</h1>
+    <p>Sign in to access your finances</p>
+    <button onclick="signInWithGoogle()">Sign in with Google</button>
+  </div>
+  <div id="app-screen" style="display:none;">
   <!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
   <nav id="sidebar">
     <div class="sb-logo">
@@ -2127,6 +2192,7 @@
     <div class="sb-nav" id="sb-nav"></div>
 
     <div class="sb-foot">
+      <button onclick="signOut()">Sign out</button>
       <div class="sb-cur">
         <span class="sb-cur-label">Currency</span>
         <div class="stabs" id="cur-tabs">
@@ -2624,14 +2690,20 @@
 
       <!-- Appearance card (full-width) -->
       <div class="card mb-2">
-        <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span>Appearance</span>
-          <button class="theme-reset-btn" onclick="resetTheme()">Reset to default</button>
+        <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;cursor:pointer;user-select:none" onclick="toggleSettingsSection('s-appearance')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg id="s-appearance-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;transform:rotate(-90deg)">
+              <polyline points="4 6 8 10 12 6"/>
+            </svg>
+            <span style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.5px;text-transform:uppercase">Appearance</span>
+          </div>
+          <button class="theme-reset-btn" onclick="event.stopPropagation();resetTheme()">Reset to default</button>
         </div>
 
-        <!-- Presets -->
-        <div class="theme-section-label">Presets</div>
-        <div class="theme-presets" id="theme-presets"></div>
+        <div id="s-appearance-body" style="display:none;margin-top:14px">
+          <!-- Presets -->
+          <div class="theme-section-label">Presets</div>
+          <div class="theme-presets" id="theme-presets"></div>
 
         <!-- Color tokens grid -->
         <div class="theme-section-label">Accent &amp; Brand</div>
@@ -2809,6 +2881,7 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       <div class="g2">
@@ -2849,12 +2922,21 @@
             <div id="archived-tabs-list" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </div>
-        <div class="card">
-          <div class="sec">Snapshot History</div>
-          <div style="font-size:12.5px;color:var(--ink2);margin-bottom:14px;line-height:1.6">Market gains = current NW
-            &#8722; first snapshot NW &#8722; all contributions logged.</div>
-          <div id="snap-list" style="max-height:280px;overflow-y:auto"></div>
-          <div class="card mt-2">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="sec" style="display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none" onclick="toggleSettingsSection('s-snapshot')">
+              <svg id="s-snapshot-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;transform:rotate(-90deg)">
+                <polyline points="4 6 8 10 12 6"/>
+              </svg>
+              <span style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.5px;text-transform:uppercase">Snapshot History</span>
+            </div>
+            <div id="s-snapshot-body" style="display:none;margin-top:14px">
+              <div style="font-size:12.5px;color:var(--ink2);margin-bottom:14px;line-height:1.6">Market gains = current NW
+                &#8722; first snapshot NW &#8722; all contributions logged.</div>
+              <div id="snap-list" style="max-height:280px;overflow-y:auto"></div>
+            </div>
+          </div>
+          <div class="card">
             <div class="sec" style="margin-bottom:8px">Sidebar Order</div>
             <div id="reorder-tabs-list" style="display:flex;flex-direction:column;gap:4px"></div>
           </div>
@@ -3066,13 +3148,67 @@
       folder: `<svg viewBox="0 0 16 16" stroke-linejoin="round"><path d="M14.5 5H7.5l-2-2H1.5v10h13z"/></svg>`,
       compass: `<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><polygon points="7,4 9,4 7.5,12 6.5,12"/></svg>`
     };
-    function ls() { try { const s = localStorage.getItem('moola_v4'); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-    function ps() { try { localStorage.setItem('moola_v4', JSON.stringify(S)); } catch (e) { } }
-    function resetData() { localStorage.removeItem('moola_v4'); location.reload(); }
+    // ── Currency + sync state (declared before initApp) ───────────
+    let dispCur = 'USD', krwFmt = 'short';
+    let syncInProgress = false;
+    let lastSyncTime = null;
 
-    let S = ls() || mkDef();
-    if (!S.tabs) S.tabs = mkDef().tabs;
+    // ── Supabase persistence ──────────────────────────────────────
+    let _saveTimer = null;
 
+    async function ps() {
+      // Still save to localStorage as instant cache (keeps UI fast)
+      try { localStorage.setItem('moola_v4', JSON.stringify(S)); } catch(e) {}
+      // Debounce Supabase writes — wait 800ms after last change before saving
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(async () => {
+        const { data: { user } } = await db.auth.getUser();
+        if (!user) return; // not logged in, skip
+        await db.from('user_data').upsert({
+          user_id: user.id,
+          data: S,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }, 800);
+    }
+
+    async function ls() {
+      // Try Supabase first
+      try {
+        const { data: { user } } = await db.auth.getUser();
+        if (user) {
+          const { data } = await db.from('user_data').select('data').eq('user_id', user.id).single();
+          if (data?.data) return data.data;
+        }
+      } catch(e) {}
+      // Fall back to localStorage
+      try { const s = localStorage.getItem('moola_v4'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+    }
+
+    async function resetData() {
+      localStorage.removeItem('moola_v4');
+      const { data: { user } } = await db.auth.getUser();
+      if (user) await db.from('user_data').delete().eq('user_id', user.id);
+      location.reload();
+    }
+
+    // Load data async on startup
+    let S = null;
+    async function initApp() {
+      S = await ls() || mkDef();
+      if (!S.tabs) S.tabs = mkDef().tabs;
+      loadTheme();
+      // rest of your existing init code:
+      if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
+      krwFmt = S.settings.krwFmt || 'short';
+      renderSidebar();
+      syncPrivacyUI();
+      renderOverview();
+      autoSyncFX();
+      setInterval(autoSyncFX, 15 * 60 * 1000);
+      updateSyncTimeDisplay();
+      setInterval(updateSyncTimeDisplay, 60000);
+    }
     function mkDef() {
       return {
         tabs: [
@@ -3085,39 +3221,12 @@
           { id: 'life', name: 'Life', icon: 'layout', archived: false },
           { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
         ],
-        accounts: [
-          { id: 1, name: 'BOFA', type: 'checking', balance: 814.99, currency: 'USD' },
-          { id: 2, name: '하나은행', type: 'checking', balance: 3663.56, currency: 'USD' },
-          { id: 3, name: '하나 청약계좌', type: 'subscription', balance: 333.59, currency: 'USD' },
-          { id: 4, name: 'USFR (Fidelity)', type: 'savings', balance: 6721.07, currency: 'USD' },
-          { id: 5, name: 'Cash', type: 'checking', balance: 300.00, currency: 'USD' },
-          { id: 6, name: 'Roth IRA', type: 'brokerage-roth', balance: 35646.24, currency: 'USD' },
-          { id: 7, name: 'Taxable', type: 'brokerage-taxable', balance: 75469.01, currency: 'USD' },
-          { id: 8, name: '한국 연금보험', type: 'pension', balance: 5839.42, currency: 'USD' },
-        ],
-        funds: [
-          { id: 1, ticker: 'VOO', name: 'S&P 500', acct: 'TAXABLE', value: 54384.57, rothSplit: 0, targetPct: 48.94, retPct: 10.5 },
-          { id: 2, ticker: 'AVUV', name: 'US Small-Cap Value', acct: 'ROTH', value: 20121.55, rothSplit: 100, targetPct: 18.11, retPct: 11.5 },
-          { id: 3, ticker: 'VXUS', name: 'Total Intl Stock', acct: 'BOTH', value: 29558.55, rothSplit: 40, targetPct: 26.60, retPct: 7.5 },
-          { id: 4, ticker: 'EWY', name: 'KOSPI', acct: 'TAXABLE', value: 4903.72, rothSplit: 0, targetPct: 4.41, retPct: 8.0 },
-          { id: 5, ticker: 'FBTC', name: 'Bitcoin ETF', acct: 'ROTH', value: 2142.92, rothSplit: 100, targetPct: 1.93, retPct: 20.0 },
-        ],
-        goals: [
-          { id: 1, name: 'FIRE', cat: 'fire', amount: 3000000, year: 2050, type: 'savings', notes: '' },
-          { id: 2, name: 'Emergency fund', cat: 'emergency', amount: 25000, year: 2027, type: 'savings', notes: '3-6 months expenses' },
-          { id: 3, name: 'Home purchase', cat: 'home', amount: 200000, year: 2032, type: 'expense', notes: 'Down payment' },
-          { id: 4, name: '$500K milestone', cat: 'milestone', amount: 500000, year: 2035, type: 'savings', notes: '' },
-          { id: 5, name: 'Wedding', cat: 'wedding', amount: 30000, year: 2029, type: 'expense', notes: '' },
-          { id: 6, name: 'Having kids', cat: 'kids', amount: 50000, year: 2031, type: 'expense', notes: 'First year costs' },
-        ],
-        snapshots: [
-          { date: '2025-04-19', nw: 61477, contributed: 0, note: 'Starting snapshot' },
-          { date: '2025-07-22', nw: 78280, contributed: 10000, note: '' },
-          { date: '2025-11-14', nw: 101500, contributed: 20000, note: '' },
-          { date: '2025-12-25', nw: 109471, contributed: 30000, note: '' },
-        ],
+        accounts: [],
+        funds: [],
+        goals: [],
+        snapshots: [],
         stressEvents: [],
-        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 40000, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short', privacy: { global: false, dashboard: false, nw: false } },
+        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 0, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short', privacy: { global: false, dashboard: false, nw: false } },
         widgetVis: { metrics: true, history: true, breakdown: true, goals: true },
         editAcctId: null, editFundId: null, editGoalId: null,
         ssCols: ['Age', 'Year', 'NW', 'Income KR', 'Income US', 'Spouse', 'Expenses', 'Housing', 'Kids', 'Note'],
@@ -3128,35 +3237,12 @@
 
     function mkSS() {
       return [
-        ['24', '2025', '128787', '33165', '24000', '0', '10200', '2184', '', ''],
-        ['25', '2026', '=C2*(1+0.096)+(E3+F3-G3-H3)', '0', '85000', '0', '26400', '18000', '', ''],
-        ['26', '2027', '=C3*(1+0.096)+(E4+F4-G4-H4)', '0', '86700', '0', '26400', '19200', '', ''],
-        ['27', '2028', '=C4*(1+0.096)+(E5+F5-G5-H5)', '0', '88434', '0', '26400', '20400', '', ''],
-        ['28', '2029', '=C5*(1+0.096)+(E6+F6-G6-H6)', '0', '90203', '0', '26400', '20400', '', ''],
-        ['29', '2030', '=C6*(1+0.096)+(E7+F7-G7-H7)', '0', '92007', '0', '26400', '20400', '', ''],
-        ['30', '2031', '=C7*(1+0.096)+(E8+F8-G8-H8)', '0', '93847', '0', '26400', '20400', '', ''],
-        ['31', '2032', '=C8*(1+0.096)+(E9+F9-G9-H9)', '0', '95724', '95724', '35000', '48000', '', ''],
-        ['32', '2033', '=C9*(1+0.096)+(E10+F10-G10-H10)', '0', '97638', '97638', '35000', '48000', '', ''],
-        ['33', '2034', '=C10*(1+0.096)+(E11+F11-G11-H11)', '0', '99591', '99591', '35000', '48000', '0', ''],
-        ['34', '2035', '=C11*(1+0.096)+(E12+F12-G12-H12)', '0', '101583', '101583', '35000', '48000', '1', ''],
-        ['35', '2036', '=C12*(1+0.096)+(E13+F13-G13-H13)', '0', '103615', '103615', '35000', '48000', '2', ''],
-        ['36', '2037', '=C13*(1+0.096)+(E14+F14-G14-H14)', '0', '105687', '105687', '66240', '1000000', '3', '2M house 50% loan'],
-        ['37', '2038', '=C14*(1+0.096)+(E15+F15-G15-H15)', '0', '107801', '107801', '66240', '50000', '4', ''],
-        ['40', '2041', '=C15*(1+0.096)*3+(E16+F16-G16-H16)*3', '0', '114399', '114399', '66240', '50000', '7', ''],
-        ['45', '2046', '=C16*(1+0.096)*5+(E17+F17-G17-H17)*5', '0', '126306', '126306', '66240', '50000', '12', ''],
-        ['50', '2051', '=C17*(1+0.096)*5+(E18+F18-G18-H18)*5', '0', '139452', '139452', '66240', '0', '17', ''],
-        ['55', '2056', '=C18*(1+0.096)*5+(E19+F19-G19-H19)*5', '0', '153966', '153966', '66240', '0', '22', ''],
-        ['60', '2061', '=C19*(1+0.096)*5+(E20+F20-G20-H20)*5', '0', '0', '0', '34031', '34031', '', 'Retired'],
-        ['65', '2066', '=C20*(1+0.096)*5', '0', '0', '0', '34031', '34031', '', ''],
-        ['70', '2071', '=C21*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
-        ['75', '2076', '=C22*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
-        ['80', '2081', '=C23*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
+        ['', '', '', '', '', '', '', '', '', ''],
       ];
     }
 
     // ══════════════════════════════════════════════════════════════
     // CURRENCY
-    let dispCur = 'USD', krwFmt = 'short';
     function setCur(c, el) { dispCur = c; S.settings.currency = c; document.querySelectorAll('#cur-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = c === 'KRW' ? 'flex' : 'none'; ps(); reRender(); }
     function setKrwFmt(f, el) { krwFmt = f; S.settings.krwFmt = f; document.querySelectorAll('#krw-fmt-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); ps(); reRender(); }
     function getFX() { return parseFloat(S.settings.fx || 1370); }
@@ -3234,6 +3320,19 @@
           ch.update();
         }
       });
+    }
+
+    function toggleSettingsSection(id) {
+      const body = document.getElementById(id + '-body');
+      const icon = document.getElementById(id + '-icon');
+      if (!body || !icon) return;
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.style.transform = 'rotate(0deg)';
+      } else {
+        body.style.display = 'none';
+        icon.style.transform = 'rotate(-90deg)';
+      }
     }
 
     function toggleGlobal() {
@@ -4489,8 +4588,7 @@
       syncAllInputsFromDOM();
     }
 
-    // load saved theme on boot
-    loadTheme();
+    // load saved theme on boot — moved into initApp()
 
 
     function delSnap(i) { S.snapshots.splice(i, 1); ps(); renderSettings(); }
@@ -4609,9 +4707,6 @@
     // Stocks:   Yahoo Finance unofficial quote endpoint (no key,
     //           15-min delayed, best free option for a local file)
     // ══════════════════════════════════════════════════════════════
-
-    let syncInProgress = false;
-    let lastSyncTime = null;
 
     // Update the inline portfolio sync status (replaces the old global bar)
     function showPriceBar(msg, isError = false) {
@@ -5065,23 +5160,8 @@
       if (btn) btn.disabled = false;
     }
 
-    // INIT
-    // nav-date removed — date shown via sb-fx-info instead
-    if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
-    krwFmt = S.settings.krwFmt || 'short';
-    renderSidebar();
-    syncPrivacyUI();
-    renderOverview();
-    // Auto-fetch FX on load and every 15 minutes
-    autoSyncFX();
-    setInterval(autoSyncFX, 15 * 60 * 1000);
-
-    // Setup manual sync time display
-    updateSyncTimeDisplay();
-    setInterval(updateSyncTimeDisplay, 60000);
-
-    // Sync is manual — user presses Sync in Portfolio tab
-
+    // Start the app
+    initApp();
 
     // ══════════════════════════════════════════════════════════════
     // RESPONSIVE: SIDEBAR COLLAPSE
@@ -5147,6 +5227,7 @@
 
 
   </script>
+  </div>
 </body>
 
 </html>
