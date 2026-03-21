@@ -134,24 +134,7 @@
 
     body {
       min-height: 100vh;
-      display: flex;
-      flex-direction: column
-    }
-
-    #login-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh
-    }
-
-    #app-screen {
-      display: flex;
-      flex: 1;
-      min-height: 100vh;
-      width: 100%
+      display: flex
     }
 
     button {
@@ -2156,7 +2139,7 @@
   db.auth.onAuthStateChange((event, session) => {
   if (session?.user) {
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'block';
     initApp(); // loads their data from Supabase
   } else {
     document.getElementById('login-screen').style.display = 'block';
@@ -2167,7 +2150,7 @@
 </head>
 
 <body>
-  <div id="login-screen" style="display:none;">
+  <div id="login-screen" style="display:none; text-align:center; padding:100px;">
     <h1>Moola</h1>
     <p>Sign in to access your finances</p>
     <button onclick="signInWithGoogle()">Sign in with Google</button>
@@ -3157,13 +3140,11 @@
     let _saveTimer = null;
 
     async function ps() {
-      // Still save to localStorage as instant cache (keeps UI fast)
-      try { localStorage.setItem('moola_v4', JSON.stringify(S)); } catch(e) {}
       // Debounce Supabase writes — wait 800ms after last change before saving
       clearTimeout(_saveTimer);
       _saveTimer = setTimeout(async () => {
         const { data: { user } } = await db.auth.getUser();
-        if (!user) return; // not logged in, skip
+        if (!user) return;
         await db.from('user_data').upsert({
           user_id: user.id,
           data: S,
@@ -3173,7 +3154,7 @@
     }
 
     async function ls() {
-      // Try Supabase first
+      // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
       try {
         const { data: { user } } = await db.auth.getUser();
         if (user) {
@@ -3181,8 +3162,7 @@
           if (data?.data) return data.data;
         }
       } catch(e) {}
-      // Fall back to localStorage
-      try { const s = localStorage.getItem('moola_v4'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+      return null;
     }
 
     async function resetData() {
@@ -3195,6 +3175,8 @@
     // Load data async on startup
     let S = null;
     async function initApp() {
+      // Always clear localStorage on login to prevent stale data from a previous user
+      localStorage.removeItem('moola_v4');
       S = await ls() || mkDef();
       if (!S.tabs) S.tabs = mkDef().tabs;
       loadTheme();
@@ -3221,12 +3203,39 @@
           { id: 'life', name: 'Life', icon: 'layout', archived: false },
           { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
         ],
-        accounts: [],
-        funds: [],
-        goals: [],
-        snapshots: [],
+        accounts: [
+          { id: 1, name: 'BOFA', type: 'checking', balance: 814.99, currency: 'USD' },
+          { id: 2, name: '하나은행', type: 'checking', balance: 3663.56, currency: 'USD' },
+          { id: 3, name: '하나 청약계좌', type: 'subscription', balance: 333.59, currency: 'USD' },
+          { id: 4, name: 'USFR (Fidelity)', type: 'savings', balance: 6721.07, currency: 'USD' },
+          { id: 5, name: 'Cash', type: 'checking', balance: 300.00, currency: 'USD' },
+          { id: 6, name: 'Roth IRA', type: 'brokerage-roth', balance: 35646.24, currency: 'USD' },
+          { id: 7, name: 'Taxable', type: 'brokerage-taxable', balance: 75469.01, currency: 'USD' },
+          { id: 8, name: '한국 연금보험', type: 'pension', balance: 5839.42, currency: 'USD' },
+        ],
+        funds: [
+          { id: 1, ticker: 'VOO', name: 'S&P 500', acct: 'TAXABLE', value: 54384.57, rothSplit: 0, targetPct: 48.94, retPct: 10.5 },
+          { id: 2, ticker: 'AVUV', name: 'US Small-Cap Value', acct: 'ROTH', value: 20121.55, rothSplit: 100, targetPct: 18.11, retPct: 11.5 },
+          { id: 3, ticker: 'VXUS', name: 'Total Intl Stock', acct: 'BOTH', value: 29558.55, rothSplit: 40, targetPct: 26.60, retPct: 7.5 },
+          { id: 4, ticker: 'EWY', name: 'KOSPI', acct: 'TAXABLE', value: 4903.72, rothSplit: 0, targetPct: 4.41, retPct: 8.0 },
+          { id: 5, ticker: 'FBTC', name: 'Bitcoin ETF', acct: 'ROTH', value: 2142.92, rothSplit: 100, targetPct: 1.93, retPct: 20.0 },
+        ],
+        goals: [
+          { id: 1, name: 'FIRE', cat: 'fire', amount: 3000000, year: 2050, type: 'savings', notes: '' },
+          { id: 2, name: 'Emergency fund', cat: 'emergency', amount: 25000, year: 2027, type: 'savings', notes: '3-6 months expenses' },
+          { id: 3, name: 'Home purchase', cat: 'home', amount: 200000, year: 2032, type: 'expense', notes: 'Down payment' },
+          { id: 4, name: '$500K milestone', cat: 'milestone', amount: 500000, year: 2035, type: 'savings', notes: '' },
+          { id: 5, name: 'Wedding', cat: 'wedding', amount: 30000, year: 2029, type: 'expense', notes: '' },
+          { id: 6, name: 'Having kids', cat: 'kids', amount: 50000, year: 2031, type: 'expense', notes: 'First year costs' },
+        ],
+        snapshots: [
+          { date: '2025-04-19', nw: 61477, contributed: 0, note: 'Starting snapshot' },
+          { date: '2025-07-22', nw: 78280, contributed: 10000, note: '' },
+          { date: '2025-11-14', nw: 101500, contributed: 20000, note: '' },
+          { date: '2025-12-25', nw: 109471, contributed: 30000, note: '' },
+        ],
         stressEvents: [],
-        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 0, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short', privacy: { global: false, dashboard: false, nw: false } },
+        settings: { inflation: 3, fx: 1370, usfr: 5.2, annualContrib: 40000, contribGrowth: 0, horizon: 20, currency: 'USD', krwFmt: 'short', privacy: { global: false, dashboard: false, nw: false } },
         widgetVis: { metrics: true, history: true, breakdown: true, goals: true },
         editAcctId: null, editFundId: null, editGoalId: null,
         ssCols: ['Age', 'Year', 'NW', 'Income KR', 'Income US', 'Spouse', 'Expenses', 'Housing', 'Kids', 'Note'],
@@ -3237,7 +3246,29 @@
 
     function mkSS() {
       return [
-        ['', '', '', '', '', '', '', '', '', ''],
+        ['24', '2025', '128787', '33165', '24000', '0', '10200', '2184', '', ''],
+        ['25', '2026', '=C2*(1+0.096)+(E3+F3-G3-H3)', '0', '85000', '0', '26400', '18000', '', ''],
+        ['26', '2027', '=C3*(1+0.096)+(E4+F4-G4-H4)', '0', '86700', '0', '26400', '19200', '', ''],
+        ['27', '2028', '=C4*(1+0.096)+(E5+F5-G5-H5)', '0', '88434', '0', '26400', '20400', '', ''],
+        ['28', '2029', '=C5*(1+0.096)+(E6+F6-G6-H6)', '0', '90203', '0', '26400', '20400', '', ''],
+        ['29', '2030', '=C6*(1+0.096)+(E7+F7-G7-H7)', '0', '92007', '0', '26400', '20400', '', ''],
+        ['30', '2031', '=C7*(1+0.096)+(E8+F8-G8-H8)', '0', '93847', '0', '26400', '20400', '', ''],
+        ['31', '2032', '=C8*(1+0.096)+(E9+F9-G9-H9)', '0', '95724', '95724', '35000', '48000', '', ''],
+        ['32', '2033', '=C9*(1+0.096)+(E10+F10-G10-H10)', '0', '97638', '97638', '35000', '48000', '', ''],
+        ['33', '2034', '=C10*(1+0.096)+(E11+F11-G11-H11)', '0', '99591', '99591', '35000', '48000', '0', ''],
+        ['34', '2035', '=C11*(1+0.096)+(E12+F12-G12-H12)', '0', '101583', '101583', '35000', '48000', '1', ''],
+        ['35', '2036', '=C12*(1+0.096)+(E13+F13-G13-H13)', '0', '103615', '103615', '35000', '48000', '2', ''],
+        ['36', '2037', '=C13*(1+0.096)+(E14+F14-G14-H14)', '0', '105687', '105687', '66240', '1000000', '3', '2M house 50% loan'],
+        ['37', '2038', '=C14*(1+0.096)+(E15+F15-G15-H15)', '0', '107801', '107801', '66240', '50000', '4', ''],
+        ['40', '2041', '=C15*(1+0.096)*3+(E16+F16-G16-H16)*3', '0', '114399', '114399', '66240', '50000', '7', ''],
+        ['45', '2046', '=C16*(1+0.096)*5+(E17+F17-G17-H17)*5', '0', '126306', '126306', '66240', '50000', '12', ''],
+        ['50', '2051', '=C17*(1+0.096)*5+(E18+F18-G18-H18)*5', '0', '139452', '139452', '66240', '0', '17', ''],
+        ['55', '2056', '=C18*(1+0.096)*5+(E19+F19-G19-H19)*5', '0', '153966', '153966', '66240', '0', '22', ''],
+        ['60', '2061', '=C19*(1+0.096)*5+(E20+F20-G20-H20)*5', '0', '0', '0', '34031', '34031', '', 'Retired'],
+        ['65', '2066', '=C20*(1+0.096)*5', '0', '0', '0', '34031', '34031', '', ''],
+        ['70', '2071', '=C21*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
+        ['75', '2076', '=C22*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
+        ['80', '2081', '=C23*(1+0.096)*5', '0', '0', '0', '38750', '38750', '', ''],
       ];
     }
 
