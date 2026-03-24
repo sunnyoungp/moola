@@ -3523,7 +3523,7 @@
     // ACCOUNTS
     function renderAccounts() {
       const t = nwTotal(); document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
-      document.getElementById('cash-tbl').innerHTML = accRows(S.accounts.filter(a => ['checking', 'savings', 'subscription'].includes(a.type)), t);
+      document.getElementById('cash-tbl').innerHTML = accRows(S.accounts.filter(a => ['checking', 'savings', 'subscription', 'other'].includes(a.type)), t);
       document.getElementById('inv-tbl').innerHTML = accRows(S.accounts.filter(a => ['brokerage-taxable', 'brokerage-roth', 'pension'].includes(a.type)), t);
     }
     function accRows(accs, t) { return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${accs.map(a => `<tr><td style="font-weight:500">${a.name}</td><td><span class="tag tb">${TLAB[a.type] || a.type}</span></td><td class="mo">${MT(fmt(a.balance), 'accounts')}</td><td class="mo">${MT(pct((a.balance / t) * 100), 'accounts')}</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button></td></tr>`).join('')}</tbody>`; }
