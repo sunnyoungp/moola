@@ -3175,10 +3175,11 @@
       try {
         const { data: { user } } = await db.auth.getUser();
         if (user) {
-          const { data } = await db.from('user_data').select('data').eq('user_id', user.id).single();
+          const { data, error } = await db.from('user_data').select('data').eq('user_id', user.id).single();
+          if (error) console.error('[moola] ls() fetch error:', error);
           if (data?.data) return data.data;
         }
-      } catch(e) {}
+      } catch(e) { console.error('[moola] ls() exception:', e); }
       return null;
     }
 
@@ -3191,7 +3192,10 @@
 
     // Load data async on startup
     let S = null;
+    let appInitialized = false;
     async function initApp() {
+      if (appInitialized) return;
+      appInitialized = true;
       S = await ls() || mkDef();
       if (!S.tabs) S.tabs = mkDef().tabs;
       loadTheme();
@@ -5174,8 +5178,8 @@ getCurrentUser().then(user => {
       if (btn) btn.disabled = false;
     }
 
-    // Start the app
-    initApp();
+    // Start the app — auth state change handler in the <head> calls initApp()
+    // Do NOT call initApp() here directly — onAuthStateChange is the single entry point
 
     // ══════════════════════════════════════════════════════════════
     // RESPONSIVE: SIDEBAR COLLAPSE
