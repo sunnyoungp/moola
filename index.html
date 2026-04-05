@@ -3547,6 +3547,15 @@
           }
         });
 
+        // Resolve type-name acct strings (e.g. 'brokerage-roth') to actual account IDs
+        // This fixes funds migrated from BOTH when no account was found at migration time
+        S.funds.forEach(f => {
+          if (typeof f.acct === 'string' && f.acct !== '') {
+            const matched = S.accounts.find(a => a.type === f.acct);
+            if (matched) f.acct = matched.id;
+          }
+        });
+
         // Set portAcctToggles defaults: investment accounts default ON
         S.accounts.forEach(a => {
           const atype = S.accountTypes.find(t => t.id === a.type);
@@ -3810,8 +3819,10 @@
           let acct = S.accounts.find(a => String(a.id) === acctId);
           // Legacy fallback for pre-migration ROTH / TAXABLE string values
           if (!acct) {
-            if (acctId === 'ROTH')    acct = S.accounts.find(a => a.type === 'brokerage-roth');
-            if (acctId === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
+            if (acctId === 'ROTH')             acct = S.accounts.find(a => a.type === 'brokerage-roth');
+            if (acctId === 'TAXABLE')          acct = S.accounts.find(a => a.type === 'brokerage-taxable');
+            // Fallback for type-name strings (e.g. 'brokerage-roth') not yet coerced
+            if (!acct) acct = S.accounts.find(a => a.type === acctId);
           }
           if (acct) { acct.balance = Math.round(total * 100) / 100; delete acct.manualOverride; }
         });
