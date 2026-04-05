@@ -3540,21 +3540,48 @@
           console.log('[moola] Migrated', bothFunds.length, 'BOTH fund(s) into', newFunds.length, 'separate entries');
         }
 
-        // Coerce existing fund.acct string IDs to integers (fixes pre-fix saves)
+        // Coerce all legacy string acct values to numeric account IDs
+        const rothAcct  = S.accounts.find(a => a.type === 'brokerage-roth');
+        const taxAcct   = S.accounts.find(a => a.type === 'brokerage-taxable');
         S.funds.forEach(f => {
+          if (f.acct === 'ROTH'    && rothAcct) { f.acct = rothAcct.id; return; }
+          if (f.acct === 'TAXABLE' && taxAcct)  { f.acct = taxAcct.id;  return; }
+          // Numeric strings e.g. "5" → 5
           if (typeof f.acct === 'string' && f.acct !== '' && !isNaN(parseInt(f.acct))) {
-            f.acct = parseInt(f.acct);
+            f.acct = parseInt(f.acct); return;
           }
-        });
-
-        // Resolve type-name acct strings (e.g. 'brokerage-roth') to actual account IDs
-        // This fixes funds migrated from BOTH when no account was found at migration time
-        S.funds.forEach(f => {
+          // Type-name strings e.g. 'brokerage-roth' → account id
           if (typeof f.acct === 'string' && f.acct !== '') {
             const matched = S.accounts.find(a => a.type === f.acct);
             if (matched) f.acct = matched.id;
           }
         });
+
+        // De-duplicate funds: same ticker + same acct = accidental duplicate.
+        // Keep the entry that has shares (live-synced); otherwise keep the higher value.
+        const seen = new Map();
+        const toRemove = new Set();
+        S.funds.forEach((f, i) => {
+          const key = `${(f.ticker||'').toUpperCase()}|${f.acct}`;
+          if (!seen.has(key)) { seen.set(key, i); return; }
+          const prevIdx = seen.get(key);
+          const prev = S.funds[prevIdx];
+          const curHasShares  = f.shares > 0;
+          const prevHasShares = prev.shares > 0;
+          if (curHasShares && !prevHasShares) {
+            toRemove.add(prevIdx); seen.set(key, i);
+          } else if (!curHasShares && prevHasShares) {
+            toRemove.add(i);
+          } else {
+            // Both or neither have shares — keep higher value
+            if ((f.value || 0) > (prev.value || 0)) { toRemove.add(prevIdx); seen.set(key, i); }
+            else toRemove.add(i);
+          }
+        });
+        if (toRemove.size > 0) {
+          S.funds = S.funds.filter((_, i) => !toRemove.has(i));
+          console.log('[moola] Removed', toRemove.size, 'duplicate fund(s)');
+        }
 
         // Set portAcctToggles defaults: investment accounts default ON
         S.accounts.forEach(a => {
