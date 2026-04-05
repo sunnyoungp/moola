@@ -2978,7 +2978,7 @@
             <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span>
             <input class="inp inpm" style="padding-left:24px" id="sn-nw" type="number" step="0.01" placeholder="0.00">
           </div>
-          <button class="btn bsm" style="margin-top:6px;align-self:flex-start" onclick="snapUseTodayNW()">Use current NW (${todayNW})</button>
+          <button class="btn bsm" style="margin-top:6px;align-self:flex-start" id="sn-use-today-btn" onclick="snapUseTodayNW()">Use current NW</button>
         </div>
         <div class="fr">
           <label>Contributions since previous snapshot ($) <span style="font-size:10px;color:var(--ink3);font-weight:400">— used for gains calculation</span></label>
@@ -3397,6 +3397,13 @@
           console.log('[moola] Migrated', bothFunds.length, 'BOTH fund(s) into', newFunds.length, 'separate entries');
         }
 
+        // Coerce existing fund.acct string IDs to integers (fixes pre-fix saves)
+        S.funds.forEach(f => {
+          if (typeof f.acct === 'string' && f.acct !== '' && !isNaN(parseInt(f.acct))) {
+            f.acct = parseInt(f.acct);
+          }
+        });
+
         // Set portAcctToggles defaults: investment accounts default ON
         S.accounts.forEach(a => {
           const atype = S.accountTypes.find(t => t.id === a.type);
@@ -3629,20 +3636,25 @@
         closeMobTray();
       }
       function syncAccountsFromPortfolio() {
-        // Compute account balances from fund values — group by account ID
+        // Group fund values by acct — always String() both sides to avoid number/string mismatch
         const acctTotals = {};
         S.funds.forEach(f => {
-          const acctId = f.acct;
-          acctTotals[acctId] = (acctTotals[acctId] || 0) + f.value;
+          const key = String(f.acct);
+          acctTotals[key] = (acctTotals[key] || 0) + (f.value || 0);
         });
-        // Update matching accounts by ID (numeric) or by legacy type string
+
+        // Zero every investment account first — accounts with no linked funds go to $0
+        S.accounts.forEach(a => {
+          if (isInvestmentAcct(a)) a.balance = 0;
+        });
+
+        // Apply totals — match by String(account.id)
         Object.entries(acctTotals).forEach(([acctId, total]) => {
-          const numId = parseInt(acctId);
-          let acct = isNaN(numId) ? null : S.accounts.find(a => a.id === numId);
-          // Legacy fallback: match by type string
+          let acct = S.accounts.find(a => String(a.id) === acctId);
+          // Legacy fallback for pre-migration ROTH / TAXABLE string values
           if (!acct) {
-            if (acctId === 'ROTH') acct = S.accounts.find(a => a.type === 'brokerage-roth');
-            else if (acctId === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
+            if (acctId === 'ROTH')    acct = S.accounts.find(a => a.type === 'brokerage-roth');
+            if (acctId === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
           }
           if (acct) acct.balance = Math.round(total * 100) / 100;
         });
@@ -3687,29 +3699,25 @@
         const gain = nwTotal() - (snaps[0]?.nw || nwTotal()) - tc;
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
-        if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Add snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
-        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add snapshot</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + snaps.slice(-5).map((s,i,arr) => { const realIdx = snaps.length - arr.length + i; const dateStr = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + realIdx + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + dateStr + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:160px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
+        if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
+        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:160px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
         if (vis.goals) h += `<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
         document.getElementById('ov-widgets').innerHTML = h;
         if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
         if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const allAccts = S.accounts.filter(a => a.balance > 0); const d = allAccts.map((a,i) => ({ l: a.name, v: a.balance, c: tc[i % tc.length] })).filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } }); }
         if (vis.goals) { const el = document.getElementById('ov-goals'); if (el) { const t = nwTotal(); el.innerHTML = S.goals.slice(0, 5).map(g => { const f = Math.min(100, (t / g.amount) * 100); const yl = g.year - NY; return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`; }).join(''); } }
       }
-      // ── Snapshot modal ─────────────────────────────────────────────
+      // ── Snapshot modal ─────────────────────────────────────────────────
       let editSnapIdx = null;
       let snapDragIdx = null;
 
       function openSnapModal(idx) {
-        editSnapIdx = idx;
+        editSnapIdx = (idx !== null && idx !== undefined) ? idx : null;
         const delBtn = document.getElementById('m-snap-del-btn');
-        const todayNWVal = fmt(nwTotal());
-
-        // Update the "Use current NW" button label dynamically
-        const useBtn = document.querySelector('#m-snap .btn[onclick="snapUseTodayNW()"]');
-        if (useBtn) useBtn.textContent = `Use current NW (${todayNWVal})`;
-
-        if (idx !== null && idx !== undefined) {
-          const s = S.snapshots[idx];
+        const useTodayBtn = document.getElementById('sn-use-today-btn');
+        if (useTodayBtn) useTodayBtn.textContent = 'Use current NW (' + fmt(nwTotal()) + ')';
+        if (editSnapIdx !== null) {
+          const s = S.snapshots[editSnapIdx];
           document.getElementById('m-snap-title').textContent = 'Edit snapshot';
           document.getElementById('sn-date').value = s.date;
           document.getElementById('sn-nw').value = s.nw;
@@ -3738,41 +3746,1514 @@
         const contributed = parseFloat(document.getElementById('sn-contrib').value) || 0;
         const note = document.getElementById('sn-note').value.trim();
         if (!date || isNaN(nw)) return;
-
         const snap = { date, nw, contributed, note };
-
-        if (editSnapIdx !== null && editSnapIdx !== undefined) {
+        if (editSnapIdx !== null) {
           S.snapshots[editSnapIdx] = snap;
         } else {
           S.snapshots.push(snap);
-          // Re-sort by date ascending after insert
           S.snapshots.sort((a, b) => a.date.localeCompare(b.date));
         }
         ps();
         closeModal('m-snap');
         renderOverview();
-        // If settings is open, refresh snap list too
-        const settingsOpen = document.getElementById('tab-settings')?.classList.contains('on');
-        if (settingsOpen) renderSettings();
+        if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
       }
 
       function delSnapFromModal() {
-        if (editSnapIdx === null || editSnapIdx === undefined) return;
+        if (editSnapIdx === null) return;
         if (!confirm('Delete this snapshot?')) return;
         S.snapshots.splice(editSnapIdx, 1);
         ps();
         closeModal('m-snap');
         renderOverview();
-        const settingsOpen = document.getElementById('tab-settings')?.classList.contains('on');
-        if (settingsOpen) renderSettings();
+        if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
       }
+
+      function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--forest-mid)' : 'var(--line)'};background:${v ? 'var(--fl)' : '#fff'};color:${v ? 'var(--forest-mid)' : 'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
+      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fl)' : '#fff'; btn.style.borderColor = S.widgetVis[k] ? 'var(--forest-mid)' : 'var(--line)'; btn.style.color = S.widgetVis[k] ? 'var(--forest-mid)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(); }
+
+      // ══════════════════════════════════════════════════════════════
+      // ACCOUNTS
+      function renderAccounts() {
+        const t = nwTotal();
+        document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
+        const wrap = document.getElementById('acct-sections-wrap');
+        if (!wrap) return;
+
+        // Group accounts by category
+        let html = '';
+        (S.accountCategories || []).forEach(cat => {
+          const catAccts = S.accounts.filter(a => {
+            const atype = S.accountTypes?.find(t => t.id === a.type);
+            return atype?.categoryId === cat.id;
+          });
+          html += `<div class="card mb-2">
+            <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <span>${cat.name}</span>
+              <span style="font-size:11px;color:var(--ink3)">${MT(fmt(catAccts.reduce((s,a)=>s+a.balance,0)), 'accounts')}</span>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+              <table class="tbl">${accRows(catAccts, t)}</table>
+            </div>
+          </div>`;
+        });
+        // Catch any accounts with unknown types
+        const knownTypeIds = (S.accountTypes || []).map(t => t.id);
+        const orphans = S.accounts.filter(a => !knownTypeIds.includes(a.type));
+        if (orphans.length) {
+          html += `<div class="card mb-2">
+            <div class="sec">Other</div>
+            <div style="overflow-x:auto"><table class="tbl">${accRows(orphans, t)}</table></div>
+          </div>`;
+        }
+        wrap.innerHTML = html;
+      }
+
+      function accRows(accs, t) {
+        return `<thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>% NW</th><th></th></tr></thead><tbody>${
+          accs.map(a => `<tr>
+            <td style="font-weight:500">${a.name}</td>
+            <td><span class="tag tb">${getAcctTypeName(a.type)}</span></td>
+            <td class="mo">${MT(fmt(a.balance), 'accounts')}</td>
+            <td class="mo">${MT(pct((a.balance / t) * 100), 'accounts')}</td>
+            <td style="text-align:right">
+              <button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button>
+              <button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button>
+            </td>
+          </tr>`).join('')
+        }</tbody>`;
+      }
+
+      function populateAcctTypeSelect(selectedType) {
+        const sel = document.getElementById('a-type');
+        if (!sel) return;
+        sel.innerHTML = (S.accountTypes || []).map(t =>
+          `<option value="${t.id}" ${t.id === selectedType ? 'selected' : ''}>${t.name}</option>`
+        ).join('');
+        updateAcctTypeCatHint();
+      }
+
+      function updateAcctTypeCatHint() {
+        const sel = document.getElementById('a-type');
+        const hint = document.getElementById('a-type-cat-hint');
+        if (!sel || !hint) return;
+        const atype = S.accountTypes?.find(t => t.id === sel.value);
+        const cat = atype ? S.accountCategories?.find(c => c.id === atype.categoryId) : null;
+        hint.textContent = cat ? `Category: ${cat.name}` : '';
+      }
+
+      function openAcctModal(id) {
+        S.editAcctId = id;
+        if (id) {
+          const a = S.accounts.find(x => x.id === id);
+          document.getElementById('m-acct-title').textContent = 'Edit account';
+          document.getElementById('a-name').value = a.name;
+          document.getElementById('a-bal').value = a.balance;
+          document.getElementById('a-cur').value = a.currency || 'USD';
+          document.getElementById('a-sym').textContent = a.currency === 'KRW' ? '₩' : '$';
+          populateAcctTypeSelect(a.type);
+        } else {
+          document.getElementById('m-acct-title').textContent = 'Add account';
+          ['a-name', 'a-bal'].forEach(i => document.getElementById(i).value = '');
+          document.getElementById('a-cur').value = 'USD';
+          document.getElementById('a-sym').textContent = '$';
+          populateAcctTypeSelect(S.accountTypes?.[0]?.id || 'checking');
+        }
+        openModal('m-acct');
+      }
+
+      function saveAcct() {
+        const name = document.getElementById('a-name').value.trim();
+        const type = document.getElementById('a-type').value;
+        let bal = parseFloat(document.getElementById('a-bal').value) || 0;
+        const cur = document.getElementById('a-cur').value;
+        if (cur === 'KRW') bal = bal / getFX();
+        if (!name) return;
+        if (S.editAcctId) {
+          const prev = S.accounts.find(x => x.id === S.editAcctId);
+          Object.assign(prev, { name, type, balance: bal, currency: cur });
+        } else {
+          const newAcct = { id: nextId(S.accounts), name, type, balance: bal, currency: cur };
+          S.accounts.push(newAcct);
+          // Default new investment accounts to ON in portfolio
+          if (isInvestmentAcct(newAcct)) S.portAcctToggles[newAcct.id] = true;
+        }
+        ps(); closeModal('m-acct'); renderAccounts();
+      }
+
+      function delAcct(id) {
+        if (!confirm('Delete account? Funds linked to this account will be unlinked.')) return;
+        S.accounts = S.accounts.filter(x => x.id !== id);
+        delete S.portAcctToggles[id];
+        ps(); renderAccounts();
+      }
+
+      // ── Account Types Manager ──────────────────────────────────────
+      function openAcctTypesModal() {
+        renderAcctTypesList();
+        openModal('m-acct-types');
+      }
+
+      function renderAcctTypesList() {
+        const el = document.getElementById('acct-types-cats-list');
+        if (!el) return;
+        el.innerHTML = (S.accountCategories || []).map(cat => {
+          const types = (S.accountTypes || []).filter(t => t.categoryId === cat.id);
+          return `<div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <input class="inp" style="width:180px;font-size:12px;font-weight:600;padding:4px 8px"
+                value="${cat.name}"
+                onchange="renameAcctCategory('${cat.id}', this.value)">
+              <label style="font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:5px;cursor:pointer">
+                <input type="checkbox" ${cat.isInvestment ? 'checked' : ''}
+                  onchange="setAcctCategoryInvestment('${cat.id}', this.checked)">
+                Investment type
+              </label>
+              <button class="btn bsm bgh" style="color:var(--rose);margin-left:auto" onclick="delAcctCategory('${cat.id}')">Delete category</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-left:12px">
+              ${types.map(type => `
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input class="inp" style="flex:1;font-size:12px;padding:4px 8px"
+                    value="${type.name}"
+                    onchange="renameAcctType('${type.id}', this.value)">
+                  <button class="btn bsm bgh" style="color:var(--rose);flex-shrink:0" onclick="delAcctType('${type.id}')">✕</button>
+                </div>`).join('')}
+              <button class="btn bsm" style="margin-top:4px;align-self:flex-start" onclick="addAcctType('${cat.id}')">
+                + Add type
+              </button>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      function addAcctCategory() {
+        const name = prompt('Category name:');
+        if (!name) return;
+        const isInv = confirm('Is this an Investment category? (OK = Investment, Cancel = Cash/Savings)');
+        const id = 'cat_' + Date.now();
+        S.accountCategories.push({ id, name, isInvestment: isInv });
+        ps(); renderAcctTypesList();
+      }
+
+      function renameAcctCategory(id, name) {
+        const cat = S.accountCategories?.find(c => c.id === id);
+        if (cat && name.trim()) { cat.name = name.trim(); ps(); }
+      }
+
+      function setAcctCategoryInvestment(id, val) {
+        const cat = S.accountCategories?.find(c => c.id === id);
+        if (cat) { cat.isInvestment = val; ps(); }
+      }
+
+      function delAcctCategory(id) {
+        const types = S.accountTypes?.filter(t => t.categoryId === id) || [];
+        if (types.length > 0) {
+          if (!confirm(`This category has ${types.length} type(s). Delete category and all its types?`)) return;
+          types.forEach(t => delAcctTypeById(t.id, false));
+        }
+        S.accountCategories = S.accountCategories.filter(c => c.id !== id);
+        ps(); renderAcctTypesList();
+      }
+
+      function addAcctType(categoryId) {
+        const name = prompt('Type name (e.g. "Mirae Asset", "IRP"):');
+        if (!name) return;
+        const id = 'type_' + Date.now();
+        S.accountTypes.push({ id, name: name.trim(), categoryId });
+        ps(); renderAcctTypesList();
+      }
+
+      function renameAcctType(id, name) {
+        const t = S.accountTypes?.find(x => x.id === id);
+        if (t && name.trim()) { t.name = name.trim(); ps(); }
+      }
+
+      function delAcctType(id) { delAcctTypeById(id, true); }
+      function delAcctTypeById(id, withConfirm) {
+        const using = S.accounts.filter(a => a.type === id);
+        if (using.length > 0) {
+          if (withConfirm && !confirm(`${using.length} account(s) use this type. They will be set to "other". Continue?`)) return;
+          using.forEach(a => a.type = 'other-cash');
+        }
+        S.accountTypes = (S.accountTypes || []).filter(t => t.id !== id);
+        ps(); renderAcctTypesList();
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // PORTFOLIO
+      let portView = 'all';
+
+      function getToggledAcctIds() {
+        // Return IDs of investment accounts that are toggled ON
+        return S.accounts
+          .filter(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false)
+          .map(a => String(a.id));
+      }
+
+      function renderPortAcctToggles() {
+        const wrap = document.getElementById('port-acct-toggles');
+        if (!wrap) return;
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        if (invAccts.length === 0) { wrap.innerHTML = ''; return; }
+
+        const togglesHtml = invAccts.map(a => {
+          const on = S.portAcctToggles[a.id] !== false;
+          return `<button onclick="togglePortAcct(${a.id}, this)"
+            style="padding:5px 12px;border-radius:20px;border:1px solid ${on ? 'var(--fm)' : 'var(--line)'};
+            background:${on ? 'var(--fll)' : 'var(--surface)'};color:${on ? 'var(--f)' : 'var(--ink3)'};
+            font-size:12px;font-weight:600;cursor:pointer;transition:all .12s"
+            data-acctid="${a.id}">
+            ${a.name}
+          </button>`;
+        }).join('');
+
+        wrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);white-space:nowrap">Show accounts:</span>
+          ${togglesHtml}
+          <button onclick="toggleAllPortAccts(true)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">All</button>
+          <button onclick="toggleAllPortAccts(false)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">None</button>
+        </div>`;
+      }
+
+      function togglePortAcct(acctId, btn) {
+        S.portAcctToggles[acctId] = S.portAcctToggles[acctId] === false ? true : false;
+        ps(); renderPortAcctToggles(); renderPortfolio(); renderRebalAcctTabs();
+      }
+
+      function toggleAllPortAccts(on) {
+        S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.portAcctToggles[a.id] = on);
+        ps(); renderPortAcctToggles(); renderPortfolio(); renderRebalAcctTabs();
+      }
+
+      function getFunds(filterAcctId) {
+        // filterAcctId: 'all' = use portAcctToggles, or a specific account ID string
+        let funds;
+        if (filterAcctId === 'all') {
+          const toggledIds = getToggledAcctIds();
+          funds = S.funds.filter(f => toggledIds.includes(String(f.acct)));
+        } else {
+          funds = S.funds.filter(f => String(f.acct) === String(filterAcctId));
+        }
+        return funds;
+      }
+      function renderPortfolio() {
+        renderPortAcctToggles();
+        const funds = getFunds('all'); const tot = funds.reduce((s, f) => s + f.value, 0);
+        document.getElementById('port-total').innerHTML = MT(fmt(tot), 'portfolio');
+        // Only include funds with a target for drift table (hands-off = targetPct 0)
+        const rebalFunds = funds.filter(f => f.targetPct > 0);
+        const handOffFunds = funds.filter(f => !f.targetPct || f.targetPct === 0);
+        const tgtSum = rebalFunds.reduce((s, f) => s + f.targetPct, 0) || 100;
+        const rebalTot = rebalFunds.reduce((s, f) => s + f.value, 0);
+        // Build drift table (rebalanced funds only)
+        let driftRows = rebalFunds.map(f => {
+          const cur = (f.value / rebalTot) * 100;
+          const tgt = f.targetPct * (100 / tgtSum);
+          const d = cur - tgt;
+          const acctName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
+          return `<tr>
+            <td style="font-weight:600">${f.ticker} <span style="font-size:10px;color:var(--ink3);font-weight:400">${acctName}</span></td>
+            <td class="mo">${pct(cur)}</td><td class="mo">${pct(tgt)}</td>
+            <td class="mo" style="${Math.abs(d) > 2 ? d > 0 ? 'color:var(--fm)' : 'color:var(--red)' : 'color:var(--ink3)'}">${d >= 0 ? '+' : ''}${d.toFixed(1)}%</td>
+            <td><span class="tag ${Math.abs(d) <= 1 ? 'tg' : Math.abs(d) <= 3 ? 'tgld' : 'tr'}">${Math.abs(d) <= 1 ? 'On target' : d > 0 ? 'Overweight' : 'Underweight'}</span></td>
+          </tr>`;
+        }).join('');
+        if (handOffFunds.length > 0) {
+          driftRows += handOffFunds.map(f => {
+            const acctName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
+            return `<tr style="opacity:.65">
+              <td style="font-weight:600">${f.ticker} <span style="font-size:10px;color:var(--ink3);font-weight:400">${acctName}</span></td>
+              <td class="mo" colspan="3" style="color:var(--ink3);font-size:11px">Hands-off — no target set</td>
+              <td><span class="tag tb">No target</span></td>
+            </tr>`;
+          }).join('');
+        }
+        document.getElementById('drift-tbl-wrap').innerHTML = `<table class="tbl"><thead><tr><th>Fund / Account</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table>`;
+        dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker + (S.accounts.find(a=>String(a.id)===String(f.acct)) ? ' ('+S.accounts.find(a=>String(a.id)===String(f.acct)).name.split(' ')[0]+')' : '')), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } });
+        document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
+          const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
+          const sharesHint = f.shares ? `<span style="font-size:10px;color:var(--ink3)"> · ${f.shares} sh</span>` : '';
+          const acctLabel = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
+          const isHandsOff = !f.targetPct || f.targetPct === 0;
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(f.value), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
+        }).join('')}</tbody>`;
+        // Re-render price chips if we have cached quotes
+        if (window._lastQuotes) renderPriceChips(window._lastQuotes);
+      }
+      function populateFundAcctSelect(selectedAcct) {
+        const sel = document.getElementById('f-acct');
+        if (!sel) return;
+        // List all investment accounts
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        sel.innerHTML = invAccts.map(a =>
+          `<option value="${a.id}" ${String(a.id) === String(selectedAcct) ? 'selected' : ''}>${a.name}</option>`
+        ).join('');
+        if (!invAccts.length) sel.innerHTML = '<option value="">— Add an investment account first —</option>';
+        updateFundModalForAcct();
+      }
+
+      function updateFundModalForAcct() {
+        const sel = document.getElementById('f-acct');
+        const hint = document.getElementById('f-acct-hint');
+        if (!sel || !hint) return;
+        const acct = S.accounts.find(a => String(a.id) === String(sel.value));
+        if (acct) {
+          const typeName = getAcctTypeName(acct.type);
+          hint.textContent = `Type: ${typeName}`;
+        } else {
+          hint.textContent = '';
+        }
+      }
+
+      function openFundModal(id) {
+        S.editFundId = id;
+        if (id) {
+          const f = S.funds.find(x => x.id === id);
+          document.getElementById('m-fund-title').textContent = 'Edit fund';
+          document.getElementById('f-tkr').value = f.ticker;
+          document.getElementById('f-name').value = f.name;
+          document.getElementById('f-val').value = f.value;
+          document.getElementById('f-shares').value = f.shares || '';
+          document.getElementById('f-tgt').value = f.targetPct || '';
+          document.getElementById('f-ret').value = f.retPct;
+          populateFundAcctSelect(f.acct);
+          updateFundValHint(f.shares, f.lastPrice);
+        } else {
+          document.getElementById('m-fund-title').textContent = 'Add fund';
+          ['f-tkr', 'f-name', 'f-val', 'f-shares', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = '');
+          // Default to first toggled investment account
+          const firstAcct = S.accounts.find(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false)
+                         || S.accounts.find(a => isInvestmentAcct(a));
+          populateFundAcctSelect(firstAcct?.id || '');
+          updateFundValHint(null, null);
+        }
+        openModal('m-fund');
+      }
+
+      function updateFundValHint(shares, lastPrice) {
+        const hint = document.getElementById('f-val-hint');
+        const valInput = document.getElementById('f-val');
+        if (!hint) return;
+        if (shares && lastPrice) {
+          const computed = (shares * lastPrice).toFixed(2);
+          hint.textContent = `Computed: ${shares} shares × $${lastPrice.toFixed(2)} = $${computed}`;
+          hint.style.display = 'block';
+          valInput.style.opacity = '.5';
+          valInput.title = 'Overridden by shares × live price';
+        } else if (shares) {
+          hint.textContent = 'Value will be set after next price sync';
+          hint.style.display = 'block';
+          valInput.style.opacity = '.5';
+        } else {
+          hint.textContent = '';
+          hint.style.display = 'none';
+          valInput.style.opacity = '1';
+          valInput.title = '';
+        }
+      }
+      function saveFund() {
+        const ticker = document.getElementById('f-tkr').value.trim().toUpperCase();
+        const name = document.getElementById('f-name').value.trim() || ticker;
+        // Store acct as integer so String(acct) matches String(account.id) in sync
+        const rawAcct = document.getElementById('f-acct').value;
+        const acct = (rawAcct !== '' && !isNaN(parseInt(rawAcct))) ? parseInt(rawAcct) : rawAcct;
+        const shares = parseFloat(document.getElementById('f-shares').value) || null;
+        const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0;
+        const retPct = parseFloat(document.getElementById('f-ret').value) || 10;
+        if (!ticker) return;
+        if (rawAcct === '' || rawAcct == null) { alert('Please add an investment account first (Accounts tab → Add account).'); return; }
+
+        let value;
+        const manualVal = parseFloat(document.getElementById('f-val').value) || 0;
+        if (shares) {
+          const existing = S.funds.find(x => x.id === S.editFundId);
+          const knownPrice = existing?.lastPrice || null;
+          value = knownPrice ? Math.round(shares * knownPrice * 100) / 100 : manualVal;
+        } else {
+          value = manualVal;
+        }
+
+        if (S.editFundId) {
+          Object.assign(S.funds.find(x => x.id === S.editFundId), { ticker, name, acct, value, shares, targetPct, retPct });
+        } else {
+          S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, shares, targetPct, retPct });
+        }
+        syncAccountsFromPortfolio();
+        ps(); closeModal('m-fund'); renderPortfolio();
+      }
+      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); ps(); renderPortfolio(); }
+
+      // ══════════════════════════════════════════════════════════════
+      // REBALANCE
+      let rMode = 'contribution', rAcct = 'all';
+
+      function renderRebalAcctTabs() {
+        const wrap = document.getElementById('rebal-acct-tabs');
+        if (!wrap) return;
+        // "All" tab + one tab per toggled investment account
+        const toggledAccts = S.accounts.filter(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false);
+        wrap.innerHTML = `<button class="atab ${rAcct === 'all' ? 'on' : ''}" onclick="setRAcct('all',this)" data-racct="all">All toggled</button>`
+          + toggledAccts.map(a =>
+            `<button class="atab ${String(rAcct) === String(a.id) ? 'on' : ''}" onclick="setRAcct('${a.id}',this)" data-racct="${a.id}">${a.name}</button>`
+          ).join('');
+        // If current rAcct is no longer valid (account removed/untoggled), reset to all
+        if (rAcct !== 'all') {
+          const still = toggledAccts.find(a => String(a.id) === String(rAcct));
+          if (!still) { rAcct = 'all'; renderRebalAcctTabs(); }
+        }
+      }
+
+      function setRMode(v, el) {
+        rMode = v;
+        document.querySelectorAll('#rebal-mode-tabs .atab').forEach(t => t.classList.remove('on'));
+        el.classList.add('on');
+        const contribRow = document.getElementById('contrib-input-row');
+        if (contribRow) contribRow.style.display = v === 'full' ? 'none' : 'flex';
+        // Update contribution label context
+        const lbl = document.getElementById('r-contrib-label');
+        if (lbl) {
+          const acct = rAcct !== 'all' ? S.accounts.find(a => String(a.id) === String(rAcct)) : null;
+          lbl.textContent = acct ? `Amount to invest into ${acct.name} ($)` : 'Amount to invest ($)';
+        }
+        calcRebal();
+      }
+      function setRAcct(v, el) {
+        rAcct = v;
+        document.querySelectorAll('#rebal-acct-tabs .atab').forEach(t => t.classList.remove('on'));
+        el.classList.add('on');
+        // Update contribution label to reflect account context
+        const lbl = document.getElementById('r-contrib-label');
+        if (lbl) {
+          const acct = v !== 'all' ? S.accounts.find(a => String(a.id) === String(v)) : null;
+          lbl.textContent = acct ? `Amount to invest into ${acct.name} ($)` : 'Amount to invest ($)';
+        }
+        calcRebal();
+      }
+      function calcRebal() {
+        renderRebalAcctTabs();
+        const monthly = parseFloat(document.getElementById('r-contrib')?.value) || 0;
+
+        // Get funds for this view — skip hands-off funds (targetPct === 0)
+        let rawFunds;
+        if (rAcct === 'all') {
+          const toggledIds = getToggledAcctIds();
+          rawFunds = S.funds.filter(f => toggledIds.includes(String(f.acct)));
+        } else {
+          rawFunds = S.funds.filter(f => String(f.acct) === String(rAcct));
+        }
+        const funds = rawFunds.filter(f => f.targetPct > 0);
+        const handsOffFunds = rawFunds.filter(f => !f.targetPct || f.targetPct === 0);
+
+        const bodyEl = document.getElementById('rebal-body');
+        const noteEl = document.getElementById('rebal-note');
+
+        if (!rawFunds.length) {
+          bodyEl.innerHTML = '<div class="mut" style="padding:20px 0;text-align:center">No funds in this account. Toggle accounts on in Portfolio, then add funds.</div>';
+          noteEl.textContent = '';
+          document.getElementById('rebal-totals').style.display = 'none';
+          document.getElementById('rebal-acct-ctx').textContent = '';
+          return;
+        }
+
+        // Show hands-off funds if any (they appear but are excluded from math)
+        let handsOffNote = '';
+        if (handsOffFunds.length > 0) {
+          handsOffNote = `<div style="padding:8px 10px;background:var(--sky-l);border-radius:var(--rs);font-size:11.5px;color:var(--sky);margin-bottom:12px">
+            <strong>Hands-off:</strong> ${handsOffFunds.map(f => {
+              const a = S.accounts.find(a => String(a.id) === String(f.acct));
+              return `${f.ticker}${a ? ' ('+a.name+')' : ''}`;
+            }).join(', ')} — ${handsOffFunds.length === 1 ? 'this fund has' : 'these funds have'} no target set and ${handsOffFunds.length === 1 ? 'is' : 'are'} excluded from rebalance math. ${MT(fmt(handsOffFunds.reduce((s,f)=>s+f.value,0)), 'rebalance')} total value held passively.
+          </div>`;
+        }
+
+        if (!funds.length) {
+          bodyEl.innerHTML = handsOffNote + '<div class="mut" style="padding:12px 0;text-align:center">No funds with targets set. Add target allocations to your funds to use rebalance.</div>';
+          noteEl.textContent = '';
+          document.getElementById('rebal-totals').style.display = 'none';
+          return;
+        }
+
+        const tot = funds.reduce((s, f) => s + f.value, 0);
+        // Normalize targets so they sum to 100% within the filtered view
+        const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
+        const nFunds = funds.map(f => ({ ...f, normTgt: (f.targetPct / tgtSum) * 100 }));
+
+        const acctName = rAcct !== 'all' ? (S.accounts.find(a => String(a.id) === String(rAcct))?.name || rAcct) : null;
+
+        // ── Row renderer ──────────────────────────────────────────────
+        const rowHtml = (f, allocUSD, tag, tagCls, driftBefore, driftAfter) => {
+          const barMax = rMode === 'full' ? tot : monthly || 1;
+          const barW = Math.min(100, Math.abs(allocUSD) / barMax * 100);
+          const barCol = allocUSD >= 0 ? 'var(--fm)' : 'var(--rose)';
+          const driftColor = Math.abs(driftBefore) > 3 ? (driftBefore > 0 ? 'color:var(--gold)' : 'color:var(--rose)') : 'color:var(--ink3)';
+          const fundAcctName = rAcct === 'all' ? (S.accounts.find(a => String(a.id) === String(f.acct))?.name || '') : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2);flex-wrap:wrap">
+            <div style="min-width:130px;flex-shrink:0">
+              <div style="font-size:13px;font-weight:650">${MT(f.ticker, 'rebalance')}${fundAcctName ? `<span style="font-size:10px;color:var(--ink3);margin-left:5px;font-weight:400">${fundAcctName}</span>` : ''}</div>
+              <div style="font-size:10.5px;margin-top:2px;color:var(--ink3)">
+                Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of this account
+              </div>
+              <div style="font-size:10px;margin-top:1px">
+                <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
+                <span style="color:var(--ink4)"> → </span>
+                <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : driftAfter === 0 ? 'var(--fm)' : 'var(--ink3)'}" title="Drift after this action">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
+              </div>
+            </div>
+            <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px">
+              <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
+            </div>
+            <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:600;min-width:80px;text-align:right;flex-shrink:0;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</span>
+          </div>`;
+        };
+
+        let html = handsOffNote, noteHtml = '';
+
+        if (rMode === 'contribution') {
+          // ── Contribution mode ─────────────────────────────────────
+          // Allocate `monthly` into this account only. No selling.
+          // Strategy: prioritize underweight funds first.
+          // Why VOO might not get the full contribution even if underweight:
+          // The math distributes based on the gap to target in the NEW total
+          // (current + contribution). If multiple funds are underweight, the
+          // one with the biggest $ shortfall gets priority.
+          const newTot = tot + monthly;
+          const shortfalls = nFunds.map(f => Math.max(0, (f.normTgt / 100) * newTot - f.value));
+          const totalShortfall = shortfalls.reduce((s, x) => s + x, 0);
+
+          let allocs;
+          if (totalShortfall <= 0 || monthly <= 0) {
+            allocs = nFunds.map(f => monthly * (f.normTgt / 100));
+          } else if (totalShortfall <= monthly) {
+            const remainder = monthly - totalShortfall;
+            allocs = nFunds.map((f, i) => shortfalls[i] + remainder * (f.normTgt / 100));
+          } else {
+            // Not enough to fill all shortfalls — prioritize by shortfall size
+            allocs = nFunds.map((f, i) => (shortfalls[i] / totalShortfall) * monthly);
+          }
+
+          const rows = nFunds.map((f, i) => {
+            const alloc = allocs[i];
+            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+            const newPct = newTot > 0 ? ((f.value + alloc) / newTot) * 100 : 0;
+            return rowHtml(f, alloc, 'BUY', 'tg', curPct - f.normTgt, newPct - f.normTgt);
+          });
+          html += rows.join('');
+          document.getElementById('rebal-totals').style.display = 'none';
+          document.getElementById('rebal-mode-desc').textContent = monthly > 0
+            ? `Investing ${fmtUSD(monthly, 0)} into ${acctName || 'selected accounts'} — no selling. Most underweight funds get priority.`
+            : `Enter how much you're contributing to ${acctName || 'this account'} above.`;
+          noteHtml = monthly > 0
+            ? `All ${fmtUSD(monthly, 0)} stays in this account. Funds furthest below their target get the most. "Drift after" shows what the allocation will look like once the trade settles.`
+            : '';
+
+        } else if (rMode === 'combined') {
+          // ── Contribution + rebalance ──────────────────────────────
+          // Use new contribution PLUS strategic sells within this account
+          // to hit exact targets. Each fund's target = normTgt% of (tot + monthly).
+          // Net cash = what you wire from your bank AFTER sells settle.
+          // (Sell proceeds stay inside the account and fund the buys.)
+          const newTot = tot + monthly;
+          let buyTotal = 0, sellTotal = 0;
+          const rows = nFunds.map(f => {
+            const targetVal = (f.normTgt / 100) * newTot;
+            const diff = targetVal - f.value;
+            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+            if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
+            return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
+          });
+          html += rows.join('');
+          const netCash = monthly - buyTotal + sellTotal;
+          document.getElementById('rebal-totals').style.display = 'flex';
+          document.getElementById('r-buy-total').innerHTML = MT(fmtUSD(buyTotal, 0), 'rebalance');
+          document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
+          document.getElementById('r-net-cash').innerHTML = MT(fmtUSD(netCash, 0), 'rebalance');
+          document.getElementById('rebal-mode-desc').textContent =
+            `Contribute ${fmtUSD(monthly, 0)} into ${acctName || 'this account'} + strategic sells to hit exact targets.`;
+          noteHtml = `Sell proceeds (${fmtUSD(sellTotal,0)}) stay inside the account and fund the buys. Net cash (${fmtUSD(netCash,0)}) = what you actually transfer from your bank. "Drift after" = 0 for all funds because this mode hits exact targets.`;
+
+        } else {
+          // ── Full rebalance ────────────────────────────────────────
+          // Sell overweight, buy underweight — no new money.
+          // Everything stays within this single account.
+          let buyTotal = 0, sellTotal = 0;
+          const rows = nFunds.map(f => {
+            const targetVal = (f.normTgt / 100) * tot;
+            const diff = targetVal - f.value;
+            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+            if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
+            return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
+          });
+          html += rows.join('');
+          document.getElementById('rebal-totals').style.display = 'flex';
+          document.getElementById('r-buy-total').innerHTML = MT(fmtUSD(buyTotal, 0), 'rebalance');
+          document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
+          document.getElementById('r-net-cash').innerHTML = '$0';
+          document.getElementById('rebal-mode-desc').textContent =
+            `Sell overweight positions in ${acctName || 'this account'} and buy underweight — no new money.`;
+          noteHtml = `Buy total ≈ Sell total (they net to zero — no cash needed). All trades happen within ${acctName || 'this account'}.`;
+        }
+
+        bodyEl.innerHTML = html;
+
+        // Context bar
+        const ctxEl = document.getElementById('rebal-acct-ctx');
+        if (ctxEl) {
+          const normalizeNote = tgtSum !== 100
+            ? ` · targets normalized from ${tgtSum.toFixed(0)}% to 100% within this view`
+            : '';
+          ctxEl.textContent = acctName
+            ? `${acctName} · ${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total${normalizeNote}`
+            : `All toggled accounts · ${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total · targets normalized per account${normalizeNote}`;
+        }
+
+        noteEl.innerHTML = noteHtml
+          ? `<span style="color:var(--gold);font-weight:600">ℹ︎</span> ${noteHtml}`
+          : '';
+      }
+      // ══════════════════════════════════════════════════════════════
+      // PROJECTIONS
+      let curScen = 'base'; const SCEN = { conservative: -2, base: 0, optimistic: 2 };
+      function setScen(s, el) { curScen = s; document.querySelectorAll('#tab-projections .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); updateProj(); renderRetTbl(); }
+      function updateProj() {
+        const c = parseFloat(document.getElementById('sl-c').value), cg = parseFloat(document.getElementById('sl-cg').value) / 100, inf = parseFloat(document.getElementById('sl-inf').value) / 100, yrs = parseInt(document.getElementById('sl-yrs').value), fx = parseFloat(document.getElementById('sl-fx').value), usfrY = parseFloat(document.getElementById('usfr-inp').value) / 100;
+        const off = SCEN[curScen] || 0, nr = blendRet(off), rr = (1 + nr) / (1 + inf) - 1;
+        document.getElementById('lc').textContent = '$' + c.toLocaleString(); document.getElementById('lcg').textContent = (cg * 100).toFixed(1) + '%'; document.getElementById('linf').textContent = (inf * 100).toFixed(1) + '%'; document.getElementById('lyrs').textContent = yrs + ' yrs'; document.getElementById('lfx').textContent = Math.round(fx).toLocaleString();
+        const chqA = S.accounts.find(a => a.type === 'subscription')?.balance || 333; const usfrA = S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 6721; const cashB = totCash() - usfrA - chqA;
+        const labels = [], nomD = [], realD = [], stD = []; const stByYr = {}; S.stressEvents.forEach(e => { if (!stByYr[e.year]) stByYr[e.year] = []; stByYr[e.year].push(e.amount); });
+        let stNW = nwTotal();
+        for (let y = 0; y <= yrs; y++) {
+          const yr = NY + y, co = c * Math.pow(1 + cg, y);
+          nomD.push(Math.round(fvCalc(totPort(), nr, y, co) + fvCalc(usfrA, usfrY, y, 0) + chqFV(chqA, .045, 250000 / fx, 22, y) + cashB));
+          realD.push(Math.round(fvCalc(totPort(), rr, y, co) + fvCalc(usfrA, usfrY, y, 0) + chqFV(chqA, .045, 250000 / fx, 22, y) + cashB));
+          labels.push(y === 0 ? 'Now' : '' + yr);
+          if (y > 0) { const ev = (stByYr[yr] || []).reduce((s, x) => s + x, 0); stNW = fvCalc(stNW, nr, 1, co) - ev; } else stNW = nomD[0];
+          stD.push(Math.round(stNW));
+        }
+        const nf = nomD[yrs], rf = realD[yrs], tc = Array.from({ length: yrs }, (_, i) => c * Math.pow(1 + cg, i)).reduce((s, x) => s + x, 0);
+        document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections');
+        dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
+      }
+      function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a=>String(a.id)===String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
+      function updRet(id, v) { const f = S.funds.find(x => x.id === id); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
+      function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--s2)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
+      function addStress() { const n = prompt('Event name:'); if (!n) return; const a = parseFloat(prompt('Cost ($):') || '0'), y = parseInt(prompt('Year:') || NY); S.stressEvents.push({ name: n, amount: a, year: y }); ps(); renderStress(); updateProj(); }
+      function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
+
+      // ══════════════════════════════════════════════════════════════
+      // GOALS
+      function renderGoals() {
+        const nr = blendRet(), t = nwTotal(), yrs = Math.max(...S.goals.map(g => g.year)) - NY + 5;
+        const labels = Array.from({ length: Math.min(yrs + 1, 51) }, (_, i) => NY + i);
+        const nwD = labels.map(yr => cvt(fvCalc(t, nr, yr - NY, S.settings.annualContrib)));
+        dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isTabHidden('goals') ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'goals') } } });
+        document.getElementById('goals-legend').innerHTML = [{ label: 'Projected NW', color: gtc[0] }, ...S.goals.map(g => ({ label: g.name, color: GCOL[g.cat] }))].map(x => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
+        document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${MT(fmt(g.amount), 'goals')}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${MT(fmt(proj), 'goals')}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? MT(fmt(g.amount), 'goals') : MT(fmt(Math.max(0, mn), 0), 'goals') + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
+      }
+      function openGoalModal(id) { S.editGoalId = id; if (id) { const g = S.goals.find(x => x.id === id); document.getElementById('m-goal-title').textContent = 'Edit goal'; document.getElementById('g-name').value = g.name; document.getElementById('g-cat').value = g.cat; document.getElementById('g-amt').value = g.amount; document.getElementById('g-yr').value = g.year; document.getElementById('g-type').value = g.type || 'savings'; document.getElementById('g-notes').value = g.notes || ''; } else { document.getElementById('m-goal-title').textContent = 'Add goal';['g-name', 'g-amt', 'g-yr', 'g-notes'].forEach(i => document.getElementById(i).value = ''); document.getElementById('g-cat').value = 'fire'; document.getElementById('g-type').value = 'savings'; } openModal('m-goal'); }
+      function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => x.id === S.editGoalId), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes }); ps(); closeModal('m-goal'); renderGoals(); }
+      function delGoal(id) { if (!confirm('Remove?')) return; S.goals = S.goals.filter(x => x.id !== id); ps(); renderGoals(); }
+
+      // ══════════════════════════════════════════════════════════════
+      // SPREADSHEET — overlay-textarea architecture
+      // Cells are <div> display nodes. One floating <textarea> overlays
+      // the active cell during edit. No per-cell inputs = no focus fights.
+      // ══════════════════════════════════════════════════════════════
+
+      // ── state ─────────────────────────────────────────────────────
+      let ssR = 0, ssC = 0;
+      let ssSelR0 = 0, ssSelC0 = 0, ssSelR1 = 0, ssSelC1 = 0;
+      let ssEditing = false, ssDragging = false, ssFilling = false, ssDragCol = null, ssCopied = null;
+      let ssInited = false;
+      const D = () => S.ssData, C = () => S.ssCols, NR = () => D().length, NC = () => C().length;
+
+      // ── formula engine ────────────────────────────────────────────
+      function colIdx(col) { let n = 0; for (let i = 0; i < col.length; i++)n = n * 26 + (col.charCodeAt(i) - 64); return n - 1; }
+      function colLetter(ci) { let s = '', n = ci + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; }
+
+      function evalCell(val, ri, ci, depth) {
+        if ((depth || 0) > 30) return 0;
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.trim() === '') return '';
+        if (!str.startsWith('=')) return str;
+        try {
+          const rows = D();
+          let e = str.slice(1);
+          // AVERAGE(range)
+          e = e.replace(/\baverage\s*\(\s*([A-Z]+)(\d+)\s*:\s*([A-Z]+)(\d+)\s*\)/gi, (m, c1, r1, c2, r2) => {
+            const vals = [];
+            for (let rr = parseInt(r1) - 1; rr <= parseInt(r2) - 1; rr++)
+              for (let cc = colIdx(c1); cc <= colIdx(c2); cc++) { const v = parseFloat(evalCell(rows[rr]?.[cc] ?? '', (rr), (cc), (depth || 0) + 1)); if (!isNaN(v)) vals.push(v); }
+            return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          });
+          // SUM(range)
+          e = e.replace(/\bsum\s*\(\s*([A-Z]+)(\d+)\s*:\s*([A-Z]+)(\d+)\s*\)/gi, (m, c1, r1, c2, r2) => {
+            let s = 0;
+            for (let rr = parseInt(r1) - 1; rr <= parseInt(r2) - 1; rr++)
+              for (let cc = colIdx(c1); cc <= colIdx(c2); cc++) s += parseFloat(evalCell(rows[rr]?.[cc] ?? '', (rr), (cc), (depth || 0) + 1)) || 0;
+            return s;
+          });
+          // IF(cond,t,f)
+          e = e.replace(/\bif\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (m, cond, tv, fv) => `((${cond})?(${tv}):(${fv}))`);
+          // keywords
+          e = e.replace(/\bprev\b/gi, () => ri > 0 ? parseFloat(evalCell(rows[ri - 1]?.[ci] ?? '', (ri - 1), (ci), (depth || 0) + 1)) || 0 : 0);
+          e = e.replace(/\bage\b/gi, () => parseFloat(evalCell(rows[ri]?.[0] ?? '', (ri), 0, (depth || 0) + 1)) || 0);
+          e = e.replace(/\byear\b/gi, () => parseFloat(evalCell(rows[ri]?.[1] ?? '', (ri), 1, (depth || 0) + 1)) || 0);
+          // cell refs A1 style
+          e = e.replace(/\b([A-Z]+)(\d+)\b/g, (m, col, rowNum) => {
+            const ci2 = colIdx(col), ri2 = parseInt(rowNum) - 1;
+            if (ri2 < 0 || ri2 >= rows.length || ci2 < 0 || ci2 >= NC()) return 0;
+            return parseFloat(evalCell(rows[ri2]?.[ci2] ?? '', (ri2), (ci2), (depth || 0) + 1)) || 0;
+          });
+          const res = Function('"use strict";return (' + e + ')')();
+          if (typeof res === 'number') return isFinite(res) ? Math.round(res * 100) / 100 : 0;
+          return res ?? '';
+        }
+        catch (err) { return '#ERR'; }
+      }
+
+      function adjustFormula(formula, fromR, fromC, toR, toC) {
+        if (!formula || !String(formula).startsWith('=')) return formula;
+        const dr = toR - fromR, dc = toC - fromC;
+        return String(formula).replace(/\b([A-Z]+)(\d+)\b/g, (m, col, rowNum) => {
+          const nc = colIdx(col) + dc, nr = parseInt(rowNum) - 1 + dr;
+          if (nc < 0 || nr < 0) return m;
+          return colLetter(nc) + (nr + 1);
+        });
+      }
+
+      function cellComputed(ri, ci) { return evalCell(D()[ri]?.[ci] ?? '', (ri), (ci), 0); }
+      function isTextOnly(ci) { return ci === 0 || ci === 1 || ci === NC() - 1; }
+      function cellDisplay(ri, ci) {
+        const v = cellComputed(ri, ci);
+        if (v === '' || v === null) return '';
+        const n = parseFloat(v);
+        if (!isNaN(n) && !isTextOnly(ci)) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return String(v);
+      }
+      function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+      // ── build table ───────────────────────────────────────────────
+      function buildSS() {
+        const cols = C(), rows = D();
+        let h = '<colgroup><col style="width:36px">';
+        cols.forEach(() => h += '<col style="min-width:110px;width:130px">');
+        h += '</colgroup><thead><tr><th class="rh"><div class="th-in"></div></th>';
+        cols.forEach((c, ci) => {
+          h += `<th class="ch" draggable="true"
+      ondragstart="ssDragStart(event,${ci})"
+      ondragover="ssDragOver(event,this,${ci})"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="ssDrop(event,this,${ci})"
+      ondblclick="ssRenameCol(${ci})">
+      <div class="th-in"><span class="ss-dh">⠿</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${colLetter(ci)}: ${c}</span></div></th>`;
+        });
+        h += '</tr></thead><tbody>';
+        rows.forEach((row, ri) => {
+          h += `<tr><td class="rn" onmousedown="ssRowHdr(event,${ri})">${ri + 1}</td>`;
+          row.forEach((cell, ci) => {
+            const raw = String(cell ?? '').replace(/&/g, '&amp;');
+            const isF = String(cell ?? '').startsWith('=');
+            const isAct = ri === ssR && ci === ssC;
+            const inSel = ri >= ssSelR0 && ri <= ssSelR1 && ci >= ssSelC0 && ci <= ssSelC1;
+            const isNW = ci === 2;
+            const isMil = isNW && parseFloat(cellComputed(ri, ci)) >= 1e6;
+            const cls = [isAct ? 'ss-active' : '', isAct && ssEditing ? 'ss-active-editing' : '', inSel && !isAct ? 'ss-range' : '', isF ? 'ss-formula' : '', isNW ? 'ss-nw' : '', isMil ? 'ss-mil' : ''].filter(Boolean).join(' ');
+            const dv = isAct && ssEditing ? '' : (ssEditing ? cellDisplay(ri, ci) : cellDisplay(ri, ci));
+            h += `<td class="${cls}" data-r="${ri}" data-c="${ci}" style="position:relative"><div class="ss-cv">${escHtml(cellDisplay(ri, ci))}</div>${isAct && !ssEditing ? '<div class="ss-fill-handle" data-fill="1"></div>' : ''}</td>`;
+          });
+          h += '</tr>';
+        });
+        h += '</tbody>';
+        document.getElementById('ss-tbl').innerHTML = h;
+        positionEditor();
+        updFBar();
+      }
+
+      // ── editor overlay ────────────────────────────────────────────
+      function ED() { return document.getElementById('ss-editor'); }
+      function OUTER() { return document.getElementById('ss-outer'); }
+      function getActiveTD() { return document.querySelector(`#ss-tbl td[data-r="${ssR}"][data-c="${ssC}"]`); }
+
+      function positionEditor() {
+        const ed = ED(); if (!ssEditing) { ed.style.display = 'none'; return; }
+        const td = getActiveTD(); if (!td) { ed.style.display = 'none'; return; }
+        const outer = OUTER();
+        const oRect = outer.getBoundingClientRect(), tRect = td.getBoundingClientRect();
+        ed.style.display = 'block';
+        ed.style.left = (tRect.left - oRect.left + outer.scrollLeft) + 'px';
+        ed.style.top = (tRect.top - oRect.top + outer.scrollTop) + 'px';
+        ed.style.width = Math.max(tRect.width, 130) + 'px';
+        ed.style.height = tRect.height + 'px';
+      }
+
+      let ssPreEditVal = '';  // backup for Escape
+      function openEditor(init) {
+        ssEditing = true;
+        ssPreEditVal = String(D()[ssR]?.[ssC] ?? '');  // save for Escape
+        const ed = ED();
+        ed.value = init !== undefined ? init : ssPreEditVal;
+        positionEditor();
+        ed.focus();
+        if (init !== undefined) { ed.setSelectionRange(ed.value.length, ed.value.length); } else { ed.select(); }
+        document.getElementById('ss-fb').value = ed.value;
+      }
+
+      function commitEdit(rebuild) {
+        if (!ssEditing) return;
+        ssEditing = false;
+        const val = ED().value;
+        if (D()[ssR]) D()[ssR][ssC] = val;
+        ED().style.display = 'none';
+        document.querySelectorAll('#ss-tbl .ss-ref-hl').forEach(t => t.classList.remove('ss-ref-hl'));
+        ps();
+        if (rebuild !== false) { buildSS(); renderLifeCharts(); }
+      }
+
+      function cancelEdit() {
+        ssEditing = false;
+        ED().style.display = 'none';
+        // restore original value (undo any formula-bar live writes)
+        if (D()[ssR]) D()[ssR][ssC] = ssPreEditVal;
+        document.querySelectorAll('#ss-tbl .ss-ref-hl').forEach(t => t.classList.remove('ss-ref-hl'));
+        const td = getActiveTD();
+        if (td) { const cv = td.querySelector('.ss-cv'); if (cv) cv.textContent = cellDisplay(ssR, ssC); }
+        updFBar();
+      }
+
+      function moveSel(dr, dc) {
+        commitEdit(false);
+        ssR = Math.max(0, Math.min(NR() - 1, ssR + dr));
+        ssC = Math.max(0, Math.min(NC() - 1, ssC + dc));
+        ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+        buildSS();
+        const td = getActiveTD(); if (td) td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+
+      // ── initSS — wire all events once ────────────────────────────
+      function initSS() {
+        const outer = OUTER(), ed = ED();
+
+        outer.addEventListener('mousedown', e => {
+          // ── Fill handle drag ──────────────────────────────────────
+          if (e.target.dataset.fill === '1') {
+            ssFilling = true;
+            // anchor stays at current active cell; selection will extend on mousemove
+            ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+            e.preventDefault();
+            return;
+          }
+
+          const td = e.target.closest('td[data-r]');
+          if (!td) return;
+          const ri = +td.dataset.r, ci = +td.dataset.c;
+
+          // ── Formula-mode click: insert cell reference into editor ──
+          // When editing a formula (starts with =), clicking any cell
+          // inserts its address at the cursor rather than committing.
+          if (ssEditing) {
+            const ed = ED();
+            const val = ed.value;
+            if (val.startsWith('=')) {
+              // Insert the cell reference at the current cursor position
+              const ref = colLetter(ci) + (ri + 1);
+              const start = ed.selectionStart, end = ed.selectionEnd;
+              ed.value = val.slice(0, start) + ref + val.slice(end);
+              ed.selectionStart = ed.selectionEnd = start + ref.length;
+              // Sync formula bar
+              document.getElementById('ss-fb').value = ed.value;
+              // Highlight the referenced cell visually (temporary)
+              document.querySelectorAll('#ss-tbl td').forEach(t => t.classList.remove('ss-ref-hl'));
+              const refTd = document.querySelector(`#ss-tbl td[data-r="${ri}"][data-c="${ci}"]`);
+              if (refTd) refTd.classList.add('ss-ref-hl');
+              e.preventDefault();
+              ed.focus();
+              return;
+            }
+            // Non-formula edit: commit before moving
+            commitEdit(false);
+          }
+
+          if (e.shiftKey) {
+            ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
+            ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+          } else {
+            ssR = ri; ssC = ci;
+            ssSelR0 = ri; ssSelC0 = ci; ssSelR1 = ri; ssSelC1 = ci;
+            ssDragging = true;
+          }
+          buildSS(); e.preventDefault(); outer.focus();
+        });
+
+        let ssDragRAF = null;
+        outer.addEventListener('mousemove', e => {
+          if (!ssDragging && !ssFilling) return;
+          const td = e.target.closest('td[data-r]'); if (!td) return;
+          const ri = +td.dataset.r, ci = +td.dataset.c;
+          if (ssFilling) {
+            // Fill extends only down OR right from the anchor, not both at once.
+            // Whichever axis moved more is the fill direction.
+            const dr = Math.abs(ri - ssR), dc = Math.abs(ci - ssC);
+            if (dr >= dc) {
+              // Fill down/up
+              ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
+              ssSelC0 = ssC; ssSelC1 = ssC;
+            } else {
+              // Fill right/left
+              ssSelR0 = ssR; ssSelR1 = ssR;
+              ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+            }
+          } else {
+            ssSelR0 = Math.min(ssR, ri); ssSelR1 = Math.max(ssR, ri);
+            ssSelC0 = Math.min(ssC, ci); ssSelC1 = Math.max(ssC, ci);
+          }
+          if (!ssDragRAF) { ssDragRAF = requestAnimationFrame(() => { buildSS(); ssDragRAF = null; }); }
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (ssFilling) {
+            ssFilling = false;
+            // Fill the selection from the anchor cell (ssR, ssC)
+            const srcR = ssR, srcC = ssC;
+            const srcVal = D()[srcR]?.[srcC] ?? '';
+            for (let r = ssSelR0; r <= ssSelR1; r++) {
+              for (let c = ssSelC0; c <= ssSelC1; c++) {
+                if (r === srcR && c === srcC) continue; // skip source cell
+                D()[r][c] = adjustFormula(srcVal, srcR, srcC, r, c);
+              }
+            }
+            ps(); buildSS(); renderLifeCharts();
+          }
+          ssDragging = false;
+        });
+
+        outer.addEventListener('dblclick', e => {
+          const td = e.target.closest('td[data-r]'); if (!td) return;
+          ssR = +td.dataset.r; ssC = +td.dataset.c;
+          ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+          buildSS(); openEditor();
+        });
+
+        outer.addEventListener('keydown', e => {
+          if (ssEditing) return;
+          if (document.activeElement === document.getElementById('ss-fb')) return;
+          const handled = (k) => { e.preventDefault(); };
+          if (e.key === 'ArrowUp') { handled(); moveSel(-1, 0); }
+          else if (e.key === 'ArrowDown') { handled(); moveSel(1, 0); }
+          else if (e.key === 'ArrowLeft') { handled(); moveSel(0, -1); }
+          else if (e.key === 'ArrowRight') { handled(); moveSel(0, 1); }
+          else if (e.key === 'Tab') { handled(); if (e.shiftKey) moveSel(0, -1); else moveSel(0, 1); }
+          else if (e.key === 'Enter' || e.key === 'F2') { handled(); openEditor(); }
+          else if (e.key === 'Escape') { ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC; buildSS(); }
+          else if (e.key === 'Delete' || e.key === 'Backspace') {
+            handled();
+            for (let r = ssSelR0; r <= ssSelR1; r++)for (let c = ssSelC0; c <= ssSelC1; c++)D()[r][c] = '';
+            ps(); buildSS(); renderLifeCharts();
+          }
+          else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { handled(); ssCopy(); }
+          else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { handled(); ssPaste(); }
+          else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { handled(); ssFillDown(); }
+          else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) { openEditor(e.key); }
+        });
+
+        ed.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); moveSel(1, 0); outer.focus(); }
+          else if (e.key === 'Tab') { e.preventDefault(); commitEdit(); if (e.shiftKey) moveSel(0, -1); else moveSel(0, 1); outer.focus(); }
+          else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); buildSS(); outer.focus(); }
+          document.getElementById('ss-fb').value = ed.value;
+        });
+        ed.addEventListener('input', () => { document.getElementById('ss-fb').value = ed.value; });
+
+        // paste from Excel / Google Sheets
+        outer.addEventListener('paste', e => {
+          if (ssEditing) return; // let textarea handle it
+          e.preventDefault();
+          const text = e.clipboardData.getData('text/plain');
+          if (!text) return;
+          const pasteRows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trimEnd().split('\n');
+          const cells = pasteRows.map(r => r.split('\t'));
+          cells.forEach((row, dr) => {
+            const ri = ssR + dr;
+            while (ri >= NR()) D().push(new Array(NC()).fill(''));
+            row.forEach((cell, dc) => {
+              const ci = ssC + dc;
+              while (ci >= NC()) { C().push('Col' + (NC() + 1)); D().forEach(r => r.push('')); }
+              D()[ri][ci] = cell;
+            });
+          });
+          ps(); buildSS(); renderLifeCharts();
+        });
+
+        // formula bar
+        const fb = document.getElementById('ss-fb');
+        fb.addEventListener('focus', () => { fb.value = String(D()[ssR]?.[ssC] ?? ''); });
+        fb.addEventListener('input', () => {
+          if (D()[ssR]) D()[ssR][ssC] = fb.value;
+          // update just the active cell display without full rebuild
+          const td = document.querySelector(`#ss-tbl td[data-r="${ssR}"][data-c="${ssC}"]`);
+          if (td) { const cv = td.querySelector('.ss-cv'); if (cv) cv.textContent = cellDisplay(ssR, ssC); }
+        });
+        fb.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); if (D()[ssR]) D()[ssR][ssC] = fb.value; ps(); buildSS(); renderLifeCharts(); outer.focus(); }
+          if (e.key === 'Escape') { e.preventDefault(); outer.focus(); }
+        });
+
+        outer.addEventListener('scroll', () => { if (ssEditing) positionEditor(); });
+      }
+
+      function ssRowHdr(e, ri) {
+        if (ssEditing) commitEdit(false);
+        ssR = ri; ssC = 0; ssSelR0 = ri; ssSelC0 = 0; ssSelR1 = ri; ssSelC1 = NC() - 1;
+        buildSS(); e.preventDefault(); OUTER().focus();
+      }
+
+      function updFBar() {
+        document.getElementById('ss-ref').value = colLetter(ssC) + (ssR + 1);
+        document.getElementById('ss-fb').value = String(D()[ssR]?.[ssC] ?? '');
+      }
+
+      // ── copy / paste / fill ───────────────────────────────────────
+      function ssCopy() {
+        const data = [];
+        for (let r = ssSelR0; r <= ssSelR1; r++) {
+          const row = [];
+          for (let c = ssSelC0; c <= ssSelC1; c++)row.push(String(D()[r]?.[c] ?? ''));
+          data.push(row);
+        }
+        ssCopied = { data, fromR: ssSelR0, fromC: ssSelC0 };
+        try { navigator.clipboard.writeText(data.map(r => r.join('\t')).join('\n')).catch(() => { }); } catch (e) { }
+      }
+
+      function ssPaste() {
+        if (!ssCopied) return;
+        const copyRows = ssCopied.data.length;
+        const copyCols = ssCopied.data[0]?.length || 0;
+
+        // Determine paste region:
+        // If selection is larger than copied data, tile the copy to fill selection.
+        // If selection is exactly one cell, paste starting from ssR/ssC (normal).
+        const selH = ssSelR1 - ssSelR0 + 1;
+        const selW = ssSelC1 - ssSelC0 + 1;
+        const useSelection = selH > 1 || selW > 1;
+
+        const destR0 = useSelection ? ssSelR0 : ssR;
+        const destC0 = useSelection ? ssSelC0 : ssC;
+        const destR1 = useSelection ? ssSelR1 : ssR + copyRows - 1;
+        const destC1 = useSelection ? ssSelC1 : ssC + copyCols - 1;
+
+        for (let r = destR0; r <= destR1; r++) {
+          while (r >= NR()) D().push(new Array(NC()).fill(''));
+          for (let c = destC0; c <= destC1; c++) {
+            if (c >= NC()) continue;
+            // Tile: wrap copy row/col indices
+            const cr = (r - destR0) % copyRows;
+            const cc = (c - destC0) % copyCols;
+            const cell = ssCopied.data[cr][cc];
+            D()[r][c] = adjustFormula(cell, ssCopied.fromR + cr, ssCopied.fromC + cc, r, c);
+          }
+        }
+        ps(); buildSS(); renderLifeCharts();
+      }
+
+      function ssFillDown() {
+        if (ssSelR0 === ssSelR1 && ssSelC0 === ssSelC1) {
+          if (ssR > 0) { D()[ssR][ssC] = adjustFormula(D()[ssR - 1]?.[ssC] ?? '', (ssR - 1), (ssC), (ssR), (ssC)); ps(); buildSS(); renderLifeCharts(); }
+          return;
+        }
+        for (let c = ssSelC0; c <= ssSelC1; c++) {
+          const src = D()[ssSelR0]?.[c] ?? ''
+          for (let r = ssSelR0 + 1; r <= ssSelR1; r++)D()[r][c] = adjustFormula(src, (ssSelR0), (c), (r), (c));
+        }
+        ps(); buildSS(); renderLifeCharts();
+      }
+
+      // (adjustFormula defined above)
+
+      // ── column drag ───────────────────────────────────────────────
+      function ssDragStart(e, ci) { ssDragCol = ci; e.dataTransfer.effectAllowed = 'move'; }
+      function ssDragOver(e, th, ci) { e.preventDefault(); document.querySelectorAll('.ss-tbl th').forEach(t => t.classList.remove('drag-over')); if (ci !== ssDragCol) th.classList.add('drag-over'); }
+      function ssDrop(e, th, ci) {
+        e.preventDefault(); document.querySelectorAll('.ss-tbl th').forEach(t => t.classList.remove('drag-over'));
+        if (ssDragCol === null || ssDragCol === ci) { ssDragCol = null; return; }
+        const from = ssDragCol, to = ci;
+        const nc = [...C()]; const [mc] = nc.splice(from, 1); nc.splice(to, 0, mc); S.ssCols = nc;
+        S.ssData = D().map(row => { const nr = [...row]; const [mv] = nr.splice(from, 1); nr.splice(to, 0, mv); return nr; });
+        ssDragCol = null; ps(); buildSS();
+      }
+      function ssRenameCol(ci) { const n = prompt('Rename column:', C()[ci]); if (n) { C()[ci] = n; ps(); buildSS(); } }
+
+      // ── row/col management ────────────────────────────────────────
+      function ssAddRow() { D().push(new Array(NC()).fill('')); ps(); buildSS(); }
+      function ssDelRow() {
+        if (NR() <= 1) return;
+        D().splice(ssSelR0, 1);
+        if (ssR >= NR()) ssR = NR() - 1;
+        ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+        ps(); buildSS();
+      }
+      function ssAddCol() {
+        const name = prompt('Column name:', 'New col'); if (!name) return;
+        C().push(name); S.ssData = D().map(r => [...r, '']); ps(); buildSS();
+      }
+      function ssDelCol() {
+        if (NC() <= 1) return; if (!confirm('Delete last column?')) return;
+        C().pop(); S.ssData = D().map(r => { const nr = [...r]; nr.pop(); return nr; });
+        if (ssC >= NC()) ssC = NC() - 1; ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+        ps(); buildSS();
+      }
+      function ssRecalc() { ps(); buildSS(); renderLifeCharts(); }
+
+      function renderLife() {
+        buildSS();
+        if (!ssInited) { initSS(); ssInited = true; }
+        renderLifeCharts();
+      }
+
+
+      function renderLifeCharts() {
+        const rows = S.ssData;
+        const labels = rows.map((r, i) => String(evalCell(r[0], i, 0) || r[0] || ''));
+        // Clamp values to ±1 trillion to prevent blown-up formulas from destroying chart scale
+        const CHART_MAX = 1e12;
+        const clamp = v => Math.max(-CHART_MAX, Math.min(CHART_MAX, v));
+        const nwVals = rows.map((r, i) => { const v = evalCell(r[1], i, 1); const n = parseFloat(v); return cvt(isFinite(n) ? clamp(n) : 0); });
+        const incVals = rows.map((r, i) => { const kr = parseFloat(evalCell(r[3], i, 3)) || 0, us = parseFloat(evalCell(r[4], i, 4)) || 0, sp = parseFloat(evalCell(r[5], i, 5)) || 0; return cvt(clamp(kr + us + sp)); });
+        const expVals = rows.map((r, i) => { const ex = parseFloat(evalCell(r[6], i, 6)) || 0, hs = parseFloat(evalCell(r[7], i, 7)) || 0; return cvt(clamp(-(ex + hs))); });
+        dC('lifeNW'); CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: getThemeColors()[0], backgroundColor: getThemeColors()[0] + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'life') } } });
+        dC('lifeInc'); CH['lifeInc'] = new Chart(document.getElementById('lifeInc'), { type: 'bar', data: { labels, datasets: [{ label: 'Income', data: incVals, backgroundColor: getThemeColors()[0] + '55', stack: 'a' }, { label: 'Expenses', data: expVals, backgroundColor: getThemeColors()[3] + '44', stack: 'b' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel(c.dataset.label, fmt(Math.abs(c.parsed.y) / cvt(1)), 'life') } } }, scales: { x: { ...chartXAxis({ maxTicksLimit: 10 }), stacked: true }, y: { ...chartYAxis(v => fmt(Math.abs(v) / cvt(1)), 'life'), stacked: true } } } });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // THEME SYSTEM
+      const THEME_DEFAULT = {
+        '--th-primary': '#2D6A4F',
+        '--th-primary-m': '#3E8B68',
+        '--th-primary-l': '#CEE8DA',
+        '--th-primary-ll': '#E9F5EF',
+        '--th-secondary': '#2563A8',
+        '--th-secondary-l': '#D4E6F8',
+        '--th-sidebar-active-bg': '#E9F5EF',
+        '--th-sidebar-active-fg': '#2D6A4F',
+        '--th-chart1': '#2D6A4F',
+        '--th-chart2': '#2563A8',
+        '--th-chart3': '#9A6B1A',
+        '--th-chart4': '#A83D5C',
+        '--th-chart5': '#6B3FA0',
+        '--th-chart6': '#1F8080',
+        '--th-progress': '#2D6A4F',
+        '--th-highlight': '#F5EAD0',
+        '--th-btn-bg': '#2D6A4F',
+        '--th-btn-fg': '#FFFFFF',
+        '--th-tag-bg': '#E9F5EF',
+        '--th-tag-fg': '#2D6A4F',
+        '--th-bg': '#F5F4F0',
+        '--th-surface': '#FAFAF8',
+        '--th-text': '#1A1917',
+        '--th-text2': '#4A4740',
+      };
+
+      const THEME_PRESETS = [
+        { name: 'Forest', color: '#2D6A4F', tokens: { ...THEME_DEFAULT } },
+        {
+          name: 'Ocean', color: '#1A5C8A', tokens: {
+            '--th-primary': '#1A5C8A', '--th-primary-m': '#2678B0', '--th-primary-l': '#C5DEF0', '--th-primary-ll': '#EAF3FB',
+            '--th-secondary': '#0E6973', '--th-secondary-l': '#C2E8EC',
+            '--th-sidebar-active-bg': '#EAF3FB', '--th-sidebar-active-fg': '#1A5C8A',
+            '--th-chart1': '#1A5C8A', '--th-chart2': '#0E6973', '--th-chart3': '#7B4EA0', '--th-chart4': '#C0392B', '--th-chart5': '#2ECC71', '--th-chart6': '#F39C12',
+            '--th-progress': '#1A5C8A', '--th-highlight': '#C5DEF0',
+            '--th-btn-bg': '#1A5C8A', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#EAF3FB', '--th-tag-fg': '#1A5C8A',
+            '--th-bg': '#F0F4F8', '--th-surface': '#F8FAFB', '--th-text': '#0D1B2A', '--th-text2': '#3A4A5A',
+          }
+        },
+        {
+          name: 'Dusk', color: '#7B3FA0', tokens: {
+            '--th-primary': '#7B3FA0', '--th-primary-m': '#9A5CC2', '--th-primary-l': '#E0CCF4', '--th-primary-ll': '#F3EDFB',
+            '--th-secondary': '#C05080', '--th-secondary-l': '#F5D5E4',
+            '--th-sidebar-active-bg': '#F3EDFB', '--th-sidebar-active-fg': '#7B3FA0',
+            '--th-chart1': '#7B3FA0', '--th-chart2': '#C05080', '--th-chart3': '#E07030', '--th-chart4': '#4A7EC8', '--th-chart5': '#2D6A4F', '--th-chart6': '#B8860B',
+            '--th-progress': '#7B3FA0', '--th-highlight': '#E0CCF4',
+            '--th-btn-bg': '#7B3FA0', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#F3EDFB', '--th-tag-fg': '#7B3FA0',
+            '--th-bg': '#F4F0F8', '--th-surface': '#FAF8FC', '--th-text': '#1A0D2E', '--th-text2': '#4A3A60',
+          }
+        },
+        {
+          name: 'Ember', color: '#C04020', tokens: {
+            '--th-primary': '#C04020', '--th-primary-m': '#E05030', '--th-primary-l': '#F5CECC', '--th-primary-ll': '#FDF0EE',
+            '--th-secondary': '#A06020', '--th-secondary-l': '#F5E8CC',
+            '--th-sidebar-active-bg': '#FDF0EE', '--th-sidebar-active-fg': '#C04020',
+            '--th-chart1': '#C04020', '--th-chart2': '#A06020', '--th-chart3': '#2D6A4F', '--th-chart4': '#2563A8', '--th-chart5': '#8040A0', '--th-chart6': '#1F8080',
+            '--th-progress': '#C04020', '--th-highlight': '#F5E8CC',
+            '--th-btn-bg': '#C04020', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#FDF0EE', '--th-tag-fg': '#C04020',
+            '--th-bg': '#F8F4F0', '--th-surface': '#FDFAF8', '--th-text': '#1A0A06', '--th-text2': '#4A2A1A',
+          }
+        },
+        {
+          name: 'Slate', color: '#3A5068', tokens: {
+            '--th-primary': '#3A5068', '--th-primary-m': '#506A80', '--th-primary-l': '#C8D8E5', '--th-primary-ll': '#EDF3F8',
+            '--th-secondary': '#2A7080', '--th-secondary-l': '#C5E0E8',
+            '--th-sidebar-active-bg': '#EDF3F8', '--th-sidebar-active-fg': '#3A5068',
+            '--th-chart1': '#3A5068', '--th-chart2': '#2A7080', '--th-chart3': '#7A6040', '--th-chart4': '#904060', '--th-chart5': '#60409A', '--th-chart6': '#4A8060',
+            '--th-progress': '#3A5068', '--th-highlight': '#C8D8E5',
+            '--th-btn-bg': '#3A5068', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#EDF3F8', '--th-tag-fg': '#3A5068',
+            '--th-bg': '#EFF3F6', '--th-surface': '#F6F9FB', '--th-text': '#101820', '--th-text2': '#385060',
+          }
+        },
+        {
+          name: 'Dark', color: '#121212', tokens: {
+            '--th-primary': '#4ABA84', '--th-primary-m': '#60CC98', '--th-primary-l': '#1A3A2A', '--th-primary-ll': '#0E2018',
+            '--th-secondary': '#5090E8', '--th-secondary-l': '#1A2A40',
+            '--th-sidebar-active-bg': '#1A3A2A', '--th-sidebar-active-fg': '#4ABA84',
+            '--th-chart1': '#4ABA84', '--th-chart2': '#5090E8', '--th-chart3': '#E8B050', '--th-chart4': '#E86070', '--th-chart5': '#A070E8', '--th-chart6': '#50D0D0',
+            '--th-progress': '#4ABA84', '--th-highlight': '#1A3A2A',
+            '--th-btn-bg': '#4ABA84', '--th-btn-fg': '#0A1A12',
+            '--th-tag-bg': '#1A3A2A', '--th-tag-fg': '#4ABA84',
+            '--th-bg': '#111318', '--th-surface': '#1A1D24', '--th-text': '#E8E6E0', '--th-text2': '#9A98A0',
+          }
+        },
+      ];
+
+      function applyThemeToken(prop, val) {
+        document.documentElement.style.setProperty(prop, val);
+        // cascade derived tokens for primary
+        if (prop === '--th-primary') {
+          document.documentElement.style.setProperty('--th-primary-m', lighten(val, 0.18));
+          document.documentElement.style.setProperty('--th-primary-l', lighten(val, 0.55));
+          document.documentElement.style.setProperty('--th-primary-ll', lighten(val, 0.72));
+          document.documentElement.style.setProperty('--th-btn-bg', val);
+          document.documentElement.style.setProperty('--th-progress', val);
+          document.documentElement.style.setProperty('--th-tag-fg', val);
+          document.documentElement.style.setProperty('--th-tag-bg', lighten(val, 0.72));
+          document.documentElement.style.setProperty('--th-sidebar-active-fg', val);
+          document.documentElement.style.setProperty('--th-sidebar-active-bg', lighten(val, 0.72));
+          document.documentElement.style.setProperty('--th-chart1', val);
+          syncAllInputsFromDOM();
+        }
+        if (prop === '--th-secondary') {
+          document.documentElement.style.setProperty('--th-secondary-l', lighten(val, 0.6));
+          document.documentElement.style.setProperty('--th-chart2', val);
+          syncAllInputsFromDOM();
+        }
+        saveTheme();
+        refreshAllCharts();
+      }
+
+      function applyThemeTokens(map) {
+        Object.entries(map).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+        saveTheme();
+        refreshAllCharts();
+      }
+
+      function applyThemeObject(tokens) {
+        Object.entries(tokens).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+        syncAllInputsFromDOM();
+        saveTheme();
+        refreshAllCharts();
+      }
+
+      // Re-render whichever charts are currently visible on screen
+      function refreshAllCharts() {
+        const activeTab = document.querySelector('.tc.on');
+        if (!activeTab) return;
+        const id = activeTab.id.replace('tab-', '');
+        const renders = {
+          overview: renderOverview,
+          portfolio: renderPortfolio,
+          projections: () => { updateProj(); },
+          goals: renderGoals,
+          life: renderLifeCharts,
+        };
+        if (renders[id]) renders[id]();
+      }
+
+      function saveTheme() {
+        const t = {};
+        Object.keys(THEME_DEFAULT).forEach(k => { t[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim(); });
+        S.settings.theme = t;
+        ps();
+      }
+
+      function loadTheme() {
+        if (!S.settings.theme) return;
+        Object.entries(S.settings.theme).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+      }
+
+      function resetTheme() {
+        applyThemeObject(THEME_DEFAULT);
+        syncAllInputsFromDOM();
+        highlightActivePreset(0);
+      }
+
+      // ── Hex helpers ───────────────────────────────────────────────
+      function isValidHex(h) { return /^#[0-9A-Fa-f]{6}$/.test(h); }
+
+      function syncHex(colorId, hexId) {
+        const col = document.getElementById(colorId);
+        const hex = document.getElementById(hexId);
+        if (col && hex) { hex.value = col.value.toUpperCase(); hex.classList.remove('err'); }
+      }
+
+      function hexInput(colorId, hexId, prop, fn) {
+        const hex = document.getElementById(hexId);
+        const col = document.getElementById(colorId);
+        const v = hex.value.startsWith('#') ? hex.value : '#' + hex.value;
+        if (isValidHex(v)) {
+          hex.classList.remove('err');
+          col.value = v;
+          if (prop) applyThemeToken(prop, v);
+          if (fn) fn(v);
+          saveTheme();
+        }
+      }
+
+      function hexBlur(colorId, hexId, prop, fn) {
+        const hex = document.getElementById(hexId);
+        const v = hex.value.startsWith('#') ? hex.value : '#' + hex.value;
+        if (!isValidHex(v)) { hex.classList.add('err'); return; }
+        hexInput(colorId, hexId, prop, fn);
+      }
+
+      function syncAllInputsFromDOM() {
+        const r = getComputedStyle(document.documentElement);
+        const pairs = [
+          ['tc-primary', 'thx-primary', '--th-primary'],
+          ['tc-secondary', 'thx-secondary', '--th-secondary'],
+          ['tc-btn', 'thx-btn', '--th-btn-bg'],
+          ['tc-sab', 'thx-sab', '--th-sidebar-active-fg'],
+          ['tc-tag', 'thx-tag', '--th-tag-fg'],
+          ['tc-prog', 'thx-prog', '--th-progress'],
+          ['tc-hi', 'thx-hi', '--th-highlight'],
+          ['tc-c1', 'thx-c1', '--th-chart1'],
+          ['tc-c2', 'thx-c2', '--th-chart2'],
+          ['tc-c3', 'thx-c3', '--th-chart3'],
+          ['tc-c4', 'thx-c4', '--th-chart4'],
+          ['tc-c5', 'thx-c5', '--th-chart5'],
+          ['tc-c6', 'thx-c6', '--th-chart6'],
+          ['tc-bg', 'thx-bg', '--th-bg'],
+          ['tc-surf', 'thx-surf', '--th-surface'],
+          ['tc-txt', 'thx-txt', '--th-text'],
+          ['tc-txt2', 'thx-txt2', '--th-text2'],
+        ];
+        pairs.forEach(([cid, hid, prop]) => {
+          const val = r.getPropertyValue(prop).trim();
+          const hex6 = toHex6(val);
+          const col = document.getElementById(cid);
+          const hex = document.getElementById(hid);
+          if (col && hex6) col.value = hex6;
+          if (hex && hex6) { hex.value = hex6.toUpperCase(); hex.classList.remove('err'); }
+        });
+      }
+
+      function toHex6(val) {
+        if (!val) return null;
+        val = val.trim();
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) return val;
+        // try rgb()
+        const m = val.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        if (m) return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+        return null;
+      }
+
+      // simple lighten: blend color with white
+      function lighten(hex, amount) {
+        hex = hex.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const nr = Math.round(r + (255 - r) * amount);
+        const ng = Math.round(g + (255 - g) * amount);
+        const nb = Math.round(b + (255 - b) * amount);
+        return '#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join('');
+      }
+
+      // ── Preset buttons ────────────────────────────────────────────
+      function buildPresets() {
+        const wrap = document.getElementById('theme-presets');
+        if (!wrap) return;
+        wrap.innerHTML = THEME_PRESETS.map((p, i) => `<button class="theme-preset" title="${p.name}" style="background:${p.color}" onclick="applyPreset(${i})" id="tpreset-${i}"></button>`).join('');
+        highlightActivePreset(detectActivePreset());
+      }
+
+      function applyPreset(i) {
+        applyThemeObject(THEME_PRESETS[i].tokens);
+        highlightActivePreset(i);
+      }
+
+      function highlightActivePreset(i) {
+        document.querySelectorAll('.theme-preset').forEach((el, idx) => el.classList.toggle('on', idx === i));
+      }
+
+      function detectActivePreset() {
+        const cur = getComputedStyle(document.documentElement).getPropertyValue('--th-primary').trim();
+        const idx = THEME_PRESETS.findIndex(p => toHex6(p.tokens['--th-primary']) === toHex6(cur));
+        return idx >= 0 ? idx : -1;
+      }
+
+      // ── renderSettings extension ──────────────────────────────────
+      function renderSettings() {
+        // Show logged-in user info
+        getCurrentUser().then(user => {
+          const el = document.getElementById('settings-user-info');
+          if (el && user) {
+            el.innerHTML = `
+      <div class="lbl" style="margin-bottom:10px">ACCOUNT</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--ink3);width:52px;flex-shrink:0">Email</span>
+          <span style="font-size:12px;font-family:var(--mono)">${user.email}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:baseline">
+          <span style="font-size:11px;color:var(--ink3);width:52px;flex-shrink:0">User ID</span>
+          <span style="font-size:11px;font-family:var(--mono);color:var(--ink3);word-break:break-all">${user.id}</span>
+        </div>
+      </div>
+    `;
+          }
+        });
+        document.getElementById('fx-set').value = S.settings.fx;
+        syncPrivacyUI();
+        document.getElementById('snap-list').innerHTML = '';
+        if (S.snapshots.length === 0) {
+          document.getElementById('snap-list').innerHTML = '<div class="mut" style="font-size:12px;padding:8px 0">No snapshots yet. Use the button above or the Overview tab to add one.</div>';
+        } else {
+          document.getElementById('snap-list').innerHTML = S.snapshots.map((s, i) => {
+            const dateStr = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return `<div class="snap-row" draggable="true"
+              ondragstart="snapDragStart(event,${i})"
+              ondragover="snapDragOver(event,${i})"
+              ondrop="snapDrop(event,${i})"
+              ondragend="snapDragEnd(event)"
+              style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--rs);border:1px solid var(--line);background:var(--surface);transition:background .1s"
+              onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='var(--surface)'">
+              <span style="cursor:grab;color:var(--ink4);font-size:14px;flex-shrink:0;padding:0 2px" title="Drag to reorder">&#8942;&#8942;</span>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:600">${dateStr}</span>
+                  <span style="font-family:var(--mono);font-size:12px">${M(fmtUSD(s.nw))}</span>
+                  ${s.contributed ? `<span style="font-size:11px;color:var(--fm);font-family:var(--mono)">+${M(fmtUSD(s.contributed))} contrib</span>` : ''}
+                </div>
+                ${s.note ? `<div style="font-size:10.5px;color:var(--ink3);margin-top:1px">${s.note}</div>` : ''}
+              </div>
+              <button class="btn bsm bgh" onclick="openSnapModal(${i})" style="flex-shrink:0">Edit</button>
+            </div>`;
+          }).join('');
+        }
+        buildPresets();
+        syncAllInputsFromDOM();
+      }
+
+      // load saved theme on boot — moved into initApp()
+
 
       function delSnap(i) {
         if (!confirm('Delete snapshot?')) return;
         S.snapshots.splice(i, 1);
-        ps();
-        renderSettings();
-        renderOverview();
+        ps(); renderSettings(); renderOverview();
       }
 
       function snapDragStart(e, i) {
@@ -3795,9 +5276,7 @@
       function snapDragEnd(e) {
         snapDragIdx = null;
         e.currentTarget.style.opacity = '1';
-        document.querySelectorAll('.snap-row').forEach(r => r.style.borderTop = '');
       }
-
       function exportData() { const a = document.createElement('a'); a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(S, null, 2)); a.download = 'moola-export.json'; a.click(); }
       function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { S = JSON.parse(ev.target.result); ps(); location.reload(); } catch (e) { alert('Invalid file.'); } }; r.readAsText(f); }
 
