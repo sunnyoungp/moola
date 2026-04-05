@@ -3802,11 +3802,19 @@
         closeMobTray();
       }
       function syncAccountsFromPortfolio() {
-        // Group fund values by acct — always String() both sides to avoid number/string mismatch
-        const acctTotals = {};
+        // Resolve each fund's acct to a canonical account object, then accumulate.
+        // Using a Map keyed on the account object prevents multiple string aliases
+        // (e.g. 'ROTH' and numeric 1) from overwriting each other.
+        const acctTotals = new Map();
         S.funds.forEach(f => {
           const key = String(f.acct);
-          acctTotals[key] = (acctTotals[key] || 0) + (f.value || 0);
+          let acct = S.accounts.find(a => String(a.id) === key);
+          if (!acct) {
+            if (key === 'ROTH')    acct = S.accounts.find(a => a.type === 'brokerage-roth');
+            if (key === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
+            if (!acct)             acct = S.accounts.find(a => a.type === key);
+          }
+          if (acct) acctTotals.set(acct, (acctTotals.get(acct) || 0) + (f.value || 0));
         });
 
         // Zero every investment account first — accounts with no linked funds go to $0
@@ -3814,17 +3822,10 @@
           if (isInvestmentAcct(a)) { a.balance = 0; delete a.manualOverride; }
         });
 
-        // Apply totals — match by String(account.id)
-        Object.entries(acctTotals).forEach(([acctId, total]) => {
-          let acct = S.accounts.find(a => String(a.id) === acctId);
-          // Legacy fallback for pre-migration ROTH / TAXABLE string values
-          if (!acct) {
-            if (acctId === 'ROTH')             acct = S.accounts.find(a => a.type === 'brokerage-roth');
-            if (acctId === 'TAXABLE')          acct = S.accounts.find(a => a.type === 'brokerage-taxable');
-            // Fallback for type-name strings (e.g. 'brokerage-roth') not yet coerced
-            if (!acct) acct = S.accounts.find(a => a.type === acctId);
-          }
-          if (acct) { acct.balance = Math.round(total * 100) / 100; delete acct.manualOverride; }
+        // Apply accumulated totals
+        acctTotals.forEach((total, acct) => {
+          acct.balance = Math.round(total * 100) / 100;
+          delete acct.manualOverride;
         });
         ps();
       }
