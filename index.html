@@ -1718,6 +1718,11 @@
       width: 22px;
       height: 22px;
       flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .mob-tab.on {
@@ -1813,6 +1818,11 @@
       height: 18px;
       color: var(--fm);
       flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     /* ════════════════════════════════════════════════════════════
@@ -2206,8 +2216,8 @@
         <div class="sb-cur">
           <span class="sb-cur-label">Currency</span>
           <div class="stabs" id="cur-tabs">
-            <button class="stab on" onclick="setCur('USD',this)">USD</button>
-            <button class="stab" onclick="setCur('KRW',this)">KRW</button>
+            <button class="stab on" onclick="setCur('USD')">USD</button>
+            <button class="stab" onclick="setCur('KRW')">KRW</button>
           </div>
           <div class="stabs" id="krw-fmt-tabs" style="display:none">
             <button class="stab on" onclick="setKrwFmt('short',this)">억/만</button>
@@ -2231,6 +2241,17 @@
     <div id="mob-tray-backdrop" onclick="closeMobTray()"></div>
     <div id="mob-tray">
       <div class="mob-tray-handle"></div>
+      <div id="mob-tray-cur" style="padding:10px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Currency</span>
+        <div class="stabs" id="mob-cur-tabs">
+          <button class="stab on" onclick="setCur('USD')">USD</button>
+          <button class="stab" onclick="setCur('KRW')">KRW</button>
+        </div>
+        <div class="stabs" id="mob-krw-fmt-tabs" style="display:none">
+          <button class="stab on" onclick="setKrwFmt('short',this)">억/만</button>
+          <button class="stab" onclick="setKrwFmt('full',this)">Full &#8361;</button>
+        </div>
+      </div>
       <div class="mob-tray-grid" id="mob-tray-grid"></div>
     </div>
 
@@ -3391,8 +3412,11 @@
         if (!S.tabs) S.tabs = mkDef().tabs;
         migrateData();
         loadTheme();
+        // Ensure investment account balances reflect current fund values on every load
+        syncAccountsFromPortfolio();
         // rest of your existing init code:
-        if (S.settings.currency === 'KRW') { dispCur = 'KRW'; document.querySelector('#cur-tabs .stab').classList.remove('on'); document.querySelectorAll('#cur-tabs .stab')[1]?.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = 'flex'; }
+        if (S.settings.currency === 'KRW') { dispCur = 'KRW'; }
+        syncCurUI();
         krwFmt = S.settings.krwFmt || 'short';
         renderSidebar();
         syncPrivacyUI();
@@ -3535,7 +3559,21 @@
 
       // ══════════════════════════════════════════════════════════════
       // CURRENCY
-      function setCur(c, el) { dispCur = c; S.settings.currency = c; document.querySelectorAll('#cur-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); document.getElementById('krw-fmt-tabs').style.display = c === 'KRW' ? 'flex' : 'none'; ps(); reRender(); }
+      function syncCurUI() {
+        const c = dispCur;
+        // Sync desktop sidebar + mobile tray toggle buttons
+        ['cur-tabs', 'mob-cur-tabs'].forEach(id => {
+          const wrap = document.getElementById(id);
+          if (!wrap) return;
+          wrap.querySelectorAll('.stab').forEach((btn, i) => btn.classList.toggle('on', i === (c === 'KRW' ? 1 : 0)));
+        });
+        const fmtDisplay = c === 'KRW' ? 'flex' : 'none';
+        ['krw-fmt-tabs', 'mob-krw-fmt-tabs'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = fmtDisplay;
+        });
+      }
+      function setCur(c) { dispCur = c; S.settings.currency = c; syncCurUI(); ps(); reRender(); }
       function setKrwFmt(f, el) { krwFmt = f; S.settings.krwFmt = f; document.querySelectorAll('#krw-fmt-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); ps(); reRender(); }
       function getFX() { return parseFloat(S.settings.fx || 1370); }
       function cvt(usd) { return dispCur === 'KRW' ? usd * getFX() : usd; }
@@ -3819,11 +3857,11 @@
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
-        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:160px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
+        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:200px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
         if (vis.goals) h += `<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
         document.getElementById('ov-widgets').innerHTML = h;
         if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
-        if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const allAccts = S.accounts.filter(a => a.balance > 0); const d = allAccts.map((a,i) => ({ l: a.name, v: a.balance, c: tc[i % tc.length] })).filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } }); }
+        if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const allAccts = S.accounts.filter(a => a.balance > 0); const d = allAccts.map((a,i) => ({ l: a.name, v: a.balance, c: tc[i % tc.length] })).filter(x => x.v > 0); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8, color: '#4a4640', boxWidth: 10 } }, tooltip: { callbacks: { label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } }); }
         if (vis.goals) { const el = document.getElementById('ov-goals'); if (el) { const t = nwTotal(); el.innerHTML = S.goals.slice(0, 5).map(g => { const f = Math.min(100, (t / g.amount) * 100); const yl = g.year - NY; return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`; }).join(''); } }
       }
       // ── Snapshot modal ─────────────────────────────────────────────────
@@ -4195,7 +4233,7 @@
             </tr>`;
           }).join('');
         }
-        document.getElementById('drift-tbl-wrap').innerHTML = `<table class="tbl"><thead><tr><th>Fund / Account</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table>`;
+        document.getElementById('drift-tbl-wrap').innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Fund / Account</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table></div>`;
         dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker + (S.accounts.find(a=>String(a.id)===String(f.acct)) ? ' ('+S.accounts.find(a=>String(a.id)===String(f.acct)).name.split(' ')[0]+')' : '')), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } });
         document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
           const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
@@ -4308,7 +4346,7 @@
         syncAccountsFromPortfolio();
         ps(); closeModal('m-fund'); renderPortfolio();
       }
-      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); ps(); renderPortfolio(); }
+      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }
 
       // ══════════════════════════════════════════════════════════════
       // REBALANCE
@@ -5954,7 +5992,7 @@
               valueUpdates++;
             }
           });
-          if (valueUpdates > 0) { syncAccountsFromPortfolio(); ps(); }
+          syncAccountsFromPortfolio(); ps();
           if (failedTickers.length === tickers.length) {
             errors.push('No quotes received — prices may be delayed or market closed');
           } else if (failedTickers.length > 0) {
