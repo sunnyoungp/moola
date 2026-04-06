@@ -12,105 +12,103 @@
   <meta name="apple-mobile-web-app-title" content="Moola" />
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@300;400;500&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
     /* ══════════════════════════════════════════════════════════════
-   MOOLA v3 — Design System
-   Font: DM Sans + DM Mono  |  Tone: calm, editorial, warm minimal
+   MOOLA v4 — Design System
+   Font: SF Pro Display / Helvetica Neue  |  Tone: refined, editorial
    ══════════════════════════════════════════════════════════════ */
     :root {
       /* Surfaces */
-      --page: #F5F4F0;
+      --page: #F0EFEB;
       --surface: #FAFAF8;
-      --s2: #F0EFE9;
-      --s3: #E7E5DE;
+      --s2: #ECEAE4;
+      --s3: #E2DFD8;
       --white: #FFFFFF;
       /* Ink */
-      --ink: #1A1917;
-      --ink2: #4A4740;
-      --ink3: #9A958E;
-      --ink4: #C4C0B8;
+      --ink: #1C1B19;
+      --ink2: #48453E;
+      --ink3: #918D85;
+      --ink4: #C2BEB6;
       /* Borders */
-      --line: #E3E0D7;
-      --line-s: #CCC9C0;
-      /* Forest (primary green) */
-      --f: #2D6A4F;
-      --fm: #3E8B68;
-      --fl: #CEE8DA;
-      --fll: #E9F5EF;
+      --line: #DDD9D0;
+      --line-s: #C8C4BB;
+      /* Primary — muted indigo (replaces forest green) */
+      --f: #3D4E8A;
+      --fm: #4E61A8;
+      --fl: #D0D7F0;
+      --fll: #ECEEF9;
       /* Accents */
-      --sky: #2563A8;
-      --sky-l: #D4E6F8;
-      --gold: #9A6B1A;
-      --gold-l: #F5EAD0;
-      --rose: #A83D5C;
-      --rose-l: #FAE0E8;
-      --violet: #6B3FA0;
-      --violet-l: #ECE0F8;
-      --teal: #1F8080;
-      --teal-l: #D0EEEE;
-      /* Shadows */
-      --sh1: 0 1px 2px rgba(26, 25, 23, .04);
-      --sh2: 0 1px 4px rgba(26, 25, 23, .05), 0 2px 8px rgba(26, 25, 23, .04);
-      --sh3: 0 2px 8px rgba(26, 25, 23, .06), 0 4px 16px rgba(26, 25, 23, .04);
-      --sh4: 0 4px 16px rgba(26, 25, 23, .08), 0 8px 32px rgba(26, 25, 23, .06);
+      --sky: #2E6EA6;
+      --sky-l: #D2E7F5;
+      --gold: #8A6820;
+      --gold-l: #F5EBCF;
+      --rose: #9B3A58;
+      --rose-l: #F9DDE6;
+      --violet: #6040A0;
+      --violet-l: #EAE0F8;
+      --teal: #1E7A7A;
+      --teal-l: #CCE9E9;
+      /* Shadows — softer, warmer */
+      --sh1: 0 1px 2px rgba(28, 27, 25, .04);
+      --sh2: 0 1px 4px rgba(28, 27, 25, .05), 0 2px 10px rgba(28, 27, 25, .04);
+      --sh3: 0 2px 8px rgba(28, 27, 25, .06), 0 4px 20px rgba(28, 27, 25, .04);
+      --sh4: 0 4px 20px rgba(28, 27, 25, .08), 0 8px 36px rgba(28, 27, 25, .06);
       /* Radii */
       --rx: 4px;
-      --rs: 7px;
-      --r: 11px;
-      --rl: 15px;
-      --rxl: 20px;
-      /* Type */
-      --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      --mono: 'DM Mono', 'JetBrains Mono', monospace;
+      --rs: 8px;
+      --r: 12px;
+      --rl: 16px;
+      --rxl: 22px;
+      /* Type — SF Pro Display → Helvetica Neue → system */
+      --sans: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      --mono: 'SF Mono', 'Helvetica Neue', ui-monospace, 'JetBrains Mono', monospace;
       /* Layout */
       --sb: 228px;
       --sb-collapsed: 56px;
       --mob-nav-h: 62px;
       /* Compatibility aliases */
-      --red: #A83D5C;
-      --blush: #A83D5C;
-      --s2: #F0EFE9;
-      --forest-mid: #3E8B68;
+      --red: #9B3A58;
+      --blush: #9B3A58;
+      --s2: #ECEAE4;
+      --forest-mid: #4E61A8;
 
-      /* ── Theme customisation tokens (overridable) ── */
-      --th-primary: #1A6B3C;
-      --th-primary-m: #2A8A50;
-      --th-primary-l: #C2E8D2;
-      --th-primary-ll: #E6F5EC;
-      --th-secondary: #B45309;
-      --th-secondary-l: #FDEFC3;
-      --th-sidebar-active-bg: #E6F5EC;
-      --th-sidebar-active-fg: #1A6B3C;
-      --th-chart1: #1A6B3C;
-      --th-chart2: #4B6FE4;
-      --th-chart3: #F5A524;
-      --th-chart4: #E8536E;
-      --th-chart5: #9C5CF8;
-      --th-chart6: #19C8A4;
-      --th-chart7: #F97316;
-      --th-chart8: #06B6D4;
-      --th-chart9: #EC4899;
-      --th-chart10: #6366F1;
-      --th-chart11: #EAB308;
-      --th-chart12: #8B5CF6;
-      --th-chart13: #14B8A6;
-      --th-chart14: #EF4444;
-      --th-chart15: #22C55E;
-      --th-chart16: #A16207;
-      --th-progress: #1A6B3C;
-      --th-highlight: #FDEFC3;
-      --th-btn-bg: #1A6B3C;
+      /* ── Theme customisation tokens ── */
+      --th-primary: #3D4E8A;
+      --th-primary-m: #4E61A8;
+      --th-primary-l: #D0D7F0;
+      --th-primary-ll: #ECEEF9;
+      --th-secondary: #8A6820;
+      --th-secondary-l: #F5EBCF;
+      --th-sidebar-active-bg: #ECEEF9;
+      --th-sidebar-active-fg: #3D4E8A;
+      --th-chart1: #4E61A8;
+      --th-chart2: #6040A0;
+      --th-chart3: #C0884A;
+      --th-chart4: #9B3A58;
+      --th-chart5: #7C5CBF;
+      --th-chart6: #1E8080;
+      --th-chart7: #C0622A;
+      --th-chart8: #2E6EA6;
+      --th-chart9: #B0406A;
+      --th-chart10: #5060B8;
+      --th-chart11: #B08A1A;
+      --th-chart12: #7050C0;
+      --th-chart13: #187878;
+      --th-chart14: #C03C3C;
+      --th-chart15: #2E8C50;
+      --th-chart16: #906018;
+      --th-progress: #3D4E8A;
+      --th-highlight: #F5EBCF;
+      --th-btn-bg: #1C1B19;
       --th-btn-fg: #FFFFFF;
-      --th-tag-bg: #E6F5EC;
-      --th-tag-fg: #1A6B3C;
-      --th-bg: #F7F6F1;
-      --th-surface: #FFFFFF;
-      --th-text: #1A1917;
-      --th-text2: #4A4740;
+      --th-tag-bg: #ECEEF9;
+      --th-tag-fg: #3D4E8A;
+      --th-bg: #F0EFEB;
+      --th-surface: #FAFAF8;
+      --th-text: #1C1B19;
+      --th-text2: #48453E;
     }
 
     /* ── apply theme tokens to design-system vars ── */
@@ -160,7 +158,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh
+      min-height: 100vh;
+      background: var(--page);
     }
 
     #app-screen {
@@ -210,7 +209,7 @@
       width: 30px;
       height: 30px;
       border-radius: 9px;
-      background: var(--f);
+      background: linear-gradient(135deg, #2E3550 0%, #3A2E50 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -223,7 +222,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(140deg, rgba(255, 255, 255, .18) 0%, transparent 55%)
+      background: linear-gradient(140deg, rgba(255, 255, 255, .14) 0%, transparent 55%)
     }
 
     .sb-mark svg {
@@ -239,8 +238,8 @@
 
     .sb-wordmark {
       font-size: 16px;
-      font-weight: 650;
-      letter-spacing: -.4px;
+      font-weight: 600;
+      letter-spacing: -.5px;
       color: var(--ink)
     }
 
@@ -283,9 +282,9 @@
     }
 
     .nt.on {
-      background: var(--th-sidebar-active-bg);
-      color: var(--th-sidebar-active-fg);
-      font-weight: 600
+      background: var(--ink);
+      color: #fff;
+      font-weight: 500
     }
 
     .ni {
@@ -311,7 +310,7 @@
     }
 
     .nt.on .ni {
-      opacity: 1
+      opacity: .85
     }
 
     .nt svg {
@@ -342,7 +341,7 @@
 
     .sb-cur-label {
       font-size: 10px;
-      font-weight: 650;
+      font-weight: 600;
       letter-spacing: .07em;
       text-transform: uppercase;
       color: var(--ink4);
@@ -426,8 +425,8 @@
 
     .page-title {
       font-size: 24px;
-      font-weight: 650;
-      letter-spacing: -.5px;
+      font-weight: 600;
+      letter-spacing: -.6px;
       color: var(--ink);
       line-height: 1.15;
       min-width: 0;
@@ -479,7 +478,32 @@
       padding: 22px 24px;
       box-shadow: var(--sh1);
       min-width: 0;
-      /* allow shrinking in grid/flex */
+    }
+
+    /* Dark gradient card — for account/balance highlights */
+    .card-ink {
+      background: linear-gradient(145deg, #1C1B19 0%, #252235 100%);
+      border: none;
+      border-radius: var(--rl);
+      padding: 22px 24px;
+      box-shadow: 0 2px 12px rgba(28,27,25,.12), 0 1px 3px rgba(28,27,25,.08);
+      min-width: 0;
+      color: rgba(255,255,255,.9);
+    }
+    .card-ink .lbl { color: rgba(255,255,255,.4); }
+    .card-ink .bnum, .card-ink .mnum { color: rgba(255,255,255,.92); }
+    .card-ink .mut { color: rgba(255,255,255,.35); }
+    .card-ink .pos { color: #9abf94; }
+    .card-ink .neg { color: #d9909a; }
+
+    /* Warm sand gradient card */
+    .card-sand {
+      background: linear-gradient(145deg, #F5EDD8 0%, #EDE0C4 100%);
+      border: 1px solid #DDD0B0;
+      border-radius: var(--rl);
+      padding: 22px 24px;
+      box-shadow: var(--sh1);
+      min-width: 0;
     }
 
     .csm {
@@ -493,7 +517,7 @@
 
     .sec {
       font-size: 11px;
-      font-weight: 650;
+      font-weight: 600;
       letter-spacing: .05em;
       text-transform: uppercase;
       color: var(--ink3);
@@ -560,7 +584,7 @@
     /* ═══ TYPE ══════════════════════════════════════════════════ */
     .lbl {
       font-size: 11px;
-      font-weight: 650;
+      font-weight: 600;
       letter-spacing: .04em;
       text-transform: uppercase;
       color: var(--ink3);
@@ -568,28 +592,26 @@
     }
 
     .bnum {
-      font-family: var(--mono);
       font-size: 30px;
-      font-weight: 400;
+      font-weight: 300;
       line-height: 1.1;
       letter-spacing: -.8px
     }
 
     .mnum {
-      font-family: var(--mono);
       font-size: 17px;
-      font-weight: 400;
+      font-weight: 300;
       letter-spacing: -.3px
     }
 
     .snum {
-      font-family: var(--mono);
       font-size: 12px;
       color: var(--ink2)
     }
 
     .mo {
-      font-family: var(--mono)
+      font-family: var(--mono);
+      letter-spacing: -.2px;
     }
 
     .pos {
@@ -665,10 +687,10 @@
     }
 
     .bp {
-      background: var(--th-btn-bg);
-      color: var(--th-btn-fg);
-      border-color: var(--th-btn-bg);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .18)
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .15)
     }
 
     .bp svg {
@@ -676,10 +698,10 @@
     }
 
     .bp:hover {
-      background: var(--th-primary-m);
-      border-color: var(--th-primary-m);
-      color: var(--th-btn-fg);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .2)
+      background: var(--ink2);
+      border-color: var(--ink2);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .18)
     }
 
     .bsm {
@@ -715,7 +737,7 @@
 
     .inp:focus {
       border-color: var(--fm);
-      box-shadow: 0 0 0 3px rgba(62, 139, 104, .12)
+      box-shadow: 0 0 0 3px rgba(78, 97, 168, .12)
     }
 
     .inpm {
@@ -737,7 +759,7 @@
 
     .fr label {
       font-size: 12px;
-      font-weight: 550;
+      font-weight: 500;
       color: var(--ink2)
     }
 
@@ -772,7 +794,7 @@
 
     .tbl th {
       font-size: 10.5px;
-      font-weight: 650;
+      font-weight: 600;
       letter-spacing: .05em;
       text-transform: uppercase;
       color: var(--ink3);
@@ -871,7 +893,7 @@
     .atab.on {
       color: var(--f);
       border-bottom-color: var(--f);
-      font-weight: 600
+      font-weight: 500
     }
 
     /* ═══ MODAL ═════════════════════════════════════════════════ */
@@ -921,7 +943,7 @@
 
     .modal-title {
       font-size: 16px;
-      font-weight: 650;
+      font-weight: 600;
       margin-bottom: 22px;
       display: flex;
       justify-content: space-between;
@@ -1055,12 +1077,12 @@
 
     /* ═══ NW HERO ═══════════════════════════════════════════════ */
     .nw-hero {
-      background: var(--surface);
-      border: 1px solid var(--line);
+      background: linear-gradient(135deg, #1C1B19 0%, #2E3550 55%, #3A2E50 100%);
+      border: none;
       border-radius: var(--rxl);
       padding: 30px 36px;
       margin-bottom: 20px;
-      box-shadow: var(--sh1);
+      box-shadow: 0 4px 24px rgba(28, 27, 25, .14), 0 1px 4px rgba(28, 27, 25, .08);
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
@@ -1073,33 +1095,42 @@
     .nw-hero::before {
       content: '';
       position: absolute;
-      top: -60px;
-      right: -60px;
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, var(--fll) 0%, transparent 70%);
+      top: -80px;
+      right: -80px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(110, 90, 180, .22) 0%, transparent 70%);
+      pointer-events: none
+    }
+
+    .nw-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -40px;
+      left: 20%;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(60, 100, 180, .12) 0%, transparent 70%);
       pointer-events: none
     }
 
     .nw-hero-label {
       font-size: 11px;
-      font-weight: 650;
-      letter-spacing: .06em;
+      font-weight: 500;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      color: var(--ink3);
+      color: rgba(255,255,255,.45);
       margin-bottom: 8px
     }
 
     .nw-hero-value {
-      font-family: var(--mono);
       font-size: 40px;
-      font-weight: 400;
+      font-weight: 300;
       letter-spacing: -1.5px;
-      color: var(--ink);
+      color: rgba(255,255,255,.95);
       line-height: 1;
       min-width: 0;
       word-break: break-all;
-      /* prevent number overflow */
     }
 
     .nw-hero-gain {
@@ -1108,6 +1139,16 @@
       gap: 8px;
       margin-top: 10px
     }
+
+    .nw-hero .pos { color: #a8c8a0; }
+    .nw-hero .neg { color: #e0a0a8; }
+    .nw-hero .mut { color: rgba(255,255,255,.38); }
+    .nw-hero .stat-pill { background: rgba(255,255,255,.1); color: rgba(255,255,255,.8); }
+    .nw-hero .lbl { color: rgba(255,255,255,.45); }
+    .nw-hero .bnum { color: rgba(255,255,255,.9); font-size: 24px; }
+    .nw-hero .mnum { color: rgba(255,255,255,.9); }
+    .nw-hero .btn { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.15); color: rgba(255,255,255,.8); }
+    .nw-hero .btn:hover { background: rgba(255,255,255,.16); }
 
     .nw-hero-right {
       display: flex;
@@ -2194,9 +2235,14 @@
 
 <body>
   <div id="login-screen" style="display:none;">
-    <h1>Moola</h1>
-    <p>Sign in to access your finances</p>
-    <button onclick="signInWithGoogle()">Sign in with Google</button>
+    <div style="text-align:center; max-width: 360px; padding: 40px 32px; background: var(--surface); border-radius: 24px; border: 1px solid var(--line); box-shadow: var(--sh3);">
+      <div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#2E3550,#3A2E50);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <svg viewBox="0 0 14 14" width="18" height="18" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10 L4.5 5 L7 7.5 L9.5 3.5 L12 6.5"/></svg>
+      </div>
+      <h1 style="font-size:22px;font-weight:600;letter-spacing:-.5px;color:var(--ink);margin-bottom:6px;">moola</h1>
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:28px;line-height:1.5;">Sign in to access your finances</p>
+      <button onclick="signInWithGoogle()" style="width:100%;padding:11px 20px;border-radius:10px;background:var(--ink);color:#fff;font-size:13px;font-weight:500;border:none;cursor:pointer;letter-spacing:-.1px;">Continue with Google</button>
+    </div>
   </div>
   <div id="app-screen" style="display:none;">
     <!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
@@ -2248,7 +2294,7 @@
     <div id="mob-tray">
       <div class="mob-tray-handle"></div>
       <div id="mob-tray-cur" style="padding:10px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Currency</span>
+        <span style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Currency</span>
         <div class="stabs" id="mob-cur-tabs">
           <button class="stab on" onclick="setCur('USD')">USD</button>
           <button class="stab" onclick="setCur('KRW')">KRW</button>
@@ -4218,7 +4264,7 @@
         }).join('');
 
         wrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);white-space:nowrap">Show accounts:</span>
+          <span style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);white-space:nowrap">Show accounts:</span>
           ${togglesHtml}
           <button onclick="toggleAllPortAccts(true)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">All</button>
           <button onclick="toggleAllPortAccts(false)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">None</button>
@@ -4499,7 +4545,7 @@
           const fundAcctName = rAcct === 'all' ? (S.accounts.find(a => String(a.id) === String(f.acct))?.name || '') : '';
           return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2);flex-wrap:wrap">
             <div style="min-width:130px;flex-shrink:0">
-              <div style="font-size:13px;font-weight:650">${MT(f.ticker, 'rebalance')}${fundAcctName ? `<span style="font-size:10px;color:var(--ink3);margin-left:5px;font-weight:400">${fundAcctName}</span>` : ''}</div>
+              <div style="font-size:13px;font-weight:600">${MT(f.ticker, 'rebalance')}${fundAcctName ? `<span style="font-size:10px;color:var(--ink3);margin-left:5px;font-weight:400">${fundAcctName}</span>` : ''}</div>
               <div style="font-size:10.5px;margin-top:2px;color:var(--ink3)">
                 Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of this account
               </div>
@@ -5137,44 +5183,44 @@
       // ══════════════════════════════════════════════════════════════
       // THEME SYSTEM
       const THEME_DEFAULT = {
-        '--th-primary': '#1A6B3C',
-        '--th-primary-m': '#2A8A50',
-        '--th-primary-l': '#C2E8D2',
-        '--th-primary-ll': '#E6F5EC',
-        '--th-secondary': '#B45309',
-        '--th-secondary-l': '#FDEFC3',
-        '--th-sidebar-active-bg': '#E6F5EC',
-        '--th-sidebar-active-fg': '#1A6B3C',
-        '--th-chart1': '#1A6B3C',
-        '--th-chart2': '#4B6FE4',
-        '--th-chart3': '#F5A524',
-        '--th-chart4': '#E8536E',
-        '--th-chart5': '#9C5CF8',
-        '--th-chart6': '#19C8A4',
-        '--th-chart7': '#F97316',
-        '--th-chart8': '#06B6D4',
-        '--th-chart9': '#EC4899',
-        '--th-chart10': '#6366F1',
-        '--th-chart11': '#EAB308',
-        '--th-chart12': '#8B5CF6',
-        '--th-chart13': '#14B8A6',
-        '--th-chart14': '#EF4444',
-        '--th-chart15': '#22C55E',
-        '--th-chart16': '#A16207',
-        '--th-progress': '#1A6B3C',
-        '--th-highlight': '#FDEFC3',
-        '--th-btn-bg': '#1A6B3C',
+        '--th-primary': '#3D4E8A',
+        '--th-primary-m': '#4E61A8',
+        '--th-primary-l': '#D0D7F0',
+        '--th-primary-ll': '#ECEEF9',
+        '--th-secondary': '#8A6820',
+        '--th-secondary-l': '#F5EBCF',
+        '--th-sidebar-active-bg': '#1C1B19',
+        '--th-sidebar-active-fg': '#FFFFFF',
+        '--th-chart1': '#4E61A8',
+        '--th-chart2': '#6040A0',
+        '--th-chart3': '#C0884A',
+        '--th-chart4': '#9B3A58',
+        '--th-chart5': '#7C5CBF',
+        '--th-chart6': '#1E8080',
+        '--th-chart7': '#C0622A',
+        '--th-chart8': '#2E6EA6',
+        '--th-chart9': '#B0406A',
+        '--th-chart10': '#5060B8',
+        '--th-chart11': '#B08A1A',
+        '--th-chart12': '#7050C0',
+        '--th-chart13': '#187878',
+        '--th-chart14': '#C03C3C',
+        '--th-chart15': '#2E8C50',
+        '--th-chart16': '#906018',
+        '--th-progress': '#3D4E8A',
+        '--th-highlight': '#F5EBCF',
+        '--th-btn-bg': '#1C1B19',
         '--th-btn-fg': '#FFFFFF',
-        '--th-tag-bg': '#E6F5EC',
-        '--th-tag-fg': '#1A6B3C',
-        '--th-bg': '#F7F6F1',
-        '--th-surface': '#FFFFFF',
-        '--th-text': '#1A1917',
-        '--th-text2': '#4A4740',
+        '--th-tag-bg': '#ECEEF9',
+        '--th-tag-fg': '#3D4E8A',
+        '--th-bg': '#F0EFEB',
+        '--th-surface': '#FAFAF8',
+        '--th-text': '#1C1B19',
+        '--th-text2': '#48453E',
       };
 
       const THEME_PRESETS = [
-        { name: 'Forest', color: '#1A6B3C', tokens: { ...THEME_DEFAULT } },
+        { name: 'Moola', color: '#3D4E8A', tokens: { ...THEME_DEFAULT } },
         {
           // Ocean — crisp, coastal, professional (Stripe-esque)
           name: 'Ocean', color: '#0369A1', tokens: {
