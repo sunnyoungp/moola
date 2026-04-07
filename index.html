@@ -31,9 +31,11 @@
       --ink2: #48453E;
       --ink3: #918D85;
       --ink4: #C2BEB6;
-      /* Borders */
-      --line: #DDD9D0;
-      --line-s: #C8C4BB;
+      /* ── Semantic border system (alpha-based, scales with theme) ── */
+      --ink-rgb: 28, 27, 25;
+      --border: rgba(var(--ink-rgb), 0.09);
+      --border-strong: rgba(var(--ink-rgb), 0.16);
+      --border-focus: rgba(var(--ink-rgb), 0.28);
       /* Primary — muted indigo (replaces forest green) */
       --f: #3D4E8A;
       --fm: #4E61A8;
@@ -68,6 +70,9 @@
       --sb: 228px;
       --sb-collapsed: 56px;
       --mob-nav-h: 62px;
+      /* Borders — legacy aliases (keep for backward compat) */
+      --line: rgba(var(--ink-rgb), 0.09);
+      --line-s: rgba(var(--ink-rgb), 0.16);
       /* Compatibility aliases */
       --red: #9B3A58;
       --blush: #9B3A58;
@@ -186,7 +191,7 @@
       width: var(--sb);
       min-height: 100vh;
       background: var(--surface);
-      border-right: 1px solid var(--line);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       position: fixed;
@@ -201,7 +206,7 @@
       align-items: center;
       gap: 10px;
       padding: 22px 20px 18px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--border);
       flex-shrink: 0
     }
 
@@ -261,24 +266,24 @@
       display: flex;
       align-items: center;
       gap: 9px;
-      padding: 8px 12px;
+      padding: 7px 11px;
       border-radius: var(--rs);
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 450;
       color: var(--ink3);
       background: none;
       border: none;
       width: 100%;
       text-align: left;
-      transition: background .1s, color .1s;
+      transition: background .12s ease, color .12s ease;
       cursor: pointer;
       white-space: nowrap;
-      letter-spacing: -.1px
+      letter-spacing: -.15px
     }
 
     .nt:hover {
       background: var(--s2);
-      color: var(--ink2)
+      color: var(--ink)
     }
 
     .nt.on {
@@ -324,7 +329,7 @@
     }
 
     .sb-foot {
-      border-top: 1px solid var(--line);
+      border-top: 1px solid var(--border);
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
@@ -473,11 +478,17 @@
     /* ═══ CARDS ═════════════════════════════════════════════════ */
     .card {
       background: var(--surface);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: var(--rl);
       padding: 22px 24px;
       box-shadow: var(--sh1);
       min-width: 0;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--sh2);
     }
 
     /* Dark gradient card — for account/balance highlights */
@@ -508,11 +519,16 @@
 
     .csm {
       background: var(--surface);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: var(--r);
       padding: 16px 18px;
       box-shadow: var(--sh1);
       min-width: 0;
+      transition: border-color .15s ease;
+    }
+
+    .csm:hover {
+      border-color: var(--border-strong);
     }
 
     .sec {
@@ -593,7 +609,7 @@
 
     .bnum {
       font-size: 30px;
-      font-weight: 300;
+      font-weight: 500;
       line-height: 1.1;
       letter-spacing: -.8px
     }
@@ -667,10 +683,10 @@
       font-size: 13px;
       font-weight: 500;
       letter-spacing: -.15px;
-      border: 1px solid var(--line-s);
+      border: 1px solid var(--border-strong);
       background: var(--surface);
       color: var(--ink2);
-      transition: background .12s, border-color .12s, box-shadow .12s;
+      transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
       cursor: pointer;
       white-space: nowrap;
       box-shadow: var(--sh1)
@@ -726,7 +742,7 @@
     .inp {
       width: 100%;
       padding: 7px 11px;
-      border: 1px solid var(--line-s);
+      border: 1px solid var(--border-strong);
       border-radius: var(--rs);
       background: var(--surface);
       color: var(--ink);
@@ -737,7 +753,7 @@
 
     .inp:focus {
       border-color: var(--fm);
-      box-shadow: 0 0 0 3px rgba(78, 97, 168, .12)
+      box-shadow: 0 0 0 3px rgba(var(--ink-rgb), .06)
     }
 
     .inpm {
@@ -800,12 +816,12 @@
       color: var(--ink3);
       text-align: left;
       padding: 7px 10px;
-      border-bottom: 1px solid var(--line)
+      border-bottom: 1px solid var(--border-strong)
     }
 
     .tbl td {
       padding: 9px 10px;
-      border-bottom: 1px solid var(--s2);
+      border-bottom: 1px solid var(--border);
       font-size: 13px
     }
 
@@ -814,7 +830,8 @@
     }
 
     .tbl tr:hover td {
-      background: var(--s2)
+      background: var(--s2);
+      transition: background .1s ease
     }
 
     .tbl .mo {
@@ -862,14 +879,14 @@
 
     hr {
       border: none;
-      border-top: 1px solid var(--line);
+      border-top: 1px solid var(--border);
       margin: 18px 0
     }
 
     /* ═══ UNDERLINE TABS ════════════════════════════════════════ */
     .atab-group {
       display: flex;
-      border-bottom: 1px solid var(--line)
+      border-bottom: 1px solid var(--border)
     }
 
     .atab {
@@ -925,7 +942,7 @@
       max-height: 88vh;
       overflow-y: auto;
       box-shadow: var(--sh4);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border-strong);
       animation: modalIn .17s cubic-bezier(.25, .46, .45, .94)
     }
 
@@ -957,22 +974,23 @@
       justify-content: flex-end;
       margin-top: 22px;
       padding-top: 18px;
-      border-top: 1px solid var(--line)
+      border-top: 1px solid var(--border)
     }
 
     /* ═══ GOAL CARDS ════════════════════════════════════════════ */
     .gc {
       background: var(--surface);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: var(--rl);
       padding: 20px 22px;
       position: relative;
       box-shadow: var(--sh1);
-      transition: box-shadow .15s
+      transition: box-shadow .15s, border-color .15s
     }
 
     .gc:hover {
-      box-shadow: var(--sh2)
+      box-shadow: var(--sh2);
+      border-color: var(--border-strong)
     }
 
     .gc .ga {
@@ -995,7 +1013,7 @@
       align-items: center;
       gap: 12px;
       padding: 12px 0;
-      border-bottom: 1px solid var(--s2)
+      border-bottom: 1px solid var(--border)
     }
 
     .rebal-row:last-child {
@@ -1013,7 +1031,7 @@
     .banner-amber {
       background: var(--gold-l);
       color: var(--gold);
-      border: 1px solid #E8D490
+      border: 1px solid rgba(138, 104, 32, .2)
     }
 
     .banner-amber:empty {
@@ -1053,7 +1071,7 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--line)
+      background: var(--border)
     }
 
     .adot {
@@ -1069,7 +1087,7 @@
       gap: 3px;
       padding: 2px 7px;
       background: var(--s2);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: 4px;
       font-size: 10.5px;
       color: var(--ink2)
@@ -1161,7 +1179,7 @@
     .ss-outer {
       overflow: auto;
       max-height: 58vh;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: 0 0 var(--r) var(--r);
       position: relative;
       outline: none;
@@ -1181,7 +1199,7 @@
       top: 0;
       z-index: 20;
       background: var(--s2);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       padding: 0;
       height: 30px;
       white-space: nowrap;
@@ -1250,7 +1268,7 @@
 
     .ss-tbl td.rn {
       background: var(--s2);
-      border-color: var(--line);
+      border-color: var(--border);
       text-align: center;
       font-size: 10px;
       color: var(--ink3);
@@ -1353,7 +1371,7 @@
       gap: 8px;
       padding: 8px 10px;
       background: var(--surface);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-bottom: none;
       border-radius: var(--r) var(--r) 0 0;
       flex-wrap: nowrap;
@@ -1482,7 +1500,7 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--line)
+      background: var(--border)
     }
 
     .theme-presets {
@@ -1539,13 +1557,13 @@
       padding: 3px 10px 3px 8px;
       border-radius: 20px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
       letter-spacing: .02em;
-      border: 1px solid var(--line-s);
+      border: 1px solid var(--border-strong);
       background: var(--surface);
       color: var(--ink3);
       cursor: pointer;
-      transition: all .15s;
+      transition: all .15s ease;
       box-shadow: var(--sh1);
       flex-shrink: 0;
     }
@@ -1613,7 +1631,7 @@
       width: 28px;
       height: 28px;
       border-radius: 6px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       background: var(--surface);
       color: var(--ink3);
       cursor: pointer;
@@ -1731,7 +1749,7 @@
       right: 0;
       z-index: 300;
       background: var(--surface);
-      border-top: 1px solid var(--line);
+      border-top: 1px solid var(--border);
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -1795,7 +1813,7 @@
       right: 0;
       z-index: 299;
       background: var(--surface);
-      border-top: 1px solid var(--line);
+      border-top: 1px solid var(--border);
       border-radius: 16px 16px 0 0;
       padding: 16px;
       box-shadow: 0 -4px 24px rgba(26, 25, 23, .10);
@@ -1846,7 +1864,7 @@
       gap: 10px;
       padding: 14px 14px;
       border-radius: var(--r);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       background: var(--surface);
       font-size: 13px;
       font-weight: 600;
@@ -1902,7 +1920,7 @@
       position: fixed;
       z-index: 10000;
       background: var(--surface);
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: var(--rs);
       box-shadow: var(--sh2);
       padding: 6px;
@@ -2235,7 +2253,7 @@
 
 <body>
   <div id="login-screen" style="display:none;">
-    <div style="text-align:center; max-width: 360px; padding: 40px 32px; background: var(--surface); border-radius: 24px; border: 1px solid var(--line); box-shadow: var(--sh3);">
+    <div style="text-align:center; max-width: 360px; padding: 40px 32px; background: var(--surface); border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--sh3);">
       <div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#2E3550,#3A2E50);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
         <svg viewBox="0 0 14 14" width="18" height="18" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10 L4.5 5 L7 7.5 L9.5 3.5 L12 6.5"/></svg>
       </div>
@@ -2293,7 +2311,7 @@
     <div id="mob-tray-backdrop" onclick="closeMobTray()"></div>
     <div id="mob-tray">
       <div class="mob-tray-handle"></div>
-      <div id="mob-tray-cur" style="padding:10px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div id="mob-tray-cur" style="padding:10px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Currency</span>
         <div class="stabs" id="mob-cur-tabs">
           <button class="stab on" onclick="setCur('USD')">USD</button>
@@ -2383,7 +2401,7 @@
               </svg>
               <span id="tab-hide-lbl-accounts">Hide</span>
             </button>
-            <div class="bnum" id="acc-total" style="font-size:22px;font-weight:500;margin-right:8px">&#8212;</div>
+            <div class="bnum" id="acc-total" style="font-size:22px;margin-right:8px">&#8212;</div>
             <button class="btn" onclick="openAcctTypesModal()">
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4.5" x2="7" y2="9.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/>
@@ -2420,7 +2438,7 @@
               </svg>
               <span id="tab-hide-lbl-portfolio">Hide</span>
             </button>
-            <div class="bnum" id="port-total" style="font-size:22px;font-weight:500;margin-right:8px">&#8212;</div>
+            <div class="bnum" id="port-total" style="font-size:22px;margin-right:8px">&#8212;</div>
             <button class="btn" onclick="openFundModal(null)">
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round">
@@ -2512,7 +2530,7 @@
           </div>
           <div id="rebal-body"></div>
           <div id="rebal-totals"
-            style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);gap:24px;font-size:13px">
+            style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);gap:24px;font-size:13px">
             <span>Buy: <strong class="pos" id="r-buy-total" style="font-family:var(--mono)">&#8212;</strong></span>
             <span>Sell: <strong class="neg" id="r-sell-total" style="font-family:var(--mono)">&#8212;</strong></span>
             <span>Net cash: <strong id="r-net-cash" style="font-family:var(--mono)">&#8212;</strong></span>
@@ -2711,7 +2729,7 @@
           <div class="sec">Privacy &amp; Visibility</div>
           <div>
             <!-- Global -->
-            <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--s2)">
+            <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--border)">
               <div>
                 <div style="font-size:13px;font-weight:500;color:var(--ink)">Hide all numbers</div>
                 <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">Applies to every tab across the entire
@@ -2728,7 +2746,7 @@
               </button>
             </div>
             <!-- Dashboard -->
-            <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--s2)">
+            <div class="fb" style="padding:11px 0;border-bottom:1px solid var(--border)">
               <div>
                 <div style="font-size:13px;font-weight:500;color:var(--ink)">Hide dashboard widgets</div>
                 <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">Collapses metrics, charts &amp; goal bars
@@ -2792,7 +2810,7 @@
                 <div class="theme-swatch">
                   <input type="color" id="tc-primary"
                     oninput="applyThemeToken('--th-primary',this.value);syncHex('tc-primary','thx-primary')">
-                  <input type="text" class="theme-hex" id="thx-primary" maxlength="7" placeholder="#2D6A4F"
+                  <input type="text" class="theme-hex" id="thx-primary" maxlength="7" placeholder="#3D4E8A"
                     oninput="hexInput('tc-primary','thx-primary','--th-primary')"
                     onblur="hexBlur('tc-primary','thx-primary','--th-primary')">
                 </div>
@@ -2812,7 +2830,7 @@
                 <div class="theme-swatch">
                   <input type="color" id="tc-btn"
                     oninput="applyThemeToken('--th-btn-bg',this.value);syncHex('tc-btn','thx-btn')">
-                  <input type="text" class="theme-hex" id="thx-btn" maxlength="7" placeholder="#2D6A4F"
+                  <input type="text" class="theme-hex" id="thx-btn" maxlength="7" placeholder="#3D4E8A"
                     oninput="hexInput('tc-btn','thx-btn','--th-btn-bg')"
                     onblur="hexBlur('tc-btn','thx-btn','--th-btn-bg')">
                 </div>
@@ -2822,7 +2840,7 @@
                 <div class="theme-swatch">
                   <input type="color" id="tc-sab"
                     oninput="applyThemeTokens({'--th-sidebar-active-bg':this.value+'22','--th-sidebar-active-fg':this.value});syncHex('tc-sab','thx-sab')">
-                  <input type="text" class="theme-hex" id="thx-sab" maxlength="7" placeholder="#2D6A4F"
+                  <input type="text" class="theme-hex" id="thx-sab" maxlength="7" placeholder="#3D4E8A"
                     oninput="hexInput('tc-sab','thx-sab',null,v=>applyThemeTokens({'--th-sidebar-active-bg':v+'22','--th-sidebar-active-fg':v}))"
                     onblur="hexBlur('tc-sab','thx-sab',null,v=>applyThemeTokens({'--th-sidebar-active-bg':v+'22','--th-sidebar-active-fg':v}))">
                 </div>
@@ -2836,7 +2854,7 @@
                 <div class="theme-swatch">
                   <input type="color" id="tc-tag"
                     oninput="applyThemeTokens({'--th-tag-bg':this.value+'22','--th-tag-fg':this.value});syncHex('tc-tag','thx-tag')">
-                  <input type="text" class="theme-hex" id="thx-tag" maxlength="7" placeholder="#2D6A4F"
+                  <input type="text" class="theme-hex" id="thx-tag" maxlength="7" placeholder="#3D4E8A"
                     oninput="hexInput('tc-tag','thx-tag',null,v=>applyThemeTokens({'--th-tag-bg':v+'22','--th-tag-fg':v}))"
                     onblur="hexBlur('tc-tag','thx-tag',null,v=>applyThemeTokens({'--th-tag-bg':v+'22','--th-tag-fg':v}))">
                 </div>
@@ -2846,7 +2864,7 @@
                 <div class="theme-swatch">
                   <input type="color" id="tc-prog"
                     oninput="applyThemeToken('--th-progress',this.value);syncHex('tc-prog','thx-prog')">
-                  <input type="text" class="theme-hex" id="thx-prog" maxlength="7" placeholder="#2D6A4F"
+                  <input type="text" class="theme-hex" id="thx-prog" maxlength="7" placeholder="#3D4E8A"
                     oninput="hexInput('tc-prog','thx-prog','--th-progress')"
                     onblur="hexBlur('tc-prog','thx-prog','--th-progress')">
                 </div>
@@ -3013,11 +3031,11 @@
 
             <div class="theme-section-label" style="margin-top:18px">Custom Color Picker</div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 2px">
-              <input type="color" id="tc-custom" value="#2D6A4F" style="width:40px;height:40px;border-radius:8px;cursor:pointer;border:1px solid var(--bdr);padding:2px;flex-shrink:0"
+              <input type="color" id="tc-custom" value="#3D4E8A" style="width:40px;height:40px;border-radius:8px;cursor:pointer;border:1px solid var(--bdr);padding:2px;flex-shrink:0"
                 oninput="document.getElementById('thx-custom').value=this.value.toUpperCase();document.getElementById('custom-preview').style.background=this.value">
               <input type="text" class="theme-hex inp" id="thx-custom" maxlength="7" placeholder="#RRGGBB" style="width:96px"
                 oninput="(function(){var v=document.getElementById('thx-custom').value;if(!/^#/.test(v))v='#'+v;if(/^#[0-9A-Fa-f]{6}$/.test(v)){document.getElementById('tc-custom').value=v;document.getElementById('custom-preview').style.background=v;}})()">
-              <div id="custom-preview" style="width:40px;height:40px;border-radius:8px;border:1px solid var(--bdr);background:#2D6A4F;flex-shrink:0"></div>
+              <div id="custom-preview" style="width:40px;height:40px;border-radius:8px;border:1px solid var(--bdr);background:#3D4E8A;flex-shrink:0"></div>
               <select id="custom-target-slot" class="inp" style="font-size:13px;flex:1;min-width:110px;max-width:160px">
                 <option value="">Apply to…</option>
                 <option value="1">Chart 1</option><option value="2">Chart 2</option><option value="3">Chart 3</option>
@@ -3357,7 +3375,7 @@
         </svg>
         Change icon
       </button>
-      <div style="height:1px;background:var(--line);margin:4px 0"></div>
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="ctx-item danger" onclick="archiveCurrentTab()">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round">
@@ -3390,8 +3408,11 @@
         const r = getComputedStyle(document.documentElement);
         return ['--th-chart1','--th-chart2','--th-chart3','--th-chart4','--th-chart5','--th-chart6','--th-chart7','--th-chart8','--th-chart9','--th-chart10','--th-chart11','--th-chart12','--th-chart13','--th-chart14','--th-chart15','--th-chart16'].map(v => r.getPropertyValue(v).trim());
       }
-      const COLORS = ['#2D6A4F', '#2563A8', '#9A6B1A', '#A83D5C', '#6B3FA0', '#1F8080', '#6B4A2A', '#3A7A6A'];
-      const GCOL = { fire: '#2D6A4F', home: '#2563A8', emergency: '#9A6B1A', milestone: '#6B3FA0', wedding: '#A83D5C', kids: '#1F8080', custom: '#6B4A2A' };
+      // Live theme-aware single color reads
+      function tc(n) { return getComputedStyle(document.documentElement).getPropertyValue(`--th-chart${n}`).trim(); }
+      const COLORS = () => [tc(1), tc(2), tc(3), tc(4), tc(5), tc(6), tc(7), tc(8)];
+      const GCOL = { fire: '#C0622A', home: '#2E6EA6', emergency: '#B08A1A', milestone: '#6040A0', wedding: '#9B3A58', kids: '#1E8080', custom: '#48453E' };
+
       const GTAG = { fire: 'FIRE', home: 'Home', emergency: 'Emergency', milestone: 'Milestone', wedding: 'Wedding', kids: 'Kids', custom: 'Custom' };
       const TLAB = { checking: 'Checking', savings: 'Savings', 'brokerage-taxable': 'Taxable', 'brokerage-roth': 'Roth IRA', pension: 'Pension', subscription: '청약계좌', other: 'Other' };
 
@@ -3948,7 +3969,7 @@
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
-        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:200px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
+        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:200px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
         if (vis.goals) h += `<div class="card"><div class="sec">Goal progress</div><div id="ov-goals"></div></div>`;
         document.getElementById('ov-widgets').innerHTML = h;
         if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
@@ -4017,8 +4038,8 @@
         if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
       }
 
-      function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--forest-mid)' : 'var(--line)'};background:${v ? 'var(--fl)' : '#fff'};color:${v ? 'var(--forest-mid)' : 'var(--ink3)'};font-size:11px;font-weight:600;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
-      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fl)' : '#fff'; btn.style.borderColor = S.widgetVis[k] ? 'var(--forest-mid)' : 'var(--line)'; btn.style.color = S.widgetVis[k] ? 'var(--forest-mid)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(); }
+      function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--fm)' : 'var(--border-strong)'};background:${v ? 'var(--fll)' : 'var(--surface)'};color:${v ? 'var(--f)' : 'var(--ink3)'};font-size:11px;font-weight:500;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
+      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(); }
 
       // ══════════════════════════════════════════════════════════════
       // ACCOUNTS
@@ -4255,7 +4276,7 @@
         const togglesHtml = invAccts.map(a => {
           const on = S.portAcctToggles[a.id] !== false;
           return `<button onclick="togglePortAcct(${a.id}, this)"
-            style="padding:5px 12px;border-radius:20px;border:1px solid ${on ? 'var(--fm)' : 'var(--line)'};
+            style="padding:5px 12px;border-radius:20px;border:1px solid ${on ? 'var(--fm)' : 'var(--border)'};
             background:${on ? 'var(--fll)' : 'var(--surface)'};color:${on ? 'var(--f)' : 'var(--ink3)'};
             font-size:12px;font-weight:600;cursor:pointer;transition:all .12s"
             data-acctid="${a.id}">
@@ -4266,8 +4287,8 @@
         wrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);white-space:nowrap">Show accounts:</span>
           ${togglesHtml}
-          <button onclick="toggleAllPortAccts(true)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">All</button>
-          <button onclick="toggleAllPortAccts(false)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">None</button>
+          <button onclick="toggleAllPortAccts(true)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">All</button>
+          <button onclick="toggleAllPortAccts(false)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">None</button>
         </div>`;
       }
 
@@ -4543,7 +4564,7 @@
           const barCol = allocUSD >= 0 ? 'var(--fm)' : 'var(--rose)';
           const driftColor = Math.abs(driftBefore) > 3 ? (driftBefore > 0 ? 'color:var(--gold)' : 'color:var(--rose)') : 'color:var(--ink3)';
           const fundAcctName = rAcct === 'all' ? (S.accounts.find(a => String(a.id) === String(f.acct))?.name || '') : '';
-          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2);flex-wrap:wrap">
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
             <div style="min-width:130px;flex-shrink:0">
               <div style="font-size:13px;font-weight:600">${MT(f.ticker, 'rebalance')}${fundAcctName ? `<span style="font-size:10px;color:var(--ink3);margin-left:5px;font-weight:400">${fundAcctName}</span>` : ''}</div>
               <div style="font-size:10.5px;margin-top:2px;color:var(--ink3)">
@@ -4692,7 +4713,7 @@
       }
       function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a=>String(a.id)===String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
       function updRet(id, v) { const f = S.funds.find(x => x.id === id); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
-      function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--s2)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
+      function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
       function addStress() { const n = prompt('Event name:'); if (!n) return; const a = parseFloat(prompt('Cost ($):') || '0'), y = parseInt(prompt('Year:') || NY); S.stressEvents.push({ name: n, amount: a, year: y }); ps(); renderStress(); updateProj(); }
       function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
 
@@ -4704,7 +4725,7 @@
         const nwD = labels.map(yr => cvt(fvCalc(t, nr, yr - NY, S.settings.annualContrib)));
         dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isTabHidden('goals') ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'goals') } } });
         document.getElementById('goals-legend').innerHTML = [{ label: 'Projected NW', color: gtc[0] }, ...S.goals.map(g => ({ label: g.name, color: GCOL[g.cat] }))].map(x => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
-        document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${MT(fmt(g.amount), 'goals')}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--forest-mid)' : 'var(--blush)'}">${MT(fmt(proj), 'goals')}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? MT(fmt(g.amount), 'goals') : MT(fmt(Math.max(0, mn), 0), 'goals') + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
+        document.getElementById('goals-grid').innerHTML = S.goals.map(g => { const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount, mn = yl > 0 && nr > 0 ? (g.amount - t * Math.pow(1 + nr, yl)) / (((Math.pow(1 + nr / 12, yl * 12) - 1) / (nr / 12))) : 0, col = GCOL[g.cat]; return `<div class="gc"><div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div><div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div><div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}<div style="font-family:var(--mono);font-size:19px;font-weight:500;color:${col};margin-bottom:8px">${MT(fmt(g.amount), 'goals')}</div><div class="pb mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div class="fb" style="font-size:10px;color:var(--ink3);margin-bottom:9px"><span>${f.toFixed(0)}% funded</span><span>${g.year}·${yl > 0 ? yl + 'yr' : yl === 0 ? 'This yr!' : 'Overdue'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">At ${g.year}</div><div style="font-family:var(--mono);font-size:12px;color:${ok ? 'var(--fm)' : 'var(--blush)'}">${MT(fmt(proj), 'goals')}</div></div><div style="background:var(--page);border-radius:4px;padding:7px"><div style="font-size:10px;color:var(--ink3);margin-bottom:2px">${g.type === 'expense' ? 'Cost' : 'Monthly needed'}</div><div style="font-family:var(--mono);font-size:12px">${g.type === 'expense' ? MT(fmt(g.amount), 'goals') : MT(fmt(Math.max(0, mn), 0), 'goals') + '/mo'}</div></div></div></div>`; }).join('') || '<div class="mut">No goals yet.</div>';
       }
       function openGoalModal(id) { S.editGoalId = id; if (id) { const g = S.goals.find(x => x.id === id); document.getElementById('m-goal-title').textContent = 'Edit goal'; document.getElementById('g-name').value = g.name; document.getElementById('g-cat').value = g.cat; document.getElementById('g-amt').value = g.amount; document.getElementById('g-yr').value = g.year; document.getElementById('g-type').value = g.type || 'savings'; document.getElementById('g-notes').value = g.notes || ''; } else { document.getElementById('m-goal-title').textContent = 'Add goal';['g-name', 'g-amt', 'g-yr', 'g-notes'].forEach(i => document.getElementById(i).value = ''); document.getElementById('g-cat').value = 'fire'; document.getElementById('g-type').value = 'savings'; } openModal('m-goal'); }
       function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => x.id === S.editGoalId), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes }); ps(); closeModal('m-goal'); renderGoals(); }
@@ -5222,63 +5243,84 @@
       const THEME_PRESETS = [
         { name: 'Moola', color: '#3D4E8A', tokens: { ...THEME_DEFAULT } },
         {
-          // Ocean — crisp, coastal, professional (Stripe-esque)
           name: 'Ocean', color: '#0369A1', tokens: {
             '--th-primary': '#0369A1', '--th-primary-m': '#0284C7', '--th-primary-l': '#BAE6FD', '--th-primary-ll': '#E0F2FE',
             '--th-secondary': '#0891B2', '--th-secondary-l': '#CFFAFE',
-            '--th-sidebar-active-bg': '#E0F2FE', '--th-sidebar-active-fg': '#0369A1',
-            '--th-chart1': '#0369A1', '--th-chart2': '#06B6D4', '--th-chart3': '#F97316', '--th-chart4': '#8B5CF6', '--th-chart5': '#10B981', '--th-chart6': '#F59E0B',
-            '--th-chart7': '#E8536E', '--th-chart8': '#4B6FE4', '--th-chart9': '#EC4899', '--th-chart10': '#6366F1', '--th-chart11': '#EAB308', '--th-chart12': '#9C5CF8', '--th-chart13': '#14B8A6', '--th-chart14': '#EF4444', '--th-chart15': '#22C55E', '--th-chart16': '#A16207',
+            '--th-sidebar-active-bg': '#0C1C2E', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#0369A1', '--th-chart2': '#06B6D4', '--th-chart3': '#C0622A', '--th-chart4': '#6040A0', '--th-chart5': '#1E8080', '--th-chart6': '#B08A1A',
+            '--th-chart7': '#9B3A58', '--th-chart8': '#2E6EA6', '--th-chart9': '#B0406A', '--th-chart10': '#5060B8', '--th-chart11': '#906018', '--th-chart12': '#7050C0', '--th-chart13': '#187878', '--th-chart14': '#C03C3C', '--th-chart15': '#2E8C50', '--th-chart16': '#C0884A',
             '--th-progress': '#0369A1', '--th-highlight': '#CFFAFE',
-            '--th-btn-bg': '#0369A1', '--th-btn-fg': '#FFFFFF',
+            '--th-btn-bg': '#0C1C2E', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#E0F2FE', '--th-tag-fg': '#0369A1',
             '--th-bg': '#F0F7FF', '--th-surface': '#FAFCFF', '--th-text': '#0C1C2E', '--th-text2': '#3A4A5A',
           }
         },
         {
-          // Dusk — moody, editorial, purple/pink sunset
+          name: 'Warm', color: '#7C5C3B', tokens: {
+            '--th-primary': '#7C5C3B', '--th-primary-m': '#9A7248', '--th-primary-l': '#DDD0BC', '--th-primary-ll': '#F3ECE5',
+            '--th-secondary': '#B45309', '--th-secondary-l': '#FEF3C7',
+            '--th-sidebar-active-bg': '#2A1F14', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#7C5C3B', '--th-chart2': '#B45309', '--th-chart3': '#2E6EA6', '--th-chart4': '#6040A0', '--th-chart5': '#1E8080', '--th-chart6': '#9B3A58',
+            '--th-chart7': '#C0622A', '--th-chart8': '#3D4E8A', '--th-chart9': '#C0884A', '--th-chart10': '#5060B8', '--th-chart11': '#906018', '--th-chart12': '#7050C0', '--th-chart13': '#187878', '--th-chart14': '#C03C3C', '--th-chart15': '#2E8C50', '--th-chart16': '#B0406A',
+            '--th-progress': '#7C5C3B', '--th-highlight': '#FEF3C7',
+            '--th-btn-bg': '#2A1F14', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#F3ECE5', '--th-tag-fg': '#7C5C3B',
+            '--th-bg': '#F8F6F2', '--th-surface': '#FFFFFF', '--th-text': '#1C1510', '--th-text2': '#5B4A38',
+          }
+        },
+        {
+          name: 'Graphite', color: '#3F3F46', tokens: {
+            '--th-primary': '#3F3F46', '--th-primary-m': '#52525B', '--th-primary-l': '#D4D4D8', '--th-primary-ll': '#F4F4F5',
+            '--th-secondary': '#2E6EA6', '--th-secondary-l': '#DBEAFE',
+            '--th-sidebar-active-bg': '#111113', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#3F3F46', '--th-chart2': '#2E6EA6', '--th-chart3': '#C0884A', '--th-chart4': '#9B3A58', '--th-chart5': '#6040A0', '--th-chart6': '#1E8080',
+            '--th-chart7': '#C0622A', '--th-chart8': '#4E61A8', '--th-chart9': '#B0406A', '--th-chart10': '#5060B8', '--th-chart11': '#B08A1A', '--th-chart12': '#7050C0', '--th-chart13': '#187878', '--th-chart14': '#C03C3C', '--th-chart15': '#2E8C50', '--th-chart16': '#906018',
+            '--th-progress': '#3F3F46', '--th-highlight': '#F4F4F5',
+            '--th-btn-bg': '#111113', '--th-btn-fg': '#FFFFFF',
+            '--th-tag-bg': '#F4F4F5', '--th-tag-fg': '#3F3F46',
+            '--th-bg': '#F7F7F8', '--th-surface': '#FFFFFF', '--th-text': '#111113', '--th-text2': '#52525B',
+          }
+        },
+        {
           name: 'Dusk', color: '#6D28D9', tokens: {
             '--th-primary': '#6D28D9', '--th-primary-m': '#7C3AED', '--th-primary-l': '#DDD6FE', '--th-primary-ll': '#EDE9FE',
             '--th-secondary': '#DB2777', '--th-secondary-l': '#FCE7F3',
-            '--th-sidebar-active-bg': '#EDE9FE', '--th-sidebar-active-fg': '#6D28D9',
-            '--th-chart1': '#6D28D9', '--th-chart2': '#EC4899', '--th-chart3': '#F97316', '--th-chart4': '#06B6D4', '--th-chart5': '#10B981', '--th-chart6': '#F59E0B',
-            '--th-chart7': '#EF4444', '--th-chart8': '#4B6FE4', '--th-chart9': '#DB2777', '--th-chart10': '#0891B2', '--th-chart11': '#EAB308', '--th-chart12': '#8B5CF6', '--th-chart13': '#14B8A6', '--th-chart14': '#C026D3', '--th-chart15': '#22C55E', '--th-chart16': '#A16207',
+            '--th-sidebar-active-bg': '#1E1033', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#6D28D9', '--th-chart2': '#DB2777', '--th-chart3': '#C0622A', '--th-chart4': '#2E6EA6', '--th-chart5': '#1E8080', '--th-chart6': '#B08A1A',
+            '--th-chart7': '#C03C3C', '--th-chart8': '#4E61A8', '--th-chart9': '#B0406A', '--th-chart10': '#0891B2', '--th-chart11': '#906018', '--th-chart12': '#7C5CBF', '--th-chart13': '#187878', '--th-chart14': '#C026D3', '--th-chart15': '#2E8C50', '--th-chart16': '#C0884A',
             '--th-progress': '#6D28D9', '--th-highlight': '#FCE7F3',
-            '--th-btn-bg': '#6D28D9', '--th-btn-fg': '#FFFFFF',
+            '--th-btn-bg': '#1E1033', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#EDE9FE', '--th-tag-fg': '#6D28D9',
             '--th-bg': '#F5F3FF', '--th-surface': '#FDFCFF', '--th-text': '#1E1033', '--th-text2': '#4A3A66',
           }
         },
         {
-          // Ember — warm, fiery, energetic
           name: 'Ember', color: '#C2410C', tokens: {
             '--th-primary': '#C2410C', '--th-primary-m': '#EA580C', '--th-primary-l': '#FED7AA', '--th-primary-ll': '#FFF7ED',
             '--th-secondary': '#CA8A04', '--th-secondary-l': '#FEF9C3',
-            '--th-sidebar-active-bg': '#FFF7ED', '--th-sidebar-active-fg': '#C2410C',
-            '--th-chart1': '#C2410C', '--th-chart2': '#EAB308', '--th-chart3': '#EF4444', '--th-chart4': '#4B6FE4', '--th-chart5': '#10B981', '--th-chart6': '#9C5CF8',
-            '--th-chart7': '#F97316', '--th-chart8': '#06B6D4', '--th-chart9': '#EC4899', '--th-chart10': '#6366F1', '--th-chart11': '#F5A524', '--th-chart12': '#8B5CF6', '--th-chart13': '#14B8A6', '--th-chart14': '#E8536E', '--th-chart15': '#22C55E', '--th-chart16': '#CA8A04',
+            '--th-sidebar-active-bg': '#1C0A03', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#C2410C', '--th-chart2': '#CA8A04', '--th-chart3': '#2E6EA6', '--th-chart4': '#6040A0', '--th-chart5': '#1E8080', '--th-chart6': '#9B3A58',
+            '--th-chart7': '#C0622A', '--th-chart8': '#4E61A8', '--th-chart9': '#B0406A', '--th-chart10': '#5060B8', '--th-chart11': '#B08A1A', '--th-chart12': '#7050C0', '--th-chart13': '#187878', '--th-chart14': '#C03C3C', '--th-chart15': '#2E8C50', '--th-chart16': '#C0884A',
             '--th-progress': '#C2410C', '--th-highlight': '#FEF9C3',
-            '--th-btn-bg': '#C2410C', '--th-btn-fg': '#FFFFFF',
+            '--th-btn-bg': '#1C0A03', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#FFF7ED', '--th-tag-fg': '#C2410C',
             '--th-bg': '#FFFBF5', '--th-surface': '#FFFFFF', '--th-text': '#1C0A03', '--th-text2': '#4A2A18',
           }
         },
         {
-          // Slate — minimal, professional, clean
           name: 'Slate', color: '#334155', tokens: {
             '--th-primary': '#334155', '--th-primary-m': '#475569', '--th-primary-l': '#CBD5E1', '--th-primary-ll': '#F1F5F9',
             '--th-secondary': '#3B82F6', '--th-secondary-l': '#DBEAFE',
-            '--th-sidebar-active-bg': '#F1F5F9', '--th-sidebar-active-fg': '#334155',
-            '--th-chart1': '#334155', '--th-chart2': '#3B82F6', '--th-chart3': '#10B981', '--th-chart4': '#F59E0B', '--th-chart5': '#EF4444', '--th-chart6': '#8B5CF6',
-            '--th-chart7': '#F97316', '--th-chart8': '#06B6D4', '--th-chart9': '#EC4899', '--th-chart10': '#6366F1', '--th-chart11': '#EAB308', '--th-chart12': '#9C5CF8', '--th-chart13': '#14B8A6', '--th-chart14': '#E8536E', '--th-chart15': '#22C55E', '--th-chart16': '#A16207',
+            '--th-sidebar-active-bg': '#0F172A', '--th-sidebar-active-fg': '#FFFFFF',
+            '--th-chart1': '#334155', '--th-chart2': '#3B82F6', '--th-chart3': '#C0884A', '--th-chart4': '#9B3A58', '--th-chart5': '#6040A0', '--th-chart6': '#1E8080',
+            '--th-chart7': '#C0622A', '--th-chart8': '#4E61A8', '--th-chart9': '#B0406A', '--th-chart10': '#5060B8', '--th-chart11': '#B08A1A', '--th-chart12': '#7050C0', '--th-chart13': '#187878', '--th-chart14': '#C03C3C', '--th-chart15': '#2E8C50', '--th-chart16': '#C0884A',
             '--th-progress': '#334155', '--th-highlight': '#DBEAFE',
-            '--th-btn-bg': '#334155', '--th-btn-fg': '#FFFFFF',
+            '--th-btn-bg': '#0F172A', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#F1F5F9', '--th-tag-fg': '#334155',
             '--th-bg': '#F8FAFC', '--th-surface': '#FFFFFF', '--th-text': '#0F172A', '--th-text2': '#475569',
           }
         },
         {
-          // Dark — vibrant accents on deep dark surface
           name: 'Dark', color: '#0C0E14', tokens: {
             '--th-primary': '#34D399', '--th-primary-m': '#6EE7B7', '--th-primary-l': '#064E3B', '--th-primary-ll': '#022C22',
             '--th-secondary': '#60A5FA', '--th-secondary-l': '#1E3A5F',
@@ -5314,6 +5356,11 @@
           document.documentElement.style.setProperty('--th-chart2', val);
           syncAllInputsFromDOM();
         }
+        // update alpha-border ink-rgb based on bg lightness
+        if (prop === '--th-bg') {
+          const isDark = isDarkColor(val);
+          document.documentElement.style.setProperty('--ink-rgb', isDark ? '255,255,255' : '28,27,25');
+        }
         saveTheme();
         refreshAllCharts();
       }
@@ -5326,6 +5373,11 @@
 
       function applyThemeObject(tokens) {
         Object.entries(tokens).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+        // update alpha-border base color for dark/light themes
+        if (tokens['--th-bg']) {
+          const isDark = isDarkColor(tokens['--th-bg']);
+          document.documentElement.style.setProperty('--ink-rgb', isDark ? '255,255,255' : '28,27,25');
+        }
         syncAllInputsFromDOM();
         saveTheme();
         refreshAllCharts();
@@ -5356,6 +5408,11 @@
       function loadTheme() {
         if (!S.settings.theme) return;
         Object.entries(S.settings.theme).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+        // restore correct border base color
+        const bg = S.settings.theme['--th-bg'];
+        if (bg) {
+          document.documentElement.style.setProperty('--ink-rgb', isDarkColor(bg) ? '255,255,255' : '28,27,25');
+        }
       }
 
       function resetTheme() {
@@ -5473,6 +5530,15 @@
         return '#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join('');
       }
 
+      function isDarkColor(hex) {
+        hex = hex.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        // perceived luminance
+        return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+      }
+
       // ── Preset buttons ────────────────────────────────────────────
       function buildPresets() {
         const wrap = document.getElementById('theme-presets');
@@ -5530,7 +5596,7 @@
               ondragover="snapDragOver(event,${i})"
               ondrop="snapDrop(event,${i})"
               ondragend="snapDragEnd(event)"
-              style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--rs);border:1px solid var(--line);background:var(--surface);transition:background .1s"
+              style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface);transition:background .1s"
               onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='var(--surface)'">
               <span style="cursor:grab;color:var(--ink4);font-size:14px;flex-shrink:0;padding:0 2px" title="Drag to reorder">&#8942;&#8942;</span>
               <div style="flex:1;min-width:0">
