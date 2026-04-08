@@ -412,8 +412,6 @@
       display: flex;
       flex-direction: column;
       background: var(--page);
-      overflow-x: hidden;
-      /* clip anything that still escapes */
     }
 
     .page-hdr {
@@ -1592,10 +1590,7 @@
     .sg > button.on { background: var(--surface); color: var(--ink); box-shadow: var(--sh1); }
     .sg > button:hover:not(.on) { color: var(--ink2); }
 
-    /* Life tab charts go single col */
-    #tab-life .g2 {
-      grid-template-columns: 1fr;
-    }
+
 
     .theme-reset-btn:hover {
       background: var(--s2);
@@ -5347,8 +5342,7 @@
       ondragstart="ssDragStart(event,${ci})"
       ondragover="ssDragOver(event,this,${ci})"
       ondragleave="this.classList.remove('drag-over')"
-      ondrop="ssDrop(event,this,${ci})"
-      oncontextmenu="event.preventDefault(); openColModal(${ci})">
+      ondrop="ssDrop(event,this,${ci})">
       <div class="th-in"><span class="ss-dh">⠿</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${colLetter(ci)}: ${c}</span></div></th>`;
         });
         h += '</tr></thead><tbody>';
@@ -5528,6 +5522,16 @@
             ps(); buildSS(); renderLifeCharts();
           }
           ssDragging = false;
+        });
+
+        outer.addEventListener('contextmenu', e => {
+          const th = e.target.closest('th.ch');
+          if (th) {
+            e.preventDefault();
+            const headers = Array.from(th.parentElement.querySelectorAll('th.ch'));
+            const ci = headers.indexOf(th);
+            if (ci >= 0) { openColModal(ci); }
+          }
         });
 
         outer.addEventListener('dblclick', e => {
