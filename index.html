@@ -4039,13 +4039,33 @@
               el.innerHTML = `<div class="g2">${goals.map(g => {
                 const f = Math.min(100, (t / g.amount) * 100);
                 const col = GCOL[g.cat];
-                return `<div class="gc" style="padding:16px"><div style="font-size:12px;font-weight:600;margin-bottom:4px">${g.name}</div><div style="font-family:var(--mono);font-size:16px;color:${col}">${MD(fmt(g.amount))}</div><div class="pb mt-2 mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div><div style="font-size:10px;color:var(--ink3)">${f.toFixed(0)}% funded</div></div>`;
+                const tooltip = `The monthly savings required to meet this goal's target given current assets and growth projections.`;
+                return `<div class="gc" style="padding:16px">
+                  <div style="font-size:12px;font-weight:600;margin-bottom:4px">${g.name}</div>
+                  <div style="font-family:var(--mono);font-size:16px;color:${col}">${MD(fmt(g.amount))}</div>
+                  <div class="pb mt-2 mb-1"><div class="pf" style="width:${f}%;background:${col}"></div></div>
+                  <div class="fb" style="font-size:10px;color:var(--ink3)">
+                    <span>${f.toFixed(0)}% funded</span>
+                    ${g.type !== 'expense' ? `<span title="${tooltip}" style="cursor:help;opacity:0.8;font-size:11px">ⓘ</span>` : ''}
+                  </div>
+                </div>`;
               }).join('')}</div>`;
             } else {
               el.innerHTML = goals.map(g => {
                 const f = Math.min(100, (t / g.amount) * 100);
                 const yl = g.year - NY;
-                return `<div style="margin-bottom:8px"><div class="fb mb-1"><span style="font-size:12px;font-weight:500">${g.name}</span><span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span></div><div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div><div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div></div>`;
+                const tooltip = `The monthly savings required to meet this goal's target given current assets and growth projections.`;
+                return `<div style="margin-bottom:8px">
+                  <div class="fb mb-1">
+                    <span style="font-size:12px;font-weight:500">${g.name}</span>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      ${g.type !== 'expense' ? `<span title="${tooltip}" style="cursor:help;opacity:0.8;font-size:11px">ⓘ</span>` : ''}
+                      <span class="snum">${MD(fmt(g.amount))} · ${yl > 0 ? yl + 'yr' : 'Due!'}</span>
+                    </div>
+                  </div>
+                  <div class="pb"><div class="pf" style="width:${f}%;background:${GCOL[g.cat]}"></div></div>
+                  <div style="font-size:10px;color:var(--ink3);margin-top:2px">${f.toFixed(0)}% funded</div>
+                </div>`;
               }).join('');
             }
           }
@@ -4289,10 +4309,14 @@
       function renderAcctTypesList() {
         const el = document.getElementById('acct-types-cats-list');
         if (!el) return;
-        el.innerHTML = (S.accountCategories || []).map(cat => {
+        el.innerHTML = (S.accountCategories || []).map((cat, ci) => {
           const types = (S.accountTypes || []).filter(t => t.categoryId === cat.id);
-          return `<div style="margin-bottom:18px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          return `<div style="margin-bottom:18px;border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--page)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <button class="btn bsm bgh" style="padding:2px;line-height:1" onclick="moveAcctCategory('${cat.id}', -1)" title="Move category up">▲</button>
+                <button class="btn bsm bgh" style="padding:2px;line-height:1" onclick="moveAcctCategory('${cat.id}', 1)" title="Move category down">▼</button>
+              </div>
               <input class="inp" style="width:180px;font-size:12px;font-weight:600;padding:4px 8px"
                 value="${cat.name}"
                 onchange="renameAcctCategory('${cat.id}', this.value)">
@@ -4301,11 +4325,15 @@
                   onchange="setAcctCategoryInvestment('${cat.id}', this.checked)">
                 Investment type
               </label>
-              <button class="btn bsm bgh" style="color:var(--rose);margin-left:auto" onclick="delAcctCategory('${cat.id}')">Delete category</button>
+              <button class="btn bsm bgh" style="color:var(--rose);margin-left:auto" onclick="delAcctCategory('${cat.id}')">Delete</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:5px;padding-left:12px">
-              ${types.map(type => `
+            <div style="display:flex;flex-direction:column;gap:5px;padding-left:12px;border-left:2px solid var(--border)">
+              ${types.map((type, ti) => `
                 <div style="display:flex;align-items:center;gap:6px">
+                  <div style="display:flex;flex-direction:column;gap:1px">
+                    <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', -1)">▲</button>
+                    <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', 1)">▼</button>
+                  </div>
                   <input class="inp" style="flex:1;font-size:12px;padding:4px 8px"
                     value="${type.name}"
                     onchange="renameAcctType('${type.id}', this.value)">
@@ -4317,6 +4345,35 @@
             </div>
           </div>`;
         }).join('');
+      }
+
+      function moveAcctCategory(id, dir) {
+        const idx = S.accountCategories.findIndex(c => c.id === id);
+        if (idx === -1) return;
+        const nidx = idx + dir;
+        if (nidx < 0 || nidx >= S.accountCategories.length) return;
+        const [m] = S.accountCategories.splice(idx, 1);
+        S.accountCategories.splice(nidx, 0, m);
+        ps(); renderAcctTypesList();
+      }
+
+      function moveAcctType(id, dir) {
+        const type = S.accountTypes.find(t => t.id === id);
+        if (!type) return;
+        const cid = type.categoryId;
+        const catTypes = S.accountTypes.filter(t => t.categoryId === cid);
+        const idxInGroup = catTypes.indexOf(type);
+        const nidxInGroup = idxInGroup + dir;
+        if (nidxInGroup < 0 || nidxInGroup >= catTypes.length) return;
+
+        // We need to move it in the global S.accountTypes array
+        const globalIdx = S.accountTypes.indexOf(type);
+        const targetType = catTypes[nidxInGroup];
+        const globalTargetIdx = S.accountTypes.indexOf(targetType);
+
+        const [m] = S.accountTypes.splice(globalIdx, 1);
+        S.accountTypes.splice(globalTargetIdx, 0, m);
+        ps(); renderAcctTypesList();
       }
 
       function addAcctCategory() {
@@ -5191,10 +5248,20 @@
         });
 
         outer.addEventListener('dblclick', e => {
-          const td = e.target.closest('td[data-r]'); if (!td) return;
-          ssR = +td.dataset.r; ssC = +td.dataset.c;
-          ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
-          buildSS(); openEditor();
+          const td = e.target.closest('td[data-r]');
+          if (td) {
+            ssR = +td.dataset.r; ssC = +td.dataset.c;
+            ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+            buildSS(); openEditor();
+            return;
+          }
+          const th = e.target.closest('th.ch');
+          if (th) {
+            // Find ci by checking all th.ch siblings
+            const headers = Array.from(th.parentElement.querySelectorAll('th.ch'));
+            const ci = headers.indexOf(th);
+            if (ci >= 0) { openColModal(ci); }
+          }
         });
 
         outer.addEventListener('keydown', e => {
@@ -5562,6 +5629,7 @@
         if (tokens['--th-bg']) {
           const isDark = isDarkColor(tokens['--th-bg']);
           document.documentElement.style.setProperty('--ink-rgb', isDark ? '255,255,255' : '28,27,25');
+          document.documentElement.classList.toggle('dark', isDark);
         }
         syncAllInputsFromDOM();
         saveTheme();
@@ -5596,7 +5664,9 @@
         // restore correct border base color
         const bg = S.settings.theme['--th-bg'];
         if (bg) {
-          document.documentElement.style.setProperty('--ink-rgb', isDarkColor(bg) ? '255,255,255' : '28,27,25');
+          const isDark = isDarkColor(bg);
+          document.documentElement.style.setProperty('--ink-rgb', isDark ? '255,255,255' : '28,27,25');
+          document.documentElement.classList.toggle('dark', isDark);
         }
       }
 
