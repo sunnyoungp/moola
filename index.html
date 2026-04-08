@@ -1559,6 +1559,17 @@
       transition: background .12s, color .12s
     }
 
+    /* ── Segmented Controls ────────────────────────────────────── */
+    .sg { display: flex; background: var(--s2); padding: 2px; border-radius: 8px; gap: 1px; }
+    .sg > button { flex: 1; border: none; background: none; padding: 4px 12px; font-size: 11px; font-weight: 550; border-radius: 6px; color: var(--ink3); transition: all .12s; white-space: nowrap; }
+    .sg > button.on { background: var(--surface); color: var(--ink); box-shadow: var(--sh1); }
+    .sg > button:hover:not(.on) { color: var(--ink2); }
+
+    /* Life tab charts go single col */
+    #tab-life .g2 {
+      grid-template-columns: 1fr;
+    }
+
     .theme-reset-btn:hover {
       background: var(--s2);
       color: var(--ink)
@@ -2438,6 +2449,43 @@
           </div>
         </div>
         <div style="height:24px"></div>
+
+        <!-- NEW: ALLOCATION CHART CARD -->
+        <div class="card mb-3" id="acc-chart-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div class="sec" style="margin-bottom:0">Net worth allocation</div>
+            <div class="sg" id="acc-chart-toggles" style="max-width:380px">
+              <button data-mode="bucket" onclick="setChartGroup('bucket')">Bucket</button>
+              <button data-mode="category" onclick="setChartGroup('category')">Category</button>
+              <button data-mode="type" onclick="setChartGroup('type')">Type</button>
+              <button data-mode="name" onclick="setChartGroup('name')">Account</button>
+              <button data-mode="investment" onclick="setChartGroup('investment')">Investment</button>
+            </div>
+          </div>
+          <div class="g2" style="grid-template-columns: 280px 1fr; align-items: center; gap: 32px">
+            <div style="position:relative;height:240px;width:240px;margin: 0 auto">
+              <canvas id="accAllocChart"></canvas>
+              <div id="acc-chart-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+                <div style="font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Total</div>
+                <div id="acc-chart-total" style="font-size:16px;font-weight:600"></div>
+              </div>
+            </div>
+            <div id="acc-chart-legend" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-content:center"></div>
+          </div>
+        </div>
+
+        <!-- TABLE GROUPING CONTROLS -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px">
+          <div style="font-size:12px;font-weight:600;color:var(--ink2)">Accounts breakdown</div>
+          <div class="sg" id="acc-table-toggles" style="width:340px">
+            <button data-mode="bucket" onclick="setTableGroup('bucket')">Bucket</button>
+            <button data-mode="category" onclick="setTableGroup('category')">Category</button>
+            <button data-mode="type" onclick="setTableGroup('type')">Type</button>
+            <button data-mode="name" onclick="setTableGroup('name')">Flat</button>
+            <button data-mode="investment" onclick="setTableGroup('investment')">Invest</button>
+          </div>
+        </div>
+
         <div id="acct-sections-wrap"></div>
       </div>
 
@@ -3575,19 +3623,26 @@
           ssMeta: {},
           ssData: mkSS(),
           portView: 'all', rMode: 'contribution', rAcct: 'all', scenario: 'base',
+          chartGroupingMode: 'bucket', tableGroupingMode: 'category',
+          buckets: [
+            { id: 'cash', name: 'Cash', order: 0 },
+            { id: 'restricted', name: 'Restricted', order: 1 },
+            { id: 'investments', name: 'Investments', order: 2 },
+            { id: 'retirement', name: 'Retirement', order: 3 }
+          ],
           accountCategories: [
-            { id: 'investments', name: 'Investments & Pension', isInvestment: true },
-            { id: 'cash', name: 'Cash & Savings', isInvestment: false }
+            { id: 'investments', name: 'Investments & Pension' },
+            { id: 'cash', name: 'Cash & Savings' }
           ],
           accountTypes: [
-            { id: 'checking', name: 'Checking', categoryId: 'cash' },
-            { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash' },
-            { id: 'subscription', name: '청약계좌', categoryId: 'cash' },
-            { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash' },
-            { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments' },
-            { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments' },
-            { id: 'pension', name: 'Pension / 연금', categoryId: 'investments' },
-            { id: 'other-inv', name: 'Other (Investment)', categoryId: 'investments' }
+            { id: 'checking', name: 'Checking', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'subscription', name: '청약계좌', categoryId: 'cash', bucketId: 'restricted', isInvestment: false },
+            { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments', bucketId: 'investments', isInvestment: true },
+            { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
+            { id: 'pension', name: 'Pension / 연금', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
+            { id: 'other-inv', name: 'Other (Investment)', categoryId: 'investments', bucketId: 'investments', isInvestment: true }
           ],
           portAcctToggles: {},
           ovGoalsView: 'bars'
@@ -3600,25 +3655,53 @@
 
       // ── Data migration: run on every load ────────────────────────
       function migrateData() {
+        if (!S.buckets) {
+          S.buckets = [
+            { id: 'cash', name: 'Cash', order: 0 },
+            { id: 'restricted', name: 'Restricted', order: 1 },
+            { id: 'investments', name: 'Investments', order: 2 },
+            { id: 'retirement', name: 'Retirement', order: 3 }
+          ];
+        }
+        if (!S.chartGroupingMode) S.chartGroupingMode = 'bucket';
+        if (!S.tableGroupingMode) S.tableGroupingMode = 'category';
+
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
           S.accountCategories = [
-            { id: 'investments', name: 'Investments & Pension', isInvestment: true },
-            { id: 'cash', name: 'Cash & Savings', isInvestment: false }
+            { id: 'investments', name: 'Investments & Pension' },
+            { id: 'cash', name: 'Cash & Savings' }
           ];
         }
         if (!S.accountTypes) {
           S.accountTypes = [
-            { id: 'checking', name: 'Checking', categoryId: 'cash' },
-            { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash' },
-            { id: 'subscription', name: '청약계좌', categoryId: 'cash' },
-            { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash' },
-            { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments' },
-            { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments' },
-            { id: 'pension', name: 'Pension / 연금', categoryId: 'investments' },
-            { id: 'other-inv', name: 'Other (Investment)', categoryId: 'investments' }
+            { id: 'checking', name: 'Checking', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'subscription', name: '청약계좌', categoryId: 'cash', bucketId: 'restricted', isInvestment: false },
+            { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments', bucketId: 'investments', isInvestment: true },
+            { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
+            { id: 'pension', name: 'Pension / 연금', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
+            { id: 'other-inv', name: 'Other (Investment)', categoryId: 'investments', bucketId: 'investments', isInvestment: true }
           ];
+        } else {
+          // Migration: Ensure bucketId and isInvestment exist on types
+          const bucketMap = {
+            'checking': 'cash', 'savings': 'cash', 'other-cash': 'cash',
+            'subscription': 'restricted',
+            'brokerage-taxable': 'investments', 'other-inv': 'investments',
+            'brokerage-roth': 'retirement', 'pension': 'retirement'
+          };
+          S.accountTypes.forEach(t => {
+            if (t.bucketId === undefined) t.bucketId = bucketMap[t.id] || 'cash';
+            if (t.isInvestment === undefined) {
+              const cat = S.accountCategories.find(c => c.id === t.categoryId);
+              t.isInvestment = cat ? !!cat.isInvestment : false;
+            }
+          });
         }
+        // Clean categories of legacy isInvestment flag
+        if (S.accountCategories) S.accountCategories.forEach(c => delete c.isInvestment);
         if (!S.portAcctToggles) S.portAcctToggles = {};
 
         // Migrate legacy account types to new system
@@ -4072,6 +4155,7 @@
         }
       }
       function toggleOvGoalsView() { S.ovGoalsView = (S.ovGoalsView === 'cards' ? 'bars' : 'cards'); ps(); renderOverview(); }
+
       // ── Snapshot modal ─────────────────────────────────────────────────
       let editSnapIdx = null;
       let snapDragIdx = null;
@@ -4139,39 +4223,174 @@
 
       // ══════════════════════════════════════════════════════════════
       // ACCOUNTS
+      function setChartGroup(mode) { S.chartGroupingMode = mode; ps(); renderAccounts(); }
+      function setTableGroup(mode) { S.tableGroupingMode = mode; ps(); renderAccounts(); }
+
       function renderAccounts() {
         const t = nwTotal();
         document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
+
+        // Toggle UI
+        document.querySelectorAll('#acc-chart-toggles button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.chartGroupingMode));
+        document.querySelectorAll('#acc-table-toggles button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.tableGroupingMode));
+
         const wrap = document.getElementById('acct-sections-wrap');
         if (!wrap) return;
 
-        // Group accounts by category
-        let html = '';
-        (S.accountCategories || []).forEach(cat => {
-          const catAccts = S.accounts.filter(a => {
-            const atype = S.accountTypes?.find(t => t.id === a.type);
-            return atype?.categoryId === cat.id;
+        // ── TABLE GROUPING ───────────────────────────────────────────
+        let sections = [];
+        if (S.tableGroupingMode === 'name') {
+          sections = [{ name: 'All Accounts', accounts: S.accounts }];
+        } else if (S.tableGroupingMode === 'investment') {
+          const inv = S.accounts.filter(a => {
+            const type = S.accountTypes.find(t => t.id === a.type);
+            return type?.isInvestment;
           });
-          html += `<div class="card mb-2">
+          const non = S.accounts.filter(a => !inv.includes(a));
+          sections = [
+            { name: 'Investments', accounts: inv },
+            { name: 'Non-Investments', accounts: non }
+          ];
+        } else if (S.tableGroupingMode === 'bucket') {
+          sections = (S.buckets || []).map(b => ({
+            name: b.name,
+            accounts: S.accounts.filter(a => {
+              const type = S.accountTypes.find(t => t.id === a.type);
+              return type?.bucketId === b.id;
+            })
+          }));
+        } else if (S.tableGroupingMode === 'type') {
+          sections = (S.accountTypes || []).map(type => ({
+            name: type.name,
+            accounts: S.accounts.filter(a => a.type === type.id)
+          })).filter(s => s.accounts.length > 0);
+        } else {
+          // Default: Category
+          sections = (S.accountCategories || []).map(cat => ({
+            name: cat.name,
+            accounts: S.accounts.filter(a => {
+              const type = S.accountTypes.find(t => t.id === a.type);
+              return type?.categoryId === cat.id;
+            })
+          }));
+        }
+
+        wrap.innerHTML = sections.map(sec => {
+          if (sec.accounts.length === 0) return '';
+          const secTotalUSD = sec.accounts.reduce((sum, a) => sum + getAcctUSD(a), 0);
+          return `<div class="card mb-2">
             <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <span>${cat.name}</span>
-              <span style="font-size:11px;color:var(--ink3)">${MT(fmt(catAccts.reduce((s,a)=>s+a.balance,0)), 'accounts')}</span>
+              <span>${sec.name}</span>
+              <span style="font-size:11px;color:var(--ink3)">${MT(fmt(secTotalUSD), 'accounts')}</span>
             </div>
             <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-              <table class="tbl">${accRows(catAccts, t)}</table>
+              <table class="tbl">${accRows(sec.accounts, t)}</table>
             </div>
           </div>`;
-        });
-        // Catch any accounts with unknown types
+        }).join('');
+
+        // Catch orphans
         const knownTypeIds = (S.accountTypes || []).map(t => t.id);
         const orphans = S.accounts.filter(a => !knownTypeIds.includes(a.type));
-        if (orphans.length) {
-          html += `<div class="card mb-2">
-            <div class="sec">Other</div>
+        if (orphans.length && S.tableGroupingMode !== 'name') {
+          wrap.innerHTML += `<div class="card mb-2">
+            <div class="sec">Other (Unknown Type)</div>
             <div style="overflow-x:auto"><table class="tbl">${accRows(orphans, t)}</table></div>
           </div>`;
         }
-        wrap.innerHTML = html;
+
+        updateAllocationChart(t);
+      }
+
+      let accChart = null;
+      function updateAllocationChart(totalNetWorth) {
+        const ctx = document.getElementById('accAllocChart');
+        if (!ctx) return;
+
+        // Grouping data
+        const groups = {};
+        S.accounts.forEach(a => {
+          let key = 'Other';
+          const type = S.accountTypes.find(t => t.id === a.type);
+
+          if (S.chartGroupingMode === 'bucket') {
+            const bucket = S.buckets.find(b => b.id === type?.bucketId);
+            key = bucket ? bucket.name : 'Unknown';
+          } else if (S.chartGroupingMode === 'category') {
+            const cat = S.accountCategories.find(c => c.id === type?.categoryId);
+            key = cat ? cat.name : 'Unknown';
+          } else if (S.chartGroupingMode === 'type') {
+            key = type ? type.name : 'Unknown';
+          } else if (S.chartGroupingMode === 'name') {
+            key = a.name;
+          } else if (S.chartGroupingMode === 'investment') {
+            key = type?.isInvestment ? 'Investment' : 'Non-Investment';
+          }
+
+          groups[key] = (groups[key] || 0) + getAcctUSD(a);
+        });
+
+        // Convert to array and handle <2% "Other"
+        let dataEntries = Object.entries(groups)
+          .map(([name, val]) => ({ name, val }))
+          .sort((a, b) => b.val - a.val);
+
+        const netWorth = dataEntries.reduce((s, e) => s + e.val, 0);
+        const chartTotalEl = document.getElementById('acc-chart-total');
+        if (chartTotalEl) chartTotalEl.textContent = MT(fmt(netWorth), 'accounts');
+
+        if (netWorth > 0) {
+          const threshold = netWorth * 0.02;
+          const mainEntries = dataEntries.filter(e => e.val >= threshold);
+          const otherVal = dataEntries.filter(e => e.val < threshold).reduce((s, e) => s + e.val, 0);
+          if (otherVal > 0) mainEntries.push({ name: 'Other', val: otherVal });
+          dataEntries = mainEntries;
+        }
+
+        const labels = dataEntries.map(e => e.name);
+        const values = dataEntries.map(e => e.val);
+        const colors = COLORS();
+
+        if (!accChart) {
+          accChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderWidth: document.documentElement.classList.contains('dark') ? 0 : 2,
+                borderColor: '#ffffff',
+                hoverOffset: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '75%',
+              plugins: { legend: { display: false } },
+              animation: { duration: 600 }
+            }
+          });
+        } else {
+          accChart.data.labels = labels;
+          accChart.data.datasets[0].data = values;
+          accChart.data.datasets[0].backgroundColor = colors;
+          accChart.data.datasets[0].borderWidth = document.documentElement.classList.contains('dark') ? 0 : 2;
+          accChart.update();
+        }
+
+        // Custom Legend
+        if (leg) {
+          leg.innerHTML = dataEntries.map((e, i) => {
+            const p = netWorth > 0 ? ((e.val / netWorth) * 100).toFixed(1) : '0.0';
+            return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <div style="width:10px;height:10px;border-radius:2px;background:${colors[i % colors.length]}"></div>
+              <div style="color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px" title="${e.name}">${e.name}</div>
+              <div style="color:var(--ink3);white-space:nowrap">${p}%</div>
+            </div>`;
+          }).join('');
+        }
       }
 
       function accRows(accs, t) {
@@ -4320,16 +4539,12 @@
               <input class="inp" style="width:180px;font-size:12px;font-weight:600;padding:4px 8px"
                 value="${cat.name}"
                 onchange="renameAcctCategory('${cat.id}', this.value)">
-              <label style="font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:5px;cursor:pointer">
-                <input type="checkbox" ${cat.isInvestment ? 'checked' : ''}
-                  onchange="setAcctCategoryInvestment('${cat.id}', this.checked)">
-                Investment type
-              </label>
               <button class="btn bsm bgh" style="color:var(--rose);margin-left:auto" onclick="delAcctCategory('${cat.id}')">Delete</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:5px;padding-left:12px;border-left:2px solid var(--border)">
-              ${types.map((type, ti) => `
-                <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;flex-direction:column;gap:8px;padding-left:12px;border-left:2px solid var(--border)">
+              ${types.map((type, ti) => {
+                const bucketOpts = (S.buckets || []).map(b => `<option value="${b.id}" ${b.id === type.bucketId ? 'selected' : ''}>${b.name}</option>`).join('');
+                return `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">
                   <div style="display:flex;flex-direction:column;gap:1px">
                     <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', -1)">▲</button>
                     <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', 1)">▼</button>
@@ -4337,8 +4552,20 @@
                   <input class="inp" style="flex:1;font-size:12px;padding:4px 8px"
                     value="${type.name}"
                     onchange="renameAcctType('${type.id}', this.value)">
+                  
+                  <select class="inp" style="width:100px;font-size:11px;padding:2px 4px" onchange="setAcctTypeBucket('${type.id}', this.value)">
+                    <option value="">No Bucket</option>
+                    ${bucketOpts}
+                  </select>
+
+                  <label style="font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap">
+                    <input type="checkbox" ${type.isInvestment ? 'checked' : ''}
+                      onchange="setAcctTypeInvestment('${type.id}', this.checked)">
+                    Inv
+                  </label>
+
                   <button class="btn bsm bgh" style="color:var(--rose);flex-shrink:0" onclick="delAcctType('${type.id}')">✕</button>
-                </div>`).join('')}
+                </div>`}).join('')}
               <button class="btn bsm" style="margin-top:4px;align-self:flex-start" onclick="addAcctType('${cat.id}')">
                 + Add type
               </button>
@@ -4390,9 +4617,13 @@
         if (cat && name.trim()) { cat.name = name.trim(); ps(); }
       }
 
-      function setAcctCategoryInvestment(id, val) {
-        const cat = S.accountCategories?.find(c => c.id === id);
-        if (cat) { cat.isInvestment = val; ps(); }
+      function setAcctTypeInvestment(id, val) {
+        const t = S.accountTypes?.find(x => x.id === id);
+        if (t) { t.isInvestment = val; ps(); }
+      }
+      function setAcctTypeBucket(id, bucketId) {
+        const t = S.accountTypes?.find(x => x.id === id);
+        if (t) { t.bucketId = bucketId; ps(); }
       }
 
       function delAcctCategory(id) {
