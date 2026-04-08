@@ -4416,6 +4416,7 @@
         const labels = dataEntries.map(e => e.name);
         const values = dataEntries.map(e => e.val);
         const colors = COLORS();
+        const leg = document.getElementById('acc-chart-legend');
 
         if (!accChart) {
           accChart = new Chart(ctx, {
@@ -6570,6 +6571,37 @@
         }
       }
 
+      let ssEditColIdx = null;
+      function openColModal(ci) {
+        ssEditColIdx = ci;
+        const meta = S.ssMeta?.[ci] || { fmt: 'num', dec: 0 };
+        const name = S.ssCols[ci];
+        document.getElementById('m-ss-col-title').textContent = `Settings: Column ${colLetter(ci)}`;
+        document.getElementById('ssc-name').value = name;
+        document.getElementById('ssc-fmt').value = meta.fmt || 'num';
+        document.getElementById('ssc-dec').value = meta.dec ?? 0;
+        openModal('m-ss-col');
+      }
+      function saveColMeta() {
+        if (ssEditColIdx === null) return;
+        const name = document.getElementById('ssc-name').value.trim();
+        const fmt = document.getElementById('ssc-fmt').value;
+        const dec = parseInt(document.getElementById('ssc-dec').value) || 0;
+        if (name) S.ssCols[ssEditColIdx] = name;
+        if (!S.ssMeta) S.ssMeta = {};
+        S.ssMeta[ssEditColIdx] = { fmt, dec };
+        ps(); buildSS(); renderLifeCharts();
+      }
+
+      // LIFE ══════════════════════════════════════════════════════════
+      function renderLife() {
+        const outer = document.getElementById('ss-outer');
+        if (!outer) return;
+        if (!ssInited) { initSS(); ssInited = true; }
+        buildSS();
+        renderLifeCharts();
+      }
+
       function moveTabDown(id) {
         const idx = S.tabs.findIndex(t => t.id === id);
         if (idx < S.tabs.length - 1 && S.tabs[idx + 1].id !== 'settings') {
@@ -6860,8 +6892,37 @@
         }
       }
 
-
     </script>
+
+    <div class="modal" id="m-ss-col">
+      <div class="modal-card">
+        <div class="modal-hdr">
+          <span id="m-ss-col-title">Column settings</span>
+          <button class="modal-close" onclick="closeModal('m-ss-col')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="lbl">Column name</label>
+            <input class="inp" id="ssc-name" oninput="saveColMeta()">
+          </div>
+          <div class="g2">
+            <div>
+              <label class="lbl">Format</label>
+              <select class="inp" id="ssc-fmt" onchange="saveColMeta()">
+                <option value="num">Number</option>
+                <option value="usd">USD ($)</option>
+                <option value="krw">KRW (₩)</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">Decimals</label>
+              <input type="number" class="inp" id="ssc-dec" min="0" max="4" oninput="saveColMeta()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </body>
 
