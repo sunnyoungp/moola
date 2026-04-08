@@ -3230,11 +3230,11 @@
         <div class="fr"><label>Balance</label>
           <div style="position:relative"><span
               style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px"
-              id="a-sym">$</span><input class="inp inpm" style="padding-left:24px" id="a-bal" type="number" step="0.01">
+              id="a-sym">$</span><input class="inp inpm" style="padding-left:24px" id="a-bal" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)">
           </div>
         </div>
         <div class="fr"><label>Currency</label><select class="inp" id="a-cur"
-            onchange="document.getElementById('a-sym').textContent=this.value==='KRW'?'&#8361;':'$'">
+            onchange="handleAcctCurChange(this)">
             <option value="USD">USD</option>
             <option value="KRW">KRW</option>
           </select></div>
@@ -3261,8 +3261,8 @@
             oninput="updateFundValHint(parseFloat(this.value)||null, S.funds.find(x=>x.id===S.editFundId)?.lastPrice||null)">
         </div>
         <div class="fr">
-          <label>Current value ($) <span style="font-size:10px;color:var(--ink3);font-weight:400">— set manually, or computed from shares</span></label>
-          <input class="inp inpm" id="f-val" type="number" step="0.01" placeholder="0.00">
+          <label>Current value <span id="f-val-sym" style="font-size:12px;font-weight:600">($)</span> <span style="font-size:10px;color:var(--ink3);font-weight:400">— set manually, or computed from shares</span></label>
+          <input class="inp inpm" id="f-val" type="text" placeholder="0.00" oninput="handleBalInput(this)" onblur="formatBalInput(this)">
           <div id="f-val-hint" style="display:none;font-size:11px;color:var(--fm);margin-top:4px;font-weight:500"></div>
         </div>
         <div class="fr" id="f-tgt-row">
@@ -3863,19 +3863,21 @@
 
       // ══════════════════════════════════════════════════════════════
       // HELPERS
-      function nwTotal() { return S.accounts.reduce((s, a) => s + a.balance, 0); }
+      function getAcctUSD(a) { return a.currency === 'KRW' ? a.balance / getFX() : (a.balance || 0); }
+      function getFundUSD(f) { const a = S.accounts.find(x => String(x.id) === String(f.acct)); return a && a.currency === 'KRW' ? f.value / getFX() : (f.value || 0); }
+      function nwTotal() { return S.accounts.reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctCategory(acct) {
         const atype = S.accountTypes?.find(t => t.id === acct.type);
         return atype ? S.accountCategories?.find(c => c.id === atype.categoryId) : null;
       }
       function isInvestmentAcct(acct) { return !!getAcctCategory(acct)?.isInvestment; }
-      function totInv() { return S.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + a.balance, 0); }
-      function totCash() { return S.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + a.balance, 0); }
+      function totInv() { return S.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
+      function totCash() { return S.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctTypeName(typeId) {
         return S.accountTypes?.find(t => t.id === typeId)?.name || typeId;
       }
-      function totPort() { return S.funds.reduce((s, f) => s + f.value, 0); }
-      function blendRet(off = 0) { const t = totPort(); if (!t) return 0.096; return S.funds.reduce((s, f) => s + (f.value / t) * (f.retPct + off) / 100, 0); }
+      function totPort() { return S.funds.reduce((s, f) => s + getFundUSD(f), 0); }
+      function blendRet(off = 0) { const t = totPort(); if (!t) return 0.096; return S.funds.reduce((s, f) => s + (getFundUSD(f) / t) * (f.retPct + off) / 100, 0); }
       function nextId(arr) { return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1; }
       function fvCalc(pv, r, n, pmt) { if (!r || !n) return pv + pmt * n; return pv * Math.pow(1 + r, n) + pmt * ((Math.pow(1 + r, n) - 1) / r); }
       function chqFV(pv, r, mp, tm, hy) { const rm = r / 12; let b = pv; const act = Math.min(tm, hy * 12); for (let m = 0; m < act; m++)b = b * (1 + rm) + mp; return b * Math.pow(1 + rm, hy * 12 - act); }
@@ -4086,8 +4088,8 @@
               ${a.manualOverride ? `<div style="font-size:10px;font-weight:400;color:var(--amber,#B87A00);margin-top:2px;display:flex;align-items:center;gap:3px"><svg viewBox="0 0 12 12" width="10" height="10" style="flex-shrink:0;fill:none;stroke:var(--amber,#B87A00);stroke-width:1.5"><path d="M6 1.5L10.5 9.5H1.5Z"/><line x1="6" y1="5" x2="6" y2="7.5"/><circle cx="6" cy="9" r=".5" fill="var(--amber,#B87A00)" stroke="none"/></svg>Will be overwritten on next Portfolio sync</div>` : ''}
             </td>
             <td><span class="tag tb">${getAcctTypeName(a.type)}</span></td>
-            <td class="mo">${MT(fmt(a.balance), 'accounts')}</td>
-            <td class="mo">${MT(pct((a.balance / t) * 100), 'accounts')}</td>
+            <td class="mo">${a.currency === 'KRW' ? '₩' + Math.round(a.balance).toLocaleString() : '$' + (a.balance||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td class="mo">${MT(pct((getAcctUSD(a) / t) * 100), 'accounts')}</td>
             <td style="text-align:right">
               <button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button>
               <button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button>
@@ -4114,19 +4116,59 @@
         hint.textContent = cat ? `Category: ${cat.name}` : '';
       }
 
+      function handleBalInput(el) {
+        let v = el.value.replace(/,/g, '');
+        if (!/^-?\d*\.?\d*$/.test(v)) el.value = el.dataset.prev || '';
+        else el.dataset.prev = el.value;
+      }
+      function formatBalInput(el) {
+        let v = parseFloat(el.value.replace(/,/g, ''));
+        if (!isNaN(v)) {
+           let isKRW = false;
+           if (el.id === 'a-bal') {
+             const curEl = document.getElementById('a-cur');
+             isKRW = curEl ? curEl.value === 'KRW' : el.dataset.krw === 'true';
+           } else if (el.id === 'f-val') {
+             const fundAcctId = document.getElementById('f-acct')?.value;
+             const acct = S.accounts.find(a => String(a.id) === String(fundAcctId));
+             isKRW = acct?.currency === 'KRW';
+           }
+           el.value = v.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+        }
+      }
+      function handleAcctCurChange(el) {
+        const newCur = el.value;
+        document.getElementById('a-sym').textContent = newCur === 'KRW' ? '₩' : '$';
+        
+        const balEl = document.getElementById('a-bal');
+        let v = parseFloat(balEl.value.replace(/,/g, ''));
+        if (!isNaN(v)) {
+          const oldCur = balEl.dataset.cur || 'USD';
+          if (oldCur !== newCur) {
+            let usd = oldCur === 'KRW' ? v / getFX() : v;
+            let converted = newCur === 'KRW' ? usd * getFX() : usd;
+            balEl.value = converted.toLocaleString('en-US', { maximumFractionDigits: newCur === 'KRW' ? 0 : 2 });
+          }
+        }
+        balEl.dataset.cur = newCur;
+      }
+
       function openAcctModal(id) {
         S.editAcctId = id;
         if (id) {
           const a = S.accounts.find(x => x.id === id);
           document.getElementById('m-acct-title').textContent = 'Edit account';
           document.getElementById('a-name').value = a.name;
-          document.getElementById('a-bal').value = a.balance;
+          const fmtBal = a.balance !== undefined ? a.balance.toLocaleString('en-US', { maximumFractionDigits: a.currency === 'KRW' ? 0 : 2 }) : '';
+          document.getElementById('a-bal').value = fmtBal;
+          document.getElementById('a-bal').dataset.cur = a.currency || 'USD';
           document.getElementById('a-cur').value = a.currency || 'USD';
           document.getElementById('a-sym').textContent = a.currency === 'KRW' ? '₩' : '$';
           populateAcctTypeSelect(a.type);
         } else {
           document.getElementById('m-acct-title').textContent = 'Add account';
           ['a-name', 'a-bal'].forEach(i => document.getElementById(i).value = '');
+          document.getElementById('a-bal').dataset.cur = 'USD';
           document.getElementById('a-cur').value = 'USD';
           document.getElementById('a-sym').textContent = '$';
           populateAcctTypeSelect(S.accountTypes?.[0]?.id || 'checking');
@@ -4137,9 +4179,9 @@
       function saveAcct() {
         const name = document.getElementById('a-name').value.trim();
         const type = document.getElementById('a-type').value;
-        let bal = parseFloat(document.getElementById('a-bal').value) || 0;
+        let bal = parseFloat(document.getElementById('a-bal').value.replace(/,/g, '')) || 0;
         const cur = document.getElementById('a-cur').value;
-        if (cur === 'KRW') bal = bal / getFX();
+
         if (!name) return;
         if (S.editAcctId) {
           const prev = S.accounts.find(x => x.id === S.editAcctId);
@@ -4346,13 +4388,15 @@
           }).join('');
         }
         document.getElementById('drift-tbl-wrap').innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Fund / Account</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table></div>`;
-        dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker + (S.accounts.find(a=>String(a.id)===String(f.acct)) ? ' ('+S.accounts.find(a=>String(a.id)===String(f.acct)).name.split(' ')[0]+')' : '')), datasets: [{ data: funds.map(f => f.value), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } });
+        dC('alloc'); CH['alloc'] = new Chart(document.getElementById('allocChart'), { type: 'doughnut', data: { labels: funds.map(f => f.ticker + (S.accounts.find(a=>String(a.id)===String(f.acct)) ? ' ('+S.accounts.find(a=>String(a.id)===String(f.acct)).name.split(' ')[0]+')' : '')), datasets: [{ data: funds.map(f => getFundUSD(f)), backgroundColor: getThemeColors().slice(0, funds.length), borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '52%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 7, color: '#4a4640' } }, tooltip: { callbacks: { label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } });
         document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
           const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
           const sharesHint = f.shares ? `<span style="font-size:10px;color:var(--ink3)"> · ${f.shares} sh</span>` : '';
-          const acctLabel = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
+          const parentAcct = S.accounts.find(a => String(a.id) === String(f.acct));
+          const acctLabel = parentAcct?.name || f.acct;
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(f.value), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((f.value / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
+          const fmtNativeVal = parentAcct?.currency === 'KRW' ? '₩' + Math.round(f.value).toLocaleString() : '$' + (f.value||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${fmtNativeVal}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
@@ -4377,9 +4421,17 @@
         if (acct) {
           const typeName = getAcctTypeName(acct.type);
           hint.textContent = `Type: ${typeName}`;
+          // Set symbols accurately depending on parent account selection
+          const sym = acct.currency === 'KRW' ? '₩' : '$';
+          document.getElementById('f-val-sym').textContent = `(${sym})`;
         } else {
           hint.textContent = '';
         }
+        
+        // Re-hint the values
+        const shares = parseFloat(document.getElementById('f-shares').value) || null;
+        const lastPrice = S.funds.find(x => x.id === S.editFundId)?.lastPrice || null;
+        updateFundValHint(shares, lastPrice);
       }
 
       function openFundModal(id) {
@@ -4389,11 +4441,16 @@
           document.getElementById('m-fund-title').textContent = 'Edit fund';
           document.getElementById('f-tkr').value = f.ticker;
           document.getElementById('f-name').value = f.name;
-          document.getElementById('f-val').value = f.value;
+          
+          populateFundAcctSelect(f.acct); // Populates the select and sym
+          
+          const acct = S.accounts.find(a => String(a.id) === String(f.acct));
+          const fmtVal = f.value !== undefined ? f.value.toLocaleString('en-US', { maximumFractionDigits: acct?.currency === 'KRW' ? 0 : 2 }) : '';
+          document.getElementById('f-val').value = fmtVal;
           document.getElementById('f-shares').value = f.shares || '';
           document.getElementById('f-tgt').value = f.targetPct || '';
           document.getElementById('f-ret').value = f.retPct;
-          populateFundAcctSelect(f.acct);
+          
           updateFundValHint(f.shares, f.lastPrice);
         } else {
           document.getElementById('m-fund-title').textContent = 'Add fund';
@@ -4411,9 +4468,17 @@
         const hint = document.getElementById('f-val-hint');
         const valInput = document.getElementById('f-val');
         if (!hint) return;
+        
+        const sel = document.getElementById('f-acct');
+        const acct = S.accounts.find(a => String(a.id) === String(sel?.value));
+        const isKRW = acct?.currency === 'KRW';
+        const sym = isKRW ? '₩' : '$';
+        
         if (shares && lastPrice) {
-          const computed = (shares * lastPrice).toFixed(2);
-          hint.textContent = `Computed: ${shares} shares × $${lastPrice.toFixed(2)} = $${computed}`;
+          const computed = isKRW ? Math.round(shares * lastPrice) : (shares * lastPrice).toFixed(2);
+          const computedFmt = parseFloat(computed).toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+          const priceFmt = lastPrice.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+          hint.textContent = `Computed: ${shares} shares × ${sym}${priceFmt} = ${sym}${computedFmt}`;
           hint.style.display = 'block';
           valInput.style.opacity = '.5';
           valInput.title = 'Overridden by shares × live price';
@@ -4431,7 +4496,6 @@
       function saveFund() {
         const ticker = document.getElementById('f-tkr').value.trim().toUpperCase();
         const name = document.getElementById('f-name').value.trim() || ticker;
-        // Store acct as integer so String(acct) matches String(account.id) in sync
         const rawAcct = document.getElementById('f-acct').value;
         const acct = (rawAcct !== '' && !isNaN(parseInt(rawAcct))) ? parseInt(rawAcct) : rawAcct;
         const shares = parseFloat(document.getElementById('f-shares').value) || null;
@@ -4441,10 +4505,11 @@
         if (rawAcct === '' || rawAcct == null) { alert('Please add an investment account first (Accounts tab → Add account).'); return; }
 
         let value;
-        const manualVal = parseFloat(document.getElementById('f-val').value) || 0;
+        const manualVal = parseFloat(document.getElementById('f-val').value.replace(/,/g, '')) || 0;
         if (shares) {
           const existing = S.funds.find(x => x.id === S.editFundId);
           const knownPrice = existing?.lastPrice || null;
+          // value is strictly stored in its parent account's native currency mathematically
           value = knownPrice ? Math.round(shares * knownPrice * 100) / 100 : manualVal;
         } else {
           value = manualVal;
