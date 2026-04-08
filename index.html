@@ -1050,6 +1050,157 @@
       border-top: 1px solid var(--border)
     }
 
+    /* ═══ MANAGE ACCOUNT TYPES MODAL ═══════════════════════════ */
+    .atc-section {
+      margin-bottom: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line-s);
+    }
+    .atc-cat-hd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--s2);
+    }
+    .atc-cat-hd:hover .atc-cat-pencil { opacity: 0.6; }
+    .atc-drag {
+      cursor: grab;
+      color: var(--ink4);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      opacity: 0.45;
+      padding: 0 1px;
+    }
+    .atc-drag:active { cursor: grabbing; }
+    .atc-drag:hover { opacity: 0.8; }
+    .atc-cat-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      flex: 1;
+      cursor: text;
+      min-width: 0;
+    }
+    .atc-cat-pencil {
+      opacity: 0;
+      transition: opacity 0.15s;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--ink3);
+      padding: 2px 4px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .atc-cat-del {
+      font-size: 11px;
+      color: var(--rose);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      margin-left: 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .atc-cat-del:hover { background: color-mix(in srgb, var(--rose) 12%, transparent); }
+    .atc-types {
+      padding: 8px 10px 10px 10px;
+      background: var(--page);
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .atc-type-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border-radius: 6px;
+    }
+    .atc-type-row:hover { background: var(--s2); }
+    .atc-type-row .atc-type-del { opacity: 0; }
+    .atc-type-row:hover .atc-type-del { opacity: 1; }
+    .atc-type-name {
+      flex: 1;
+      font-size: 12.5px;
+      color: var(--ink);
+      cursor: text;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 60px;
+    }
+    .atc-pills { display: flex; gap: 3px; flex-shrink: 0; }
+    .atc-pill {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--ink3);
+      cursor: pointer;
+      white-space: nowrap;
+      line-height: 1.5;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .atc-pill.active {
+      background: var(--ink);
+      color: var(--page);
+      border-color: var(--ink);
+    }
+    .atc-pill:hover:not(.active) {
+      background: var(--s2);
+      border-color: var(--ink3);
+    }
+    .atc-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .atc-toggle input[type=checkbox] { display: none; }
+    .atc-toggle-track {
+      width: 26px;
+      height: 14px;
+      border-radius: 7px;
+      background: var(--border);
+      position: relative;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .atc-toggle input:checked ~ .atc-toggle-track { background: var(--fm); }
+    .atc-toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.15s;
+    }
+    .atc-toggle input:checked ~ .atc-toggle-track::after { transform: translateX(12px); }
+    .atc-toggle-lbl { font-size: 10.5px; color: var(--ink3); user-select: none; }
+    .atc-type-del {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--rose);
+      font-size: 12px;
+      padding: 2px 4px;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+      border-radius: 4px;
+    }
+    .atc-type-del:hover { background: color-mix(in srgb, var(--rose) 12%, transparent); }
+
     /* ═══ GOAL CARDS ════════════════════════════════════════════ */
     .gc {
       background: var(--surface);
@@ -2940,7 +3091,7 @@
       </div>
 
       <!-- FUTURE ASSUMPTIONS MODAL -->
-      <div class="mo-ov" id="m-future" style="display:none;position:fixed;inset:0;background:rgba(28,27,25,.35);z-index:500;align-items:flex-start;justify-content:center;padding-top:36px" onclick="ftBgClick(event)">
+      <div class="mo-ov" id="m-future" style="align-items:flex-start;justify-content:center;padding-top:36px" onclick="ftBgClick(event)">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);width:500px;max-width:95vw;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--sh4)" onclick="event.stopPropagation()">
           <div style="padding:16px 20px 0;flex-shrink:0">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -4871,54 +5022,137 @@
         openModal('m-acct-types');
       }
 
+      const _atcGrip = `<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" style="display:block"><circle cx="3" cy="2.5" r="1.1"/><circle cx="7" cy="2.5" r="1.1"/><circle cx="3" cy="7" r="1.1"/><circle cx="7" cy="7" r="1.1"/><circle cx="3" cy="11.5" r="1.1"/><circle cx="7" cy="11.5" r="1.1"/></svg>`;
+      const _atcPencil = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5l2 2L5 13H3v-2z"/></svg>`;
+
       function renderAcctTypesList() {
         const el = document.getElementById('acct-types-cats-list');
         if (!el) return;
-        el.innerHTML = (S.accountCategories || []).map((cat, ci) => {
+        el.innerHTML = (S.accountCategories || []).map(cat => {
           const types = (S.accountTypes || []).filter(t => t.categoryId === cat.id);
-          return `<div style="margin-bottom:18px;border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--page)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-              <div style="display:flex;flex-direction:column;gap:2px">
-                <button class="btn bsm bgh" style="padding:2px;line-height:1" onclick="moveAcctCategory('${cat.id}', -1)" title="Move category up">▲</button>
-                <button class="btn bsm bgh" style="padding:2px;line-height:1" onclick="moveAcctCategory('${cat.id}', 1)" title="Move category down">▼</button>
-              </div>
-              <input class="inp" style="width:180px;font-size:12px;font-weight:600;padding:4px 8px"
-                value="${cat.name}"
-                onchange="renameAcctCategory('${cat.id}', this.value)">
-              <button class="btn bsm bgh" style="color:var(--rose);margin-left:auto" onclick="delAcctCategory('${cat.id}')">Delete</button>
+          const typeRows = types.map(type => {
+            const pills = (S.buckets || []).map(b =>
+              `<button class="atc-pill ${b.id === type.bucketId ? 'active' : ''}" onclick="setAcctTypeBucket('${type.id}','${b.id}')">${escHtml(b.name)}</button>`
+            ).join('');
+            return `<div class="atc-type-row"
+              draggable="true"
+              ondragstart="atcTypeDragStart(event,'${type.id}')"
+              ondragover="atcTypeDragOver(event,'${type.id}')"
+              ondrop="atcTypeDrop(event,'${type.id}')"
+              ondragend="atcTypeDragEnd(event)">
+              <span class="atc-drag" title="Drag to reorder">${_atcGrip}</span>
+              <span class="atc-type-name" onclick="atcEditType(event,'${type.id}')">${escHtml(type.name)}</span>
+              <div class="atc-pills">${pills}</div>
+              <label class="atc-toggle" title="Investment account type">
+                <input type="checkbox" ${type.isInvestment ? 'checked' : ''} onchange="setAcctTypeInvestment('${type.id}',this.checked)">
+                <span class="atc-toggle-track"></span>
+                <span class="atc-toggle-lbl">Inv</span>
+              </label>
+              <button class="atc-type-del" onclick="delAcctType('${type.id}')" title="Delete type">✕</button>
+            </div>`;
+          }).join('');
+
+          return `<div class="atc-section"
+            draggable="true"
+            ondragstart="atcCatDragStart(event,'${cat.id}')"
+            ondragover="atcCatDragOver(event,'${cat.id}')"
+            ondrop="atcCatDrop(event,'${cat.id}')"
+            ondragend="atcCatDragEnd(event)">
+            <div class="atc-cat-hd">
+              <span class="atc-drag" title="Drag to reorder">${_atcGrip}</span>
+              <span class="atc-cat-name" data-catid="${cat.id}" onclick="atcEditCat(event,'${cat.id}')">${escHtml(cat.name)}</span>
+              <button class="atc-cat-pencil" onclick="atcEditCat(event,'${cat.id}')" title="Rename">${_atcPencil}</button>
+              <button class="atc-cat-del" onclick="delAcctCategory('${cat.id}')">Delete</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px;padding-left:12px;border-left:2px solid var(--border)">
-              ${types.map((type, ti) => {
-                const bucketOpts = (S.buckets || []).map(b => `<option value="${b.id}" ${b.id === type.bucketId ? 'selected' : ''}>${b.name}</option>`).join('');
-                return `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">
-                  <div style="display:flex;flex-direction:column;gap:1px">
-                    <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', -1)">▲</button>
-                    <button class="btn bsm bgh" style="padding:0;font-size:9px;width:14px;height:12px" onclick="moveAcctType('${type.id}', 1)">▼</button>
-                  </div>
-                  <input class="inp" style="flex:1;font-size:12px;padding:4px 8px"
-                    value="${type.name}"
-                    onchange="renameAcctType('${type.id}', this.value)">
-                  
-                  <select class="inp" style="width:100px;font-size:11px;padding:2px 4px" onchange="setAcctTypeBucket('${type.id}', this.value)">
-                    <option value="">No Bucket</option>
-                    ${bucketOpts}
-                  </select>
-
-                  <label style="font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap">
-                    <input type="checkbox" ${type.isInvestment ? 'checked' : ''}
-                      onchange="setAcctTypeInvestment('${type.id}', this.checked)">
-                    Inv
-                  </label>
-
-                  <button class="btn bsm bgh" style="color:var(--rose);flex-shrink:0" onclick="delAcctType('${type.id}')">✕</button>
-                </div>`}).join('')}
-              <button class="btn bsm" style="margin-top:4px;align-self:flex-start" onclick="addAcctType('${cat.id}')">
-                + Add type
+            <div class="atc-types">
+              ${typeRows}
+              <button class="btn bsm" style="margin-top:6px;align-self:flex-start" onclick="addAcctType('${cat.id}')">
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+                Add type
               </button>
             </div>
           </div>`;
         }).join('');
       }
+
+      // Inline edit: category name
+      function atcEditCat(e, catId) {
+        e.stopPropagation();
+        const span = document.querySelector(`.atc-cat-name[data-catid="${catId}"]`);
+        if (!span || span.querySelector('input')) return;
+        const current = span.textContent.trim();
+        span.textContent = '';
+        const input = document.createElement('input');
+        input.value = current;
+        input.style.cssText = 'font:inherit;font-weight:inherit;background:transparent;border:none;border-bottom:1px solid var(--ink3);outline:none;width:100%;color:inherit;padding:0;';
+        span.appendChild(input);
+        input.focus(); input.select();
+        const done = () => { const v = input.value.trim(); if (v && v !== current) renameAcctCategory(catId, v); renderAcctTypesList(); };
+        input.addEventListener('blur', done);
+        input.addEventListener('keydown', ev => { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') renderAcctTypesList(); });
+      }
+
+      // Inline edit: type name
+      function atcEditType(e, typeId) {
+        const span = e.currentTarget;
+        if (span.querySelector('input')) return;
+        const type = S.accountTypes?.find(t => t.id === typeId);
+        if (!type) return;
+        const current = type.name;
+        span.textContent = '';
+        const input = document.createElement('input');
+        input.value = current;
+        input.style.cssText = 'font:inherit;background:transparent;border:none;border-bottom:1px solid var(--ink3);outline:none;width:100%;color:inherit;padding:0;';
+        span.appendChild(input);
+        input.focus(); input.select();
+        const done = () => { const v = input.value.trim(); if (v && v !== current) renameAcctType(typeId, v); renderAcctTypesList(); };
+        input.addEventListener('blur', done);
+        input.addEventListener('keydown', ev => { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') renderAcctTypesList(); });
+      }
+
+      // Drag-drop: categories
+      let atcCatDragId = null, atcTypeDragId = null;
+      function atcCatDragStart(e, id) {
+        atcCatDragId = id; e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => { if (e.currentTarget) e.currentTarget.style.opacity = '0.4'; }, 0);
+      }
+      function atcCatDragOver(e, id) {
+        if (!atcCatDragId || atcCatDragId === id) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      }
+      function atcCatDrop(e, id) {
+        e.preventDefault();
+        if (!atcCatDragId || atcCatDragId === id) return;
+        const from = S.accountCategories.findIndex(c => c.id === atcCatDragId);
+        const to   = S.accountCategories.findIndex(c => c.id === id);
+        if (from < 0 || to < 0) return;
+        const [m] = S.accountCategories.splice(from, 1);
+        S.accountCategories.splice(to, 0, m);
+        atcCatDragId = null; ps(); renderAcctTypesList();
+      }
+      function atcCatDragEnd(e) { atcCatDragId = null; e.currentTarget.style.opacity = '1'; }
+
+      // Drag-drop: types (within or across categories)
+      function atcTypeDragStart(e, id) {
+        atcTypeDragId = id; e.dataTransfer.effectAllowed = 'move';
+        e.stopPropagation();
+        setTimeout(() => { if (e.currentTarget) e.currentTarget.style.opacity = '0.4'; }, 0);
+      }
+      function atcTypeDragOver(e, id) {
+        if (!atcTypeDragId || atcTypeDragId === id) return;
+        e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move';
+      }
+      function atcTypeDrop(e, id) {
+        e.preventDefault(); e.stopPropagation();
+        if (!atcTypeDragId || atcTypeDragId === id) return;
+        const from = S.accountTypes.findIndex(t => t.id === atcTypeDragId);
+        const to   = S.accountTypes.findIndex(t => t.id === id);
+        if (from < 0 || to < 0) return;
+        const [m] = S.accountTypes.splice(from, 1);
+        S.accountTypes.splice(to, 0, m);
+        atcTypeDragId = null; ps(); renderAcctTypesList();
+      }
+      function atcTypeDragEnd(e) { atcTypeDragId = null; e.currentTarget.style.opacity = '1'; }
 
       function moveAcctCategory(id, dir) {
         const idx = S.accountCategories.findIndex(c => c.id === id);
@@ -7429,14 +7663,8 @@
         ftRenderTable();
       }
 
-      function ftOpenModal(tab) {
-        const m = document.getElementById('m-future');
-        if (m) { m.style.display = 'flex'; ftSwitchTab(tab || 'you'); }
-      }
-      function ftCloseModal() {
-        const m = document.getElementById('m-future');
-        if (m) m.style.display = 'none';
-      }
+      function ftOpenModal(tab) { openModal('m-future'); ftSwitchTab(tab || 'you'); }
+      function ftCloseModal() { closeModal('m-future'); }
       function ftBgClick(e) { if (e.target === document.getElementById('m-future')) ftCloseModal(); }
       function ftSwitchTab(name) {
         ['you','spouse','house','expenses','events'].forEach(t => {
