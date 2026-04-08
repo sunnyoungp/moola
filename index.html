@@ -619,8 +619,8 @@
     .ms-container { position: relative; width: 100%; max-width: 480px; }
     .ms-trigger { min-height: 34px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: var(--surface); cursor: pointer; transition: all .15s; }
     .ms-trigger:hover { border-color: var(--fm); }
-    .ms-tag { display: flex; align-items: center; gap: 6px; padding: 2px 8px; background: var(--s3); border: 1px solid var(--border-strong); border-radius: 6px; font-size: 12px; font-weight: 550; color: var(--ink); box-shadow: var(--sh1); }
-    .ms-tag-del { cursor: pointer; opacity: 0.6; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: opacity .1s; }
+    .ms-tag { display: flex; align-items: center; gap: 6px; padding: 2px 8px; background: var(--ink); border: 1px solid var(--ink); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--surface); box-shadow: var(--sh1); }
+    .ms-tag-del { cursor: pointer; opacity: 0.7; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: opacity .1s; }
     .ms-tag-del:hover { opacity: 1; color: var(--red); }
     .ms-dropdown { position: absolute; top: 100%; left: 0; width: 280px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--sh3); z-index: 1000; margin-top: 6px; display: none; overflow: hidden; }
     .ms-search { padding: 10px; border-bottom: 1px solid var(--border-subtle); }
@@ -4162,11 +4162,72 @@
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
-        if (vis.history || vis.breakdown) { h += `<div class="g2 mb-2">`; if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`; if (vis.breakdown) h += `<div class="card"><div class="sec">Asset breakdown</div><div style="position:relative;height:200px;min-width:0"><canvas id="donutChart"></canvas></div></div>`; h += `</div>`; }
+        if (vis.history || vis.breakdown) {
+          h += `<div class="g2 mb-2">`;
+          if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`;
+          if (vis.breakdown) {
+            h += `<div class="card">
+              <div class="sec">Asset breakdown</div>
+              <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap">
+                <div style="position:relative;height:170px;flex:1.2;min-width:150px">
+                  <canvas id="donutChart"></canvas>
+                </div>
+                <div id="ov-donut-legend" class="custom-legend" style="flex:1;min-width:130px;display:flex;flex-direction:column;gap:5px"></div>
+              </div>
+            </div>`;
+          }
+          h += `</div>`;
+        }
         if (vis.goals) h += `<div class="card"><div class="sec fb">Goal progress <button class="bgh btn bsm" onclick="toggleOvGoalsView()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button></div><div id="ov-goals"></div></div>`;
         document.getElementById('ov-widgets').innerHTML = h;
         if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
-        if (vis.breakdown) { dC('donut'); const tc = getThemeColors(); const allAccts = S.accounts.filter(a => getAcctUSD(a) > 0); const d = allAccts.map((a,i) => ({ l: a.name, v: getAcctUSD(a), c: tc[i % tc.length] })).filter(x => x.v > 0); const isDark = document.documentElement.classList.contains('dark'); CH['donut'] = new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.v), backgroundColor: d.map(x => x.c), borderWidth: 2, borderColor: isDark ? 'transparent' : '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8, color: getComputedStyle(document.documentElement).getPropertyValue('--ink3').trim() || '#4a4640', boxWidth: 10 } }, tooltip: { callbacks: { label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / c.dataset.data.reduce((a, b) => a + b, 0)) * 100) + ')' } } } } }); }
+        if (vis.breakdown) {
+          const tc = getThemeColors();
+          const allAccts = S.accounts.filter(a => getAcctUSD(a) > 0);
+          const chartData = allAccts.map((a, i) => ({
+            label: a.name,
+            value: getAcctUSD(a),
+            color: tc[i % tc.length]
+          })).filter(x => x.value > 0);
+          const total = chartData.reduce((s, x) => s + x.value, 0);
+          const isDark = document.documentElement.classList.contains('dark');
+
+          dC('donut'); CH['donut'] = new Chart(document.getElementById('donutChart'), {
+            type: 'doughnut',
+            data: {
+              labels: chartData.map(x => x.label),
+              datasets: [{
+                data: chartData.map(x => x.value),
+                backgroundColor: chartData.map(x => x.color),
+                borderWidth: 2,
+                borderColor: isDark ? 'transparent' : '#fff'
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false, cutout: '66%',
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / total) * 100) + ')'
+                  }
+                }
+              }
+            }
+          });
+
+          const ovLeg = document.getElementById('ov-donut-legend');
+          if (ovLeg) {
+            ovLeg.innerHTML = chartData.map(x => `
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--ink2)">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <span style="width:6px;height:6px;border-radius:50%;background:${x.color};flex-shrink:0"></span>
+                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:85px">${x.label}</span>
+                </div>
+                <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${pct((x.value / total) * 100)}</div>
+              </div>`).join('');
+          }
+        }
         if (vis.goals) {
           const el = document.getElementById('ov-goals');
           if (el) {
