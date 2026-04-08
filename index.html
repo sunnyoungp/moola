@@ -4088,7 +4088,7 @@
               ${a.manualOverride ? `<div style="font-size:10px;font-weight:400;color:var(--amber,#B87A00);margin-top:2px;display:flex;align-items:center;gap:3px"><svg viewBox="0 0 12 12" width="10" height="10" style="flex-shrink:0;fill:none;stroke:var(--amber,#B87A00);stroke-width:1.5"><path d="M6 1.5L10.5 9.5H1.5Z"/><line x1="6" y1="5" x2="6" y2="7.5"/><circle cx="6" cy="9" r=".5" fill="var(--amber,#B87A00)" stroke="none"/></svg>Will be overwritten on next Portfolio sync</div>` : ''}
             </td>
             <td><span class="tag tb">${getAcctTypeName(a.type)}</span></td>
-            <td class="mo">${a.currency === 'KRW' ? '₩' + Math.round(a.balance).toLocaleString() : '$' + (a.balance||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td class="mo">${MT(fmt(getAcctUSD(a)), 'accounts')}</td>
             <td class="mo">${MT(pct((getAcctUSD(a) / t) * 100), 'accounts')}</td>
             <td style="text-align:right">
               <button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button>
@@ -4357,16 +4357,16 @@
       }
       function renderPortfolio() {
         renderPortAcctToggles();
-        const funds = getFunds('all'); const tot = funds.reduce((s, f) => s + f.value, 0);
+        const funds = getFunds('all'); const tot = funds.reduce((s, f) => s + getFundUSD(f), 0);
         document.getElementById('port-total').innerHTML = MT(fmt(tot), 'portfolio');
         // Only include funds with a target for drift table (hands-off = targetPct 0)
         const rebalFunds = funds.filter(f => f.targetPct > 0);
         const handOffFunds = funds.filter(f => !f.targetPct || f.targetPct === 0);
         const tgtSum = rebalFunds.reduce((s, f) => s + f.targetPct, 0) || 100;
-        const rebalTot = rebalFunds.reduce((s, f) => s + f.value, 0);
+        const rebalTot = rebalFunds.reduce((s, f) => s + getFundUSD(f), 0);
         // Build drift table (rebalanced funds only)
         let driftRows = rebalFunds.map(f => {
-          const cur = (f.value / rebalTot) * 100;
+          const cur = (getFundUSD(f) / rebalTot) * 100;
           const tgt = f.targetPct * (100 / tgtSum);
           const d = cur - tgt;
           const acctName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
@@ -4395,8 +4395,7 @@
           const parentAcct = S.accounts.find(a => String(a.id) === String(f.acct));
           const acctLabel = parentAcct?.name || f.acct;
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          const fmtNativeVal = parentAcct?.currency === 'KRW' ? '₩' + Math.round(f.value).toLocaleString() : '$' + (f.value||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${fmtNativeVal}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
