@@ -2277,6 +2277,40 @@
     .spinning svg {
       animation: spinIcon .7s linear infinite;
     }
+    /* ── FUTURE TAB ─────────────────────────────────────────── */
+    .ft-mtab {
+      font-size: 12px; padding: 7px 14px; cursor: pointer;
+      color: var(--ink3); background: none; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      font-family: var(--sans); font-weight: 450; white-space: nowrap;
+    }
+    .ft-mtab:hover { color: var(--ink); }
+    .ft-mtab.on { color: var(--f); border-bottom-color: var(--f); font-weight: 500; }
+    .ft-fg { margin-bottom: 18px; }
+    .ft-fgl { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink3); margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+    .ft-fr { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .ft-fr label { font-size: 13px; color: var(--ink2); flex: 1; }
+    .ft-fr input[type=number] { width: 110px; font-size: 12px; padding: 5px 8px; border-radius: var(--rs); border: 1px solid var(--border-strong); background: var(--s2); color: var(--ink); text-align: right; font-family: var(--mono); }
+    .ft-unit { font-size: 11px; color: var(--ink3); min-width: 28px; }
+    .ft-note { font-size: 11px; color: var(--ink3); line-height: 1.55; margin-top: -3px; margin-bottom: 9px; }
+    .ft-calc-pill { font-size: 11.5px; color: var(--f); background: var(--fll); border-radius: var(--rs); padding: 6px 10px; margin-top: 6px; font-family: var(--mono); }
+    .ft-cell-ov { background: var(--fll) !important; color: var(--f) !important; }
+    .ft-chip { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink3); cursor: pointer; font-family: var(--sans); transition: all .12s; }
+    .ft-chip:hover { border-color: var(--f); color: var(--ink); }
+    .ft-chip.on { background: var(--fll); color: var(--f); border-color: var(--fl); }
+    #ft-tbl th { position: sticky; top: 0; z-index: 2; background: var(--surface); font-size: 11px; font-weight: 600; color: var(--ink3); padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); cursor: grab; user-select: none; white-space: nowrap; letter-spacing: -.1px; }
+    #ft-tbl th:first-child { text-align: left; cursor: default; width: 140px; }
+    #ft-tbl td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--border); color: var(--ink); font-size: 12px; font-family: var(--mono); }
+    #ft-tbl td:first-child { text-align: left; font-family: var(--sans); }
+    #ft-tbl tbody tr:nth-child(even) { background: var(--s2); }
+    #ft-tbl tbody tr:hover { background: var(--fll); }
+    #ft-tbl tbody tr:last-child td { border-bottom: none; }
+    #ft-tbl .ft-ms-age { font-weight: 600; color: var(--f); }
+    #ft-tbl .ft-house-row td { background: rgba(138,104,32,.05) !important; }
+    #ft-tbl .ft-house-row td:first-child { color: var(--gold); font-weight: 600; }
+    #ft-tbl .ft-editable { cursor: pointer; }
+    #ft-tbl .ft-editable:hover { text-decoration: underline dotted; text-underline-offset: 2px; }
+    #ft-tbl .ft-cell-input { width: 80px; font-size: 12px; padding: 2px 5px; border-radius: 4px; border: 1.5px solid var(--f); background: var(--surface); color: var(--ink); text-align: right; font-family: var(--mono); outline: none; }
   </style>
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2829,6 +2863,162 @@
         <div class="ss-outer" id="ss-outer" tabindex="0">
           <textarea id="ss-editor" rows="1" spellcheck="false"></textarea>
           <table class="ss-tbl" id="ss-tbl"></table>
+        </div>
+      </div>
+
+      <!-- FUTURE -->
+      <div id="tab-future" class="tc" style="padding-bottom:2rem">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Future</div>
+            <div class="page-sub">Life projection · net worth to age 100</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn" onclick="ftOpenModal('you')">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4"/></svg>
+              Assumptions
+            </button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+
+        <!-- metric cards -->
+        <div class="g4 mb-3" id="ft-metrics"></div>
+
+        <!-- chart -->
+        <div class="card mb-3">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="sec" style="margin:0">Net worth projection</div>
+            <div style="display:flex;gap:12px;font-size:11px;color:var(--ink3)">
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:2px;background:var(--fm);border-radius:1px"></span>net worth</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--teal)"></span>cumulative savings</span>
+            </div>
+          </div>
+          <div style="position:relative;height:220px"><canvas id="ft-chart" role="img" aria-label="Net worth and cumulative savings projection from age 25 to 100">Projection from age 25 to 100.</canvas></div>
+        </div>
+
+        <!-- controls row -->
+        <div class="card mb-2" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase">Columns</span>
+            <div style="display:flex;gap:5px;flex-wrap:wrap" id="ft-col-chips"></div>
+            <div style="flex:1;min-width:120px"></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)">
+              <span style="white-space:nowrap">House — buy at age</span>
+              <input type="range" id="ft-buy-sl" min="27" max="50" step="1" style="width:72px" oninput="ftSetBuyAge(+this.value)">
+              <span id="ft-buy-out" style="font-size:13px;font-weight:600;color:var(--ink);min-width:22px;font-family:var(--mono)">31</span>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">House readiness</span>
+            <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div id="ft-house-fill" style="height:100%;border-radius:3px;transition:width .4s"></div></div>
+            <span id="ft-house-pct" style="font-size:12px;font-weight:600;min-width:34px;font-family:var(--mono)"></span>
+            <span id="ft-house-note" style="font-size:11px;color:var(--ink3);flex:1"></span>
+          </div>
+        </div>
+
+        <!-- table -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
+          <span style="font-size:11px;color:var(--ink3)">click income or spouse to override per year · drag headers to reorder</span>
+        </div>
+        <div style="overflow-y:auto;max-height:400px;border:1px solid var(--border);border-radius:var(--r)">
+          <table style="width:100%;border-collapse:collapse;font-size:12px" id="ft-tbl">
+            <thead id="ft-thead"></thead>
+            <tbody id="ft-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FUTURE ASSUMPTIONS MODAL -->
+      <div class="mo-ov" id="m-future" style="display:none;position:fixed;inset:0;background:rgba(28,27,25,.35);z-index:500;align-items:flex-start;justify-content:center;padding-top:36px" onclick="ftBgClick(event)">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);width:500px;max-width:95vw;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--sh4)" onclick="event.stopPropagation()">
+          <div style="padding:16px 20px 0;flex-shrink:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <span style="font-size:15px;font-weight:600;color:var(--ink)">Assumptions</span>
+              <button class="btn bsm" onclick="ftCloseModal()">Close</button>
+            </div>
+            <div style="display:flex;gap:2px;border-bottom:1px solid var(--border)" id="ft-modal-tabs">
+              <button class="ft-mtab on" onclick="ftSwitchTab('you')">You</button>
+              <button class="ft-mtab" onclick="ftSwitchTab('spouse')">Spouse</button>
+              <button class="ft-mtab" onclick="ftSwitchTab('house')">House</button>
+              <button class="ft-mtab" onclick="ftSwitchTab('expenses')">Expenses</button>
+              <button class="ft-mtab" onclick="ftSwitchTab('events')">Events</button>
+            </div>
+          </div>
+          <div style="padding:18px 20px;overflow-y:auto;flex:1">
+
+            <div id="ft-tab-you">
+              <div class="ft-fg">
+                <div class="ft-fgl">Income</div>
+                <div class="ft-fr"><label>Starting TC at age 26</label><input type="number" id="ft-tc" value="150000" oninput="ftRecalc()"><span class="ft-unit">$/yr</span></div>
+                <div class="ft-note">Gross total comp at big tech job. Before 26, defaults to $43k. Click any income cell in the table to override a specific year.</div>
+                <div class="ft-fr"><label>TC growth rate / yr</label><input type="number" id="ft-tcg" value="8" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div class="ft-note">Compounds annually. When you override a year in the table, growth continues from that new number as the base.</div>
+              </div>
+              <div class="ft-fg">
+                <div class="ft-fgl">Tax & retirement</div>
+                <div class="ft-fr"><label>Effective tax rate</label><input type="number" id="ft-tax" value="35" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div class="ft-note">Combined federal + CA state (~9.3%). Net savings = gross HH income × (1−tax) − 401k − all expenses.</div>
+                <div class="ft-fr"><label>401k contribution / yr</label><input type="number" id="ft-401k" value="23000" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+              </div>
+              <div class="ft-fg">
+                <div class="ft-fgl">Portfolio</div>
+                <div class="ft-fr"><label>Real return (inflation-adjusted)</label><input type="number" id="ft-roc" value="5" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div class="ft-note">Already accounts for ~3% inflation. 5% real ≈ 8% nominal. Net worth compounds at this rate each year on top of new savings.</div>
+              </div>
+              <div class="ft-fg">
+                <div class="ft-fgl">Life events</div>
+                <div class="ft-fr"><label>Marriage age</label><input type="number" id="ft-marry" value="30" oninput="ftRecalc()"><span class="ft-unit">yrs</span></div>
+                <div class="ft-fr"><label>Kid 1 age</label><input type="number" id="ft-k1" value="32" oninput="ftRecalc()"><span class="ft-unit">yrs</span></div>
+                <div class="ft-fr"><label>Kid 2 age</label><input type="number" id="ft-k2" value="34" oninput="ftRecalc()"><span class="ft-unit">yrs</span></div>
+              </div>
+            </div>
+
+            <div id="ft-tab-spouse" style="display:none">
+              <div class="ft-fg">
+                <div class="ft-fgl">Spouse income</div>
+                <div class="ft-fr"><label>Income at marriage</label><input type="number" id="ft-sp" value="150000" oninput="ftRecalc()"><span class="ft-unit">$/yr</span></div>
+                <div class="ft-fr"><label>Growth rate / yr</label><input type="number" id="ft-spg" value="6" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div class="ft-note">Added to household income from marriage age. Click any spouse cell in the table to override a specific year — growth continues from that new base.</div>
+              </div>
+            </div>
+
+            <div id="ft-tab-house" style="display:none">
+              <div class="ft-fg">
+                <div class="ft-fgl">Property</div>
+                <div class="ft-fr"><label>Home price</label><input type="number" id="ft-home" value="2000000" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+                <div class="ft-fr"><label>Down payment</label><input type="number" id="ft-down" value="20" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div class="ft-fr"><label>Mortgage rate (30yr)</label><input type="number" id="ft-mrate" value="6.5" oninput="ftRecalc()"><span class="ft-unit">%</span></div>
+                <div id="ft-house-calc" class="ft-calc-pill"></div>
+                <div class="ft-note" style="margin-top:8px">House readiness shows whether your NW at the buy age covers down payment + 3% closing costs. Move the slider to find when you can afford it. To model extra mortgage payments, add them as negative one-time events.</div>
+              </div>
+            </div>
+
+            <div id="ft-tab-expenses" style="display:none">
+              <div class="ft-fg">
+                <div class="ft-fgl">Lifestyle phases (annual)</div>
+                <div class="ft-fr"><label>Solo NYC (pre-marriage)</label><input type="number" id="ft-exp-solo" value="54000" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+                <div class="ft-note">~$4,500/mo all-in. Applies until marriage age.</div>
+                <div class="ft-fr"><label>Married, pre-kids (Bay Area)</label><input type="number" id="ft-exp-married" value="108000" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+                <div class="ft-fr"><label>Childcare per kid / yr</label><input type="number" id="ft-exp-kid" value="30000" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+                <div class="ft-note">~$2,500/mo per kid. Applied for 5 years after each kid's birth age.</div>
+              </div>
+              <div class="ft-fg">
+                <div class="ft-fgl">Housing</div>
+                <div class="ft-fr"><label>Annual mortgage payment</label><input type="number" id="ft-mort" value="91200" oninput="ftRecalc()"><span class="ft-unit">$</span></div>
+                <div class="ft-note">Auto-calculated from home price, down %, and rate. Override manually here if needed.</div>
+              </div>
+            </div>
+
+            <div id="ft-tab-events" style="display:none">
+              <div class="ft-note" style="margin-bottom:12px">One-time amounts at a specific age. Positive = adds to NW (bonus, inheritance, stock vest). Negative = reduces it (extra mortgage payment, large purchase).</div>
+              <div id="ft-events-list"></div>
+              <button class="btn bsm" onclick="ftAddEvent()" style="margin-top:6px">+ add event</button>
+              <div id="ft-events-empty" style="font-size:12px;color:var(--ink3);padding:10px 0">No events yet.</div>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -3582,7 +3772,8 @@
         dollar: `<svg viewBox="0 0 16 16"><path d="M8 1.5v13M5.5 4.5h3a2 2 0 1 1 0 4h-1a2 2 0 1 0 0 4h3"/></svg>`,
         sparkles: `<svg viewBox="0 0 16 16" stroke-linejoin="round"><path d="M7 1.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z"/></svg>`,
         folder: `<svg viewBox="0 0 16 16" stroke-linejoin="round"><path d="M14.5 5H7.5l-2-2H1.5v10h13z"/></svg>`,
-        compass: `<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><polygon points="7,4 9,4 7.5,12 6.5,12"/></svg>`
+        compass: `<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><polygon points="7,4 9,4 7.5,12 6.5,12"/></svg>`,
+        future: `<svg viewBox="0 0 16 16"><polyline points="2,11 5,7 8,9 11,4.5 14,6"/><circle cx="14" cy="6" r="1.4" fill="currentColor" stroke="none"/><line x1="2" y1="14" x2="14" y2="14" stroke-dasharray="1.5 1.5"/></svg>`
       };
       // ── Currency + sync state (declared before initApp) ───────────
       let dispCur = 'USD', krwFmt = 'short';
@@ -3660,6 +3851,7 @@
             { id: 'projections', name: 'Projections', icon: 'lineChart', archived: false },
             { id: 'goals', name: 'Goals', icon: 'target', archived: false },
             { id: 'life', name: 'Life', icon: 'layout', archived: false },
+            { id: 'future', name: 'Future', icon: 'future', archived: false },
             { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
           ],
           accounts: [],
@@ -4130,7 +4322,7 @@
       }
       function renderTab(id) {
         if (id === 'rebalance') renderRebalAcctTabs();
-        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderFuture, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -6966,6 +7158,276 @@
         syncInProgress = false;
         if (icon) icon.style.animation = '';
         if (btn) btn.disabled = false;
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // FUTURE TAB
+      // ══════════════════════════════════════════════════════════════
+      let ftBuyAge = 31;
+      let ftIncOv = {}, ftSpOv = {}, ftEvents = [];
+      let ftColOrder = ['age','income','nw','spouse','housing','kids','netsav'];
+      let ftColVis = { age:true, income:true, nw:true, spouse:true, housing:true, kids:true, netsav:true };
+      const ftColLabels = { age:'age', income:'gross income', nw:'net worth', spouse:'spouse', housing:'housing + living', kids:'kids', netsav:'net savings' };
+      let ftDragSrc = null, ftRows = [], ftChart = null;
+
+      function ftG(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+      function ftFmt(n) {
+        const s = n < 0 ? '-' : ''; const a = Math.abs(n);
+        if (a >= 1e6) return s + '$' + (a/1e6).toFixed(2) + 'M';
+        if (a >= 1e3) return s + '$' + (a/1000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',') + 'k';
+        return s + '$' + Math.round(a);
+      }
+
+      function ftCalcMort() {
+        const P = ftG('ft-home') * (1 - ftG('ft-down')/100);
+        const r = ftG('ft-mrate') / 100 / 12, n = 360;
+        if (!r) return Math.round(P/n*12);
+        return Math.round(P * (r * Math.pow(1+r,n)) / (Math.pow(1+r,n)-1) * 12);
+      }
+
+      function ftGetIncome(age) {
+        const tc0 = ftG('ft-tc'), tcg = ftG('ft-tcg')/100;
+        if (age < 26) return 43000;
+        if (ftIncOv[age] !== undefined) return ftIncOv[age];
+        const prevOvs = Object.keys(ftIncOv).map(Number).filter(a => a >= 26 && a < age).sort((a,b) => b-a);
+        if (prevOvs.length) return Math.round(ftIncOv[prevOvs[0]] * Math.pow(1+tcg, age - prevOvs[0]));
+        return Math.round(tc0 * Math.pow(1+tcg, age-26));
+      }
+
+      function ftGetSpouse(age) {
+        const marry = ftG('ft-marry'), sp0 = ftG('ft-sp'), spg = ftG('ft-spg')/100;
+        if (age < marry) return 0;
+        if (ftSpOv[age] !== undefined) return ftSpOv[age];
+        const prevOvs = Object.keys(ftSpOv).map(Number).filter(a => a >= marry && a < age).sort((a,b) => b-a);
+        if (prevOvs.length) return Math.round(ftSpOv[prevOvs[0]] * Math.pow(1+spg, age - prevOvs[0]));
+        return Math.round(sp0 * Math.pow(1+spg, age - marry));
+      }
+
+      function ftCalcRows() {
+        const tax = ftG('ft-tax')/100, f401 = ftG('ft-401k');
+        const marry = ftG('ft-marry'), k1 = ftG('ft-k1'), k2 = ftG('ft-k2');
+        const homeP = ftG('ft-home'), downPct = ftG('ft-down')/100, roc = ftG('ft-roc')/100;
+        const downCash = Math.round(homeP * downPct + homeP * 0.03);
+        const mort = ftCalcMort();
+        const mortEl = document.getElementById('ft-mort');
+        if (mortEl) mortEl.value = mort;
+        const hcEl = document.getElementById('ft-house-calc');
+        if (hcEl) hcEl.textContent = `Down + closing = ${ftFmt(downCash)}  ·  Monthly = ${ftFmt(Math.round(mort/12))}/mo  ·  Loan = ${ftFmt(Math.round(homeP*(1-downPct)))}`;
+
+        let nw = nwTotal() || 120000, cumSav = 0;
+        const currentAge = 25;
+        const out = [];
+        for (let age = currentAge; age <= 100; age++) {
+          const income = ftGetIncome(age);
+          const spouse = ftGetSpouse(age);
+          const grossHH = income + (age >= marry ? spouse : 0);
+          const netHH = grossHH * (1-tax) - f401;
+          const baseExp = age < marry ? ftG('ft-exp-solo') : ftG('ft-exp-married');
+          let housing = age >= ftBuyAge ? mort : 0;
+          let kids = 0;
+          if (age >= k1 && age < k1+5) kids += ftG('ft-exp-kid');
+          if (age >= k2 && age < k2+5) kids += ftG('ft-exp-kid');
+          const netsav = Math.round(netHH - baseExp - housing - kids);
+          const ot = ftEvents.filter(e => e.age === age).reduce((s,e) => s + e.amount, 0);
+          cumSav += Math.max(0, netsav);
+          let newNw = nw * (1+roc) + netsav + ot;
+          if (age === ftBuyAge) newNw -= downCash;
+          nw = Math.round(newNw);
+          const ms = [];
+          if (age === 26) ms.push('job');
+          if (age === marry) ms.push('married');
+          if (age === ftBuyAge) ms.push('house');
+          if (age === k1) ms.push('kid 1');
+          if (age === k2) ms.push('kid 2');
+          out.push({ age, income, spouse, nw, housing: Math.round(housing+baseExp), kids: Math.round(kids), netsav, cumSav: Math.round(cumSav), ms, isHouse: age === ftBuyAge, ot });
+        }
+        return out;
+      }
+
+      function ftRenderMetrics() {
+        const r35 = ftRows.find(r => r.age === 35) || ftRows[0];
+        const r55 = ftRows.find(r => r.age === 55) || ftRows[0];
+        const r65 = ftRows.find(r => r.age === 65) || ftRows[0];
+        const downNeeded = Math.round(ftG('ft-home') * ftG('ft-down')/100 + ftG('ft-home') * 0.03);
+        const el = document.getElementById('ft-metrics');
+        if (!el) return;
+        el.innerHTML = `
+          <div class="csm"><div class="lbl">Net worth at 35</div><div class="mnum mt-1 ${r35.nw > 0 ? 'pos' : 'neg'}">${MT(ftFmt(r35.nw), 'future')}</div></div>
+          <div class="csm"><div class="lbl">Net worth at 55</div><div class="mnum mt-1 pos">${MT(ftFmt(r55.nw), 'future')}</div></div>
+          <div class="csm"><div class="lbl">Net worth at 65</div><div class="mnum mt-1 pos">${MT(ftFmt(r65.nw), 'future')}</div></div>
+          <div class="csm"><div class="lbl">Cash needed at closing</div><div class="mnum mt-1">${ftFmt(downNeeded)}<div class="mut" style="font-size:10px;margin-top:2px">20% down + 3% closing</div></div></div>`;
+      }
+
+      function ftRenderHouseBar() {
+        const downNeeded = Math.round(ftG('ft-home') * ftG('ft-down')/100 + ftG('ft-home') * 0.03);
+        const hRow = ftRows.find(r => r.age === ftBuyAge) || ftRows[0];
+        const nwAtBuy = hRow ? hRow.nw : 0;
+        const pct = Math.min(100, Math.max(0, Math.round(nwAtBuy / downNeeded * 100)));
+        const ready = pct >= 100;
+        const fill = document.getElementById('ft-house-fill');
+        const pctEl = document.getElementById('ft-house-pct');
+        const noteEl = document.getElementById('ft-house-note');
+        if (fill) fill.style.cssText = `width:${pct}%;background:${ready ? 'var(--teal)' : 'var(--gold)'}`;
+        if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = ready ? 'var(--teal)' : 'var(--gold)'; }
+        if (noteEl) {
+          noteEl.textContent = ready
+            ? `NW at age ${ftBuyAge} covers the ${ftFmt(downNeeded)} needed.`
+            : `At age ${ftBuyAge}, NW is ${ftFmt(nwAtBuy)} — short ${ftFmt(downNeeded - nwAtBuy)}.`;
+          noteEl.style.color = ready ? 'var(--teal)' : 'var(--gold)';
+        }
+        const sl = document.getElementById('ft-buy-sl');
+        const out = document.getElementById('ft-buy-out');
+        if (sl) sl.value = ftBuyAge;
+        if (out) out.textContent = ftBuyAge;
+      }
+
+      function ftRenderChart() {
+        if (ftChart) { ftChart.destroy(); ftChart = null; }
+        const canvas = document.getElementById('ft-chart');
+        if (!canvas) return;
+        const tc = getThemeColors();
+        ftChart = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: ftRows.map(r => r.age),
+            datasets: [
+              { label: 'Net worth', data: ftRows.map(r => r.nw), borderColor: tc[0], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
+              { label: 'Cumulative savings', data: ftRows.map(r => r.cumSav), borderColor: 'var(--teal)', borderDash: [5,3], borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(30,122,122,.07)', tension: 0.3 }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + ftFmt(c.raw) } } },
+            scales: {
+              x: chartXAxis({ maxTicksLimit: 16 }),
+              y: chartYAxis(v => ftFmt(v), 'future')
+            }
+          }
+        });
+      }
+
+      function ftRenderChips() {
+        const toggleable = ['income','spouse','housing','kids','netsav'];
+        const el = document.getElementById('ft-col-chips');
+        if (!el) return;
+        el.innerHTML = toggleable.map(c =>
+          `<button class="ft-chip ${ftColVis[c] ? 'on' : ''}" onclick="ftToggleCol('${c}')">${ftColLabels[c]}</button>`
+        ).join('');
+      }
+
+      function ftStartEdit(td, field, age) {
+        const cur = ftRows.find(r => r.age === age);
+        if (!cur) return;
+        const curVal = cur[field];
+        td.innerHTML = `<input class="ft-cell-input" type="number" value="${curVal}">`;
+        const inp = td.querySelector('input');
+        inp.focus(); inp.select();
+        const commit = () => {
+          const v = parseFloat(inp.value);
+          if (!isNaN(v) && v !== curVal) {
+            if (field === 'income') ftIncOv[age] = Math.round(v);
+            if (field === 'spouse') ftSpOv[age] = Math.round(v);
+            ftRecalc();
+          } else { ftRenderTable(); }
+        };
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') ftRenderTable(); });
+      }
+
+      function ftRenderTable() {
+        const vis = ftColOrder.filter(c => ftColVis[c]);
+        const thead = document.getElementById('ft-thead');
+        const tbody = document.getElementById('ft-tbody');
+        if (!thead || !tbody) return;
+        thead.innerHTML = `<tr>${vis.map((c,i) => `<th draggable="true" ondragstart="ftDs(event,${i})" ondragover="ftDov(event)" ondrop="ftDp(event,${i})" style="${c==='age'?'text-align:left':''}">${ftColLabels[c]}</th>`).join('')}<th style="width:22px"></th></tr>`;
+        tbody.innerHTML = ftRows.map((r, ri) => {
+          const hasMile = r.ms.length > 0;
+          const icons = r.ms.map(m => ({'job':'★','married':'♥','house':'⌂','kid 1':'●','kid 2':'●'}[m]||'◆') + '\u202f' + m).join(' · ');
+          const ovInc = ftIncOv[r.age] !== undefined;
+          const ovSp = ftSpOv[r.age] !== undefined;
+          return `<tr class="${r.isHouse ? 'ft-house-row' : ''}">
+            ${vis.map(c => {
+              if (c === 'age') return `<td class="${hasMile ? 'ft-ms-age' : ''}">${r.age}${icons ? ` <span style="font-size:10px;color:var(--ink3)">${icons}</span>` : ''}${r.ot ? ` <span style="font-size:10px;color:var(--gold)">event</span>` : ''}</td>`;
+              if (c === 'nw') return `<td class="${r.nw < 0 ? 'neg' : ''}">${MT(ftFmt(r.nw), 'future')}</td>`;
+              if (c === 'netsav') return `<td class="${r.netsav < 0 ? 'neg' : 'pos'}">${r.netsav >= 0 ? '+' : ''}${ftFmt(r.netsav)}</td>`;
+              if (c === 'income') return `<td class="ft-editable${ovInc ? ' ft-cell-ov' : ''}" onclick="ftStartEdit(this,'income',${r.age})" title="click to override">${ftFmt(r.income)}</td>`;
+              if (c === 'spouse') return `<td class="ft-editable${ovSp ? ' ft-cell-ov' : ''}" onclick="ftStartEdit(this,'spouse',${r.age})" title="click to override">${ftFmt(r.spouse)}</td>`;
+              return `<td>${ftFmt(r[c])}</td>`;
+            }).join('')}
+            <td><button onclick="ftInsertAfter(${ri})" style="font-size:11px;color:var(--ink3);background:none;border:none;cursor:pointer" title="insert row after">+</button></td>
+          </tr>`;
+        }).join('');
+      }
+
+      function ftRenderEvents() {
+        const list = document.getElementById('ft-events-list');
+        const empty = document.getElementById('ft-events-empty');
+        if (!list || !empty) return;
+        empty.style.display = ftEvents.length ? 'none' : 'block';
+        list.innerHTML = ftEvents.map((e, i) => `
+          <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+            <span style="font-size:12px;color:var(--ink3)">age</span>
+            <input type="number" value="${e.age}" style="width:52px;font-size:12px;padding:4px 6px;border-radius:var(--rs);border:1px solid var(--border-strong);background:var(--s2);color:var(--ink);font-family:var(--mono)" oninput="ftEvents[${i}].age=+this.value;ftRecalc()">
+            <input type="number" value="${e.amount}" style="width:90px;font-size:12px;padding:4px 6px;border-radius:var(--rs);border:1px solid var(--border-strong);background:var(--s2);color:var(--ink);font-family:var(--mono)" oninput="ftEvents[${i}].amount=+this.value;ftRecalc()">
+            <select style="font-size:12px;padding:4px 6px;border-radius:var(--rs);border:1px solid var(--border-strong);background:var(--s2);color:var(--ink);flex:1" onchange="ftEvents[${i}].type=this.value">
+              ${['bonus','inheritance','extra mortgage payment','large purchase','stock vest','other'].map(t => `<option ${e.type===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <button onclick="ftEvents.splice(${i},1);ftRecalc()" style="font-size:13px;color:var(--ink3);background:none;border:none;cursor:pointer;padding:0 3px">✕</button>
+          </div>`).join('');
+      }
+
+      function ftRecalc() {
+        if (!document.getElementById('ft-metrics')) return;
+        ftRows = ftCalcRows();
+        ftRenderMetrics();
+        ftRenderHouseBar();
+        ftRenderChart();
+        ftRenderChips();
+        ftRenderTable();
+        ftRenderEvents();
+      }
+
+      function renderFuture() { ftRecalc(); }
+
+      function ftSetBuyAge(v) { ftBuyAge = v; ftRecalc(); }
+      function ftToggleCol(c) { ftColVis[c] = !ftColVis[c]; ftRenderChips(); ftRenderTable(); }
+      function ftAppendRow() { const l = ftRows[ftRows.length-1]; ftRows.push({...l, age:l.age+1, ms:[], isHouse:false, ot:0}); ftRenderTable(); ftRenderChart(); }
+      function ftInsertAfter(ri) { const r = ftRows[ri]; const nx = ftRows[ri+1]; const na = nx ? Math.ceil((r.age+nx.age)/2) : r.age+1; ftRows.splice(ri+1, 0, {...r, age:na, ms:[], isHouse:false, ot:0}); ftRenderTable(); }
+      function ftAddEvent() { ftEvents.push({age:30, amount:50000, type:'bonus'}); ftSwitchTab('events'); ftRecalc(); }
+
+      function ftDs(e, i) { ftDragSrc = i; e.dataTransfer.effectAllowed = 'move'; }
+      function ftDov(e) { e.preventDefault(); }
+      function ftDp(e, i) {
+        e.preventDefault();
+        if (ftDragSrc === null || ftDragSrc === i) return;
+        const vis = ftColOrder.filter(c => ftColVis[c]);
+        const hid = ftColOrder.filter(c => !ftColVis[c]);
+        const moved = vis.splice(ftDragSrc, 1)[0];
+        vis.splice(i, 0, moved);
+        ftColOrder = [...vis, ...hid];
+        ftDragSrc = null;
+        ftRenderTable();
+      }
+
+      function ftOpenModal(tab) {
+        const m = document.getElementById('m-future');
+        if (m) { m.style.display = 'flex'; ftSwitchTab(tab || 'you'); }
+      }
+      function ftCloseModal() {
+        const m = document.getElementById('m-future');
+        if (m) m.style.display = 'none';
+      }
+      function ftBgClick(e) { if (e.target === document.getElementById('m-future')) ftCloseModal(); }
+      function ftSwitchTab(name) {
+        ['you','spouse','house','expenses','events'].forEach(t => {
+          const el = document.getElementById('ft-tab-'+t);
+          if (el) el.style.display = t === name ? 'block' : 'none';
+        });
+        document.querySelectorAll('.ft-mtab').forEach((btn, i) => {
+          const names = ['you','spouse','house','expenses','events'];
+          btn.classList.toggle('on', names[i] === name);
+        });
       }
 
       // Start the app — auth state change handler in the <head> calls initApp()
