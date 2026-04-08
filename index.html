@@ -615,6 +615,24 @@
       min-width: 0;
     }
 
+    /* Multi-select Notion style */
+    .ms-container { position: relative; width: 100%; max-width: 480px; }
+    .ms-trigger { min-height: 34px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: var(--surface); cursor: pointer; transition: all .15s; }
+    .ms-trigger:hover { border-color: var(--fm); }
+    .ms-tag { display: flex; align-items: center; gap: 6px; padding: 2px 8px; background: var(--s2); border-radius: 5px; font-size: 12px; font-weight: 550; color: var(--ink); box-shadow: var(--sh1); }
+    .ms-tag-del { cursor: pointer; opacity: 0.4; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .ms-tag-del:hover { opacity: 1; color: var(--red); }
+    .ms-dropdown { position: absolute; top: 100%; left: 0; width: 280px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--sh3); z-index: 1000; margin-top: 6px; display: none; overflow: hidden; }
+    .ms-search { padding: 10px; border-bottom: 1px solid var(--border-subtle); }
+    .ms-search input { width: 100%; border: none; background: var(--s2); padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; }
+    .ms-list { max-height: 240px; overflow-y: auto; }
+    .ms-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; font-size: 13px; color: var(--ink); transition: background .1s; }
+    .ms-item:hover { background: var(--s2); }
+    .ms-item .chk { width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .1s; }
+    .ms-item.on .chk { background: var(--fm); border-color: var(--fm); }
+    .ms-item.on .chk::after { content: '✓'; color: white; font-size: 10px; }
+    .ms-footer { padding: 8px; border-top: 1px solid var(--border-subtle); display: flex; gap: 8px; }
+
     .g4 {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -2470,6 +2488,7 @@
             </button>
           </div>
         </div>
+        <div style="height:12px"></div>
         <div class="acc-split-layout">
           <div class="acc-side">
             <!-- ALLOCATION CHART CARD -->
@@ -2498,7 +2517,7 @@
 
           <div class="acc-main">
             <!-- TABLE GROUPING CONTROLS -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;height:28px">
               <div style="font-size:12px;font-weight:600;color:var(--ink2)">Breakdown</div>
               <select class="inp inpm" style="width:130px;font-size:11px;padding:3px 8px;height:28px" onchange="setTableGroup(this.value)">
                 <option value="bucket" ${S.tableGroupingMode === 'bucket' ? 'selected' : ''}>Group: Bucket</option>
@@ -4724,34 +4743,69 @@
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
         if (invAccts.length === 0) { wrap.innerHTML = ''; return; }
 
-        const togglesHtml = invAccts.map(a => {
-          const on = S.portAcctToggles[a.id] !== false;
-          return `<button onclick="togglePortAcct(${a.id}, this)"
-            style="padding:5px 12px;border-radius:20px;border:1px solid ${on ? 'var(--fm)' : 'var(--border)'};
-            background:${on ? 'var(--fll)' : 'var(--surface)'};color:${on ? 'var(--f)' : 'var(--ink3)'};
-            font-size:12px;font-weight:600;cursor:pointer;transition:all .12s"
-            data-acctid="${a.id}">
-            ${a.name}
-          </button>`;
-        }).join('');
+        const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
+        const tagsHtml = selected.length ? selected.map(a => `<div class="ms-tag">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct(${a.id})">×</span></div>`).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
-        wrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);white-space:nowrap">Show accounts:</span>
-          ${togglesHtml}
-          <button onclick="toggleAllPortAccts(true)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">All</button>
-          <button onclick="toggleAllPortAccts(false)" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer">None</button>
+        wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <span class="lbl" style="margin-bottom:0">Show accounts:</span>
+          <div class="ms-container" id="port-ms">
+            <div class="ms-trigger" onclick="togglePortDropdown(event)">
+              ${tagsHtml}
+            </div>
+            <div class="ms-dropdown" id="port-ms-menu" onclick="event.stopPropagation()">
+              <div class="ms-search">
+                <input type="text" placeholder="Filter accounts..." oninput="filterPortMS(this.value)">
+              </div>
+              <div class="ms-list" id="port-ms-list">
+                ${invAccts.map(a => {
+                  const on = S.portAcctToggles[a.id] !== false;
+                  return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="togglePortAcct(${a.id})">
+                    <div class="chk"></div>
+                    <span>${a.name}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+              <div class="ms-footer">
+                <button class="btn bsm bgh" style="flex:1" onclick="toggleAllPortAccts(true)">Select all</button>
+                <button class="btn bsm bgh" style="flex:1" onclick="toggleAllPortAccts(false)">Clear all</button>
+              </div>
+            </div>
+          </div>
         </div>`;
       }
 
-      function togglePortAcct(acctId, btn) {
-        S.portAcctToggles[acctId] = S.portAcctToggles[acctId] === false ? true : false;
-        ps(); renderPortAcctToggles(); renderPortfolio(); renderRebalAcctTabs();
+      function togglePortDropdown(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('port-ms-menu');
+        const isShown = menu.style.display === 'block';
+        document.querySelectorAll('.ms-dropdown').forEach(d => d.style.display = 'none');
+        menu.style.display = isShown ? 'none' : 'block';
+        if (!isShown) menu.querySelector('input').focus();
       }
 
-      function toggleAllPortAccts(on) {
-        S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.portAcctToggles[a.id] = on);
-        ps(); renderPortAcctToggles(); renderPortfolio(); renderRebalAcctTabs();
+      function filterPortMS(val) {
+        const q = val.toLowerCase();
+        document.querySelectorAll('#port-ms-list .ms-item').forEach(it => {
+          it.style.display = it.dataset.name.includes(q) ? 'flex' : 'none';
+        });
       }
+
+      // Add global click handler to close dropdowns
+      document.addEventListener('click', () => {
+        document.querySelectorAll('.ms-dropdown').forEach(d => d.style.display = 'none');
+      });
+
+      function togglePortAcct(id) {
+        S.portAcctToggles[id] = !(S.portAcctToggles[id] !== false);
+        ps(); renderPortfolio(); renderRebalAcctTabs();
+      }
+
+      function toggleAllPortAccts(state) {
+        S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.portAcctToggles[a.id] = state);
+        ps(); renderPortfolio(); renderRebalAcctTabs();
+      }
+
+
 
       function getFunds(filterAcctId) {
         // filterAcctId: 'all' = use portAcctToggles, or a specific account ID string
@@ -5342,7 +5396,8 @@
       ondragstart="ssDragStart(event,${ci})"
       ondragover="ssDragOver(event,this,${ci})"
       ondragleave="this.classList.remove('drag-over')"
-      ondrop="ssDrop(event,this,${ci})">
+      ondrop="ssDrop(event,this,${ci})"
+      oncontextmenu="event.preventDefault(); openColModal(${ci})">
       <div class="th-in"><span class="ss-dh">⠿</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${colLetter(ci)}: ${c}</span></div></th>`;
         });
         h += '</tr></thead><tbody>';
@@ -5524,15 +5579,7 @@
           ssDragging = false;
         });
 
-        outer.addEventListener('contextmenu', e => {
-          const th = e.target.closest('th.ch');
-          if (th) {
-            e.preventDefault();
-            const headers = Array.from(th.parentElement.querySelectorAll('th.ch'));
-            const ci = headers.indexOf(th);
-            if (ci >= 0) { openColModal(ci); }
-          }
-        });
+
 
         outer.addEventListener('dblclick', e => {
           const td = e.target.closest('td[data-r]');
