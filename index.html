@@ -327,6 +327,15 @@
       stroke-linecap: round;
       stroke-linejoin: round
     }
+    .tab-icon svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round
+    }
 
     .sb-foot {
       border-top: 1px solid var(--border);
@@ -3825,6 +3834,16 @@
         appInitialized = true;
         S = await ls() || mkDef();
         if (!S.tabs) S.tabs = mkDef().tabs;
+        // Inject any new tabs added to mkDef that are missing from saved data
+        const defTabs = mkDef().tabs;
+        defTabs.forEach(defTab => {
+          if (!S.tabs.find(t => t.id === defTab.id)) {
+            // Insert before settings tab, or at end
+            const settingsIdx = S.tabs.findIndex(t => t.id === 'settings');
+            if (settingsIdx >= 0) S.tabs.splice(settingsIdx, 0, defTab);
+            else S.tabs.push(defTab);
+          }
+        });
         migrateData();
         loadTheme();
         // Ensure investment account balances reflect current fund values on every load
@@ -6874,7 +6893,7 @@
         list.innerHTML = archived.map(t => {
           return `<div class="fb" style="padding:4px 0">
           <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500">
-            <span style="color:var(--ink3);display:flex;width:14px;height:14px">${ICONS[t.icon] || ICONS.grid}</span>
+            <span class="tab-icon" style="color:var(--ink3);display:flex;width:14px;height:14px">${ICONS[t.icon] || ICONS.grid}</span>
             ${t.name}
           </div>
           <button class="bgh btn bsm" onclick="unarchiveTab('${t.id}')">Restore</button>
@@ -6903,7 +6922,7 @@
 
           return `<div class="fb" style="padding:6px 10px;background:var(--page);border-radius:var(--rs);border:1px solid var(--line-s)">
           <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500">
-            <span style="color:var(--ink3);display:flex;width:14px;height:14px">${ICONS[t.icon] || ICONS.grid}</span>
+            <span class="tab-icon" style="color:var(--ink3);display:flex;width:14px;height:14px">${ICONS[t.icon] || ICONS.grid}</span>
             ${t.name}
           </div>
           <div style="display:flex;gap:4px">
