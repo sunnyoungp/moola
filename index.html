@@ -574,6 +574,33 @@
       gap: 14px;
       min-width: 0;
     }
+    @media (max-width: 1023px) {
+      .g2 { grid-template-columns: 1fr; }
+    }
+
+    /* Accounts Tab Split Layout */
+    .acc-split-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 24px
+    }
+    @media (min-width: 1024px) {
+      .acc-split-layout {
+        flex-direction: row;
+        align-items: flex-start
+      }
+      .acc-side {
+        width: 280px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 24px;
+        z-index: 10
+      }
+      .acc-main {
+        flex: 1;
+        min-width: 0
+      }
+    }
 
     .g2>*,
     .g3>*,
@@ -2448,45 +2475,48 @@
             </button>
           </div>
         </div>
-        <div style="height:24px"></div>
-
-        <!-- NEW: ALLOCATION CHART CARD -->
-        <div class="card mb-3" id="acc-chart-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-            <div class="sec" style="margin-bottom:0">Net worth allocation</div>
-            <div class="sg" id="acc-chart-toggles" style="max-width:380px">
-              <button data-mode="bucket" onclick="setChartGroup('bucket')">Bucket</button>
-              <button data-mode="category" onclick="setChartGroup('category')">Category</button>
-              <button data-mode="type" onclick="setChartGroup('type')">Type</button>
-              <button data-mode="name" onclick="setChartGroup('name')">Account</button>
-              <button data-mode="investment" onclick="setChartGroup('investment')">Investment</button>
-            </div>
-          </div>
-          <div class="g2" style="grid-template-columns: 280px 1fr; align-items: center; gap: 32px">
-            <div style="position:relative;height:240px;width:240px;margin: 0 auto">
-              <canvas id="accAllocChart"></canvas>
-              <div id="acc-chart-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
-                <div style="font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Total</div>
-                <div id="acc-chart-total" style="font-size:16px;font-weight:600"></div>
+        <div class="acc-split-layout">
+          <div class="acc-side">
+            <!-- ALLOCATION CHART CARD -->
+            <div class="card mb-3" id="acc-chart-card" style="padding: 20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div class="sec" style="margin-bottom:0">Allocation</div>
+                <select class="inp inpm" style="width:110px;font-size:11px;padding:3px 8px;height:28px" onchange="setChartGroup(this.value)">
+                  <option value="bucket" ${S.chartGroupingMode === 'bucket' ? 'selected' : ''}>By Bucket</option>
+                  <option value="category" ${S.chartGroupingMode === 'category' ? 'selected' : ''}>By Category</option>
+                  <option value="type" ${S.chartGroupingMode === 'type' ? 'selected' : ''}>By Type</option>
+                  <option value="name" ${S.chartGroupingMode === 'name' ? 'selected' : ''}>By Account</option>
+                  <option value="investment" ${S.chartGroupingMode === 'investment' ? 'selected' : ''}>By Invest</option>
+                </select>
               </div>
+              
+              <div style="position:relative;height:220px;width:100%;max-width:220px;margin: 0 auto 20px">
+                <canvas id="accAllocChart"></canvas>
+                <div id="acc-chart-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+                  <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Total</div>
+                  <div id="acc-chart-total" style="font-size:14px;font-weight:600"></div>
+                </div>
+              </div>
+              <div id="acc-chart-legend" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
-            <div id="acc-chart-legend" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-content:center"></div>
+          </div>
+
+          <div class="acc-main">
+            <!-- TABLE GROUPING CONTROLS -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px">
+              <div style="font-size:12px;font-weight:600;color:var(--ink2)">Breakdown</div>
+              <select class="inp inpm" style="width:130px;font-size:11px;padding:3px 8px;height:28px" onchange="setTableGroup(this.value)">
+                <option value="bucket" ${S.tableGroupingMode === 'bucket' ? 'selected' : ''}>Group: Bucket</option>
+                <option value="category" ${S.tableGroupingMode === 'category' ? 'selected' : ''}>Group: Category</option>
+                <option value="type" ${S.tableGroupingMode === 'type' ? 'selected' : ''}>Group: Type</option>
+                <option value="name" ${S.tableGroupingMode === 'name' ? 'selected' : ''}>Group: Flat</option>
+                <option value="investment" ${S.tableGroupingMode === 'investment' ? 'selected' : ''}>Group: Invest</option>
+              </select>
+            </div>
+
+            <div id="acct-sections-wrap"></div>
           </div>
         </div>
-
-        <!-- TABLE GROUPING CONTROLS -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px">
-          <div style="font-size:12px;font-weight:600;color:var(--ink2)">Accounts breakdown</div>
-          <div class="sg" id="acc-table-toggles" style="width:340px">
-            <button data-mode="bucket" onclick="setTableGroup('bucket')">Bucket</button>
-            <button data-mode="category" onclick="setTableGroup('category')">Category</button>
-            <button data-mode="type" onclick="setTableGroup('type')">Type</button>
-            <button data-mode="name" onclick="setTableGroup('name')">Flat</button>
-            <button data-mode="investment" onclick="setTableGroup('investment')">Invest</button>
-          </div>
-        </div>
-
-        <div id="acct-sections-wrap"></div>
       </div>
 
       <!-- PORTFOLIO -->
@@ -4007,7 +4037,10 @@
         const atype = S.accountTypes?.find(t => t.id === acct.type);
         return atype ? S.accountCategories?.find(c => c.id === atype.categoryId) : null;
       }
-      function isInvestmentAcct(acct) { return !!getAcctCategory(acct)?.isInvestment; }
+      function isInvestmentAcct(acct) {
+        const type = S.accountTypes.find(t => t.id === acct.type);
+        return !!type?.isInvestment;
+      }
       function totInv() { return S.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function totCash() { return S.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctTypeName(typeId) {
@@ -4230,10 +4263,6 @@
         const t = nwTotal();
         document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
 
-        // Toggle UI
-        document.querySelectorAll('#acc-chart-toggles button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.chartGroupingMode));
-        document.querySelectorAll('#acc-table-toggles button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.tableGroupingMode));
-
         const wrap = document.getElementById('acct-sections-wrap');
         if (!wrap) return;
 
@@ -4275,13 +4304,36 @@
           }));
         }
 
+        const colors = COLORS();
+        // Get chart data entries so we can match colors
+        const chartGroups = {};
+        S.accounts.forEach(a => {
+          let ck = 'Other';
+          const type = S.accountTypes.find(t => t.id === a.type);
+          if (S.chartGroupingMode === 'bucket') { const b = S.buckets.find(x => x.id === type?.bucketId); ck = b ? b.name : 'Unknown'; }
+          else if (S.chartGroupingMode === 'category') { const c = S.accountCategories.find(x => x.id === type?.categoryId); ck = c ? c.name : 'Unknown'; }
+          else if (S.chartGroupingMode === 'type') { ck = type ? type.name : 'Unknown'; }
+          else if (S.chartGroupingMode === 'name') { ck = a.name; }
+          else if (S.chartGroupingMode === 'investment') { ck = type?.isInvestment ? 'Investment' : 'Non-Investment'; }
+          chartGroups[ck] = (chartGroups[ck] || 0) + getAcctUSD(a);
+        });
+        const de = Object.entries(chartGroups).map(([name,val])=>({name,val})).sort((a,b)=>b.val-a.val);
+
         wrap.innerHTML = sections.map(sec => {
           if (sec.accounts.length === 0) return '';
           const secTotalUSD = sec.accounts.reduce((sum, a) => sum + getAcctUSD(a), 0);
-          return `<div class="card mb-2">
+          
+          // Color indicator: only if table grouping matches chart entries
+          const cIdx = de.findIndex(e => e.name === sec.name);
+          const dotHtml = cIdx !== -1 ? `<div style="width:10px;height:10px;border-radius:2px;background:${colors[cIdx % colors.length]}"></div>` : '';
+
+          return `<div class="card mb-2" style="padding: 16px 20px">
             <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <span>${sec.name}</span>
-              <span style="font-size:11px;color:var(--ink3)">${MT(fmt(secTotalUSD), 'accounts')}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                ${dotHtml}
+                <span>${sec.name}</span>
+              </div>
+              <span style="font-size:12px;font-weight:600;color:var(--ink)">${MT(fmt(secTotalUSD), 'accounts')}</span>
             </div>
             <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
               <table class="tbl">${accRows(sec.accounts, t)}</table>
@@ -4384,10 +4436,10 @@
         if (leg) {
           leg.innerHTML = dataEntries.map((e, i) => {
             const p = netWorth > 0 ? ((e.val / netWorth) * 100).toFixed(1) : '0.0';
-            return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
-              <div style="width:10px;height:10px;border-radius:2px;background:${colors[i % colors.length]}"></div>
-              <div style="color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px" title="${e.name}">${e.name}</div>
-              <div style="color:var(--ink3);white-space:nowrap">${p}%</div>
+            return `<div style="display:flex;align-items:center;gap:10px;font-size:12px">
+              <div style="width:10px;height:10px;border-radius:2px;background:${colors[i % colors.length]};flex-shrink:0"></div>
+              <div style="color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1" title="${e.name}">${e.name}</div>
+              <div style="color:var(--ink3);white-space:nowrap;width:40px;text-align:right">${p}%</div>
             </div>`;
           }).join('');
         }
@@ -5296,7 +5348,7 @@
       ondragover="ssDragOver(event,this,${ci})"
       ondragleave="this.classList.remove('drag-over')"
       ondrop="ssDrop(event,this,${ci})"
-      ondblclick="openColModal(${ci})">
+      oncontextmenu="event.preventDefault(); openColModal(${ci})">
       <div class="th-in"><span class="ss-dh">⠿</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${colLetter(ci)}: ${c}</span></div></th>`;
         });
         h += '</tr></thead><tbody>';
@@ -5485,13 +5537,6 @@
             ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
             buildSS(); openEditor();
             return;
-          }
-          const th = e.target.closest('th.ch');
-          if (th) {
-            // Find ci by checking all th.ch siblings
-            const headers = Array.from(th.parentElement.querySelectorAll('th.ch'));
-            const ci = headers.indexOf(th);
-            if (ci >= 0) { openColModal(ci); }
           }
         });
 
