@@ -7994,12 +7994,12 @@
         for(const[top,rate]of bkts){if(inc<=prev)break;tax+=(Math.min(inc,top)-prev)*rate;prev=top;if(top===Infinity)break;}
         return tax;
       }
-      function ftCalcFedTax(gross, married) {
-        if(!gross||gross<=0) return 0;
+      function ftCalcFedTax(taxable_income, married) {
+        if(!taxable_income||taxable_income<=0) return 0;
         const std = married?29200:14600;
-        const taxable = Math.max(0, gross - std);
+        const adjustedTaxable = Math.max(0, taxable_income - std);
         const fed = married?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
-        return ftBracketTax(taxable, fed);
+        return ftBracketTax(adjustedTaxable, fed);
       }
       function ftGetFedMarginalRate(taxable, married) {
         if(!taxable||taxable<=0) return 0;
@@ -8218,9 +8218,9 @@
           const pill=document.getElementById('ft-prop-pill-'+p.id);
           if(pill) pill.textContent='Down+closing='+ftFmt(downCash)+'  ·  '+ftFmt(Math.round(mort/12))+'/mo  ·  Payoff age '+(sched.payoffAge??'—')+'  ·  Saves '+ftFmt(sched.interestSaved);
         }
-        let liquidNW=ftGetEoyNW(), k401Bal=0, cumSav=0;
+        let liquidNW=ftGetTodayNW(), k401Bal=0, cumSav=0;
         const out=[];
-        for(let age=curAge+1;age<=100;age++){
+        for(let age=curAge;age<=100;age++){
           const married=age>=partnerAge;
           const partner=ftGetPartnerIncome(age);
           let taxableGross=partner, fixedNet=0, totalGross=partner;
@@ -8440,9 +8440,11 @@
              const taxable=Math.max(0, totalGross - ftGlobals.f401k);
              const tax=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable,married):taxable*(ftGlobals.taxFlat/100);
              const effRate=totalGross>0?tax/totalGross:0;
-             const calcNet=Math.round((s.annual*(1-effRate))/12);
+             const is401k=s.eligible401k && ftHas401kEligible(curAge);
+             const monthly401k=is401k?ftGlobals.f401k/12:0;
+             const calcNet=Math.max(0, Math.round((s.annual*(1-effRate))/12 - monthly401k));
              return '<div class="ft-ev-fr"><label>Monthly take-home</label><input type="number" value="'+(s.takeHomeOverride||'')+'" placeholder="Calculated ~$'+calcNet+'" oninput="ftUpdateStream(\''+s.id+'\',\'takeHomeOverride\',this.value?+this.value:null)"><span style="font-size:11px;color:var(--ink3)">$/mo</span></div>'
-               +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:8px;margin-left:90px;opacity:0.8;display:flex;align-items:center;gap:4px">Calculated estimate: '+ftFmt(calcNet)+'/mo <span class="ft-wtt-trigger" title="Estimated based on current household effective tax rate. This value is used unless overridden.">ⓘ</span></div>'
+               +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:8px;margin-left:90px;opacity:0.8;display:flex;align-items:center;gap:4px">Calculated estimate: '+ftFmt(calcNet)+'/mo <span class="ft-wtt-trigger" title="Estimated after taxes and 401k deductions. Matches your actual bank deposit.">ⓘ</span></div>'
                +(s.takeHomeOverride?'<div style="font-size:10.5px;color:var(--teal);margin-bottom:8px;margin-left:90px;font-weight:500">Using manual override — this stream is excluded from auto-tax calculator.</div>':'');
            })()
           +'<div class="ft-ev-fr"><label>Income type</label><select onchange="ftUpdateStream(\''+s.id+'\',\'incomeType\',this.value)">'+typeOpts+'</select></div>'
@@ -8948,8 +8950,6 @@
           if(c==='netsav') return '<td class="'+(isNeg?'neg':'pos')+'" title="Annualized rate of savings">'+(isNeg?'':'+')+ftFmt(netSavVal)+'</td>';
           return '<td>'+ftFmt(0)+'</td>';
         }
-        const todayRow='<tr class="ft-today-row">'+vis.map(c=>specialCell(c,todayNW,todayOvd,'today')).join('')+'<td></td></tr>';
-        const eoyRow='<tr class="ft-eoy-row">'+vis.map(c=>specialCell(c,eoyNW,eoyOvd,'eoy')).join('')+'<td></td></tr>';
         const regularRows=ftRows.map((r,ri)=>{
           const hasMile=r.ms.length>0;
           const msDotsHtml=r.msDots.map(d=>'<span class="ft-ms-dot" style="background:'+d.color+'" title="'+d.tip.replace(/"/g,'&quot;')+'"></span>').join('');
