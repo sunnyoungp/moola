@@ -7870,9 +7870,9 @@
         const married=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
         const has401k=ftHas401kEligible(curAge);
         const contrib401k=has401k?ftGlobals.f401k:0;
-        const taxable=grossHH-contrib401k;
-        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(Math.max(0,taxable),married):ftGlobals.taxFlat/100;
-        const netHH=grossHH*(1-taxRate)-contrib401k;
+        const taxable=Math.max(0,grossHH-contrib401k);
+        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable,married):ftGlobals.taxFlat/100;
+        const netHH=grossHH-Math.round(taxable*taxRate);
         const living=ftGetLiving(curAge);
         let housing=0;
         for(const p of ftProperties){
@@ -7916,7 +7916,7 @@
           const contrib401k=has401k?ftGlobals.f401k:0;
           const taxable=Math.max(0,grossHH-contrib401k);
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable,married):ftGlobals.taxFlat/100;
-          const netHH=grossHH*(1-taxRate)-contrib401k;
+          const netHH=grossHH-Math.round(taxable*taxRate);
           const living=ftGetLiving(age);
           // Housing: primary mortgage > rent
           let housing=0;
@@ -7937,7 +7937,7 @@
           // Required savings
           // actualSavings = what NW actually grows by each year (income minus all expenses, no savings rate applied)
           const actualSavings=netHH-living-housing-kids-healthcare;
-          let reqSav=0, discTooltip='', goalAhead=false, noGoals=false;
+          let reqSav=0, discTooltip='', noGoals=false, topGoalLabel='';
           if(ftGlobals.discMode==='rate'){
             reqSav=netHH*ftGlobals.savingsRate/100;
           } else {
@@ -7977,29 +7977,23 @@
                 }
               }
             }
-            const rateSavComp=netHH*ftGlobals.savingsRate/100;
+            let topGoalLabel='';
             if(pmts.length){
               const top=pmts.reduce((a,b)=>a.req>b.req?a:b);
               reqSav=top.req;
-              goalAhead=reqSav<rateSavComp;
-              // Cap so freeSpend never goes below $0 from goal pressure alone
-              const maxGoalSav=Math.max(0,netHH-housing-kids-healthcare);
-              const capped=reqSav>maxGoalSav;
-              if(capped) reqSav=maxGoalSav;
-              discTooltip='goal-based minimum: '+ftFmt(Math.round(top.req))
-                +' · binding: '+top.label
-                +' · you\'re saving: '+ftFmt(Math.round(actualSavings))
-                +' · '+(actualSavings>=top.req?'ahead by '+ftFmt(Math.round(actualSavings-top.req)):'behind by '+ftFmt(Math.round(top.req-actualSavings)))
-                +(capped?' · ⚠ goal requires more than this year\'s income':'');
+              topGoalLabel=top.label;
+              discTooltip='goal-based minimum: '+ftFmt(Math.round(top.req))+' · binding: '+top.label;
             } else {
-              noGoals=true; goalAhead=true; reqSav=0;
+              noGoals=true; reqSav=0;
               discTooltip='No active goals — NW growth covers all targets. Saving '+ftFmt(Math.round(actualSavings))+'/yr.';
             }
           }
           const netsav=Math.round(reqSav);
           const freeSpend=Math.round((netHH-housing-kids-healthcare-netsav)/12);
-          if(freeSpend<0&&ftGlobals.discMode==='rate'&&!discTooltip) discTooltip='After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.';
-          else if(freeSpend<0&&ftGlobals.discMode==='rate'&&discTooltip) discTooltip+=' — needs '+ftFmt(netsav)+'/yr, leaving '+ftFmt(freeSpend*12)+'/yr after fixed costs.';
+          if(freeSpend<0){
+            if(ftGlobals.discMode==='goal') discTooltip='Your income at this age cannot cover required savings for '+topGoalLabel+' plus expenses — consider pushing the goal later or increasing income.';
+            else discTooltip='After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.';
+          }
           // Tax tooltip
           const fedAmt=ftGlobals.taxMode==='auto'?ftCalcFedTax(taxable,married):taxable*ftGlobals.taxFlat/100;
           const caAmt=ftGlobals.taxMode==='auto'?ftCalcCATax(taxable,married):0;
@@ -8541,10 +8535,11 @@
         const curAge=ftGlobals.currentAge;
         const curRow=ftRows.find(r=>r.age===curAge+1)||ftRows[0];
         const needToSave=curRow?Math.round(curRow.netsav):0;
+        const freeSpendNow=curRow?curRow.freeSpend:0;
         const isGoal=ftGlobals.discMode==='goal';
         // No-goals fallback in goal mode
         if(isGoal&&curRow?.noGoals){
-          el.innerHTML='<div style="font-size:12px;color:var(--ink3);line-height:1.6;padding:4px 0">Add a property, retirement target, or large purchase to use goal-based mode — showing full spending capacity (no savings constraint).</div>';
+          el.innerHTML='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Max you can spend / mo this year</div><div style="font-size:26px;font-weight:700;color:#16a34a;font-family:var(--mono)">+'+(curRow?ftFmt(freeSpendNow)+'/mo':'—')+'</div></div><div style="font-size:12px;color:var(--ink3)">No goals set — add a property, retirement target, or large purchase to constrain free-to-spend.</div>';
           return;
         }
         // Retirement age conflict check
@@ -8557,31 +8552,17 @@
             conflictHtml='<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:10px">⚠ Retirement age '+ftGlobals.retireAge+' is before last child expense at age '+lastChildExpAge+'. Adjust retirement age or child cost stages.</div>';
           }
         }
-        // On-track savings from snapshots or NW delta estimate
-        const todayNW=ftGetTodayNW();
-        const prevYearNW=ftRows.find(r=>r.age===curAge)?.nw;
-        const snaps=S?.snapshots;
-        let actualSavedVal=null;
-        let onTrackHtml='<span style="color:var(--ink3)">—</span><div style="font-size:10px;color:var(--ink3);margin-top:2px">log a snapshot to track real progress</div>';
-        if(snaps&&snaps.length>=2){
-          const sorted=snaps.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
-          const recent=sorted[sorted.length-1], prev=sorted[sorted.length-2];
-          actualSavedVal=recent.nw-prev.nw;
-          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSavedVal)+'/yr</span>';
-        } else if(todayNW&&prevYearNW!==undefined){
-          actualSavedVal=todayNW-prevYearNW;
-          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSavedVal)+'/yr est.</span>';
-        }
-        // Gap: in goal mode, positive = can spend more (ahead); in rate mode, positive = need to save more
-        const gapVal=isGoal?(actualSavedVal??0)-needToSave:needToSave-(actualSavedVal??0);
-        const lbl1=isGoal?'Minimum to save this year':'Need to save this year';
-        const lbl2=isGoal?'You\'re saving':'On track to save';
-        const lbl3=isGoal?'Gap (+ = can spend more)':'Gap';
+        const isBehind=freeSpendNow<0;
+        // Annual gap: how much short per year (only relevant if behind)
+        const annualShortfall=isBehind?Math.abs(freeSpendNow*12):0;
         el.innerHTML=conflictHtml
+          +'<div style="margin-bottom:14px">'
+          +'<div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Max you can spend / mo this year</div>'
+          +'<div style="font-size:26px;font-weight:700;color:'+(isBehind?'#dc2626':'#16a34a')+';font-family:var(--mono)">'+(freeSpendNow>0?'+':'')+ftFmt(freeSpendNow)+'/mo</div>'
+          +'</div>'
           +'<div style="display:flex;gap:16px;flex-wrap:wrap">'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl1+'</div><div style="font-size:18px;font-weight:600;color:var(--ink);font-family:var(--mono)">'+ftFmt(needToSave)+'</div></div>'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl2+'</div><div style="font-size:18px;font-weight:600">'+onTrackHtml+'</div></div>'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl3+'</div><div style="font-size:18px;font-weight:600;color:'+(gapVal>=0?'#16a34a':'#dc2626')+';font-family:var(--mono)">'+(gapVal>=0?'+':'')+ftFmt(gapVal)+'</div></div>'
+          +'<div style="flex:1;min-width:130px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px">'+(isGoal?'Required savings this year':'Target savings')+'</div><div style="font-size:15px;font-weight:600;color:var(--ink);font-family:var(--mono)">'+ftFmt(needToSave)+'/yr</div></div>'
+          +(isBehind?'<div style="flex:1;min-width:130px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#dc2626;margin-bottom:3px">Gap — behind</div><div style="font-size:15px;font-weight:600;color:#dc2626;font-family:var(--mono)">'+ftFmt(annualShortfall)+'/yr shortfall</div></div>':'')
           +'</div>';
       }
 
@@ -8608,7 +8589,7 @@
         const c401k0=has401k0?ftGlobals.f401k:0;
         const taxable0=Math.max(0,income0+partner0-c401k0);
         const tax0=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable0,married0):ftGlobals.taxFlat/100;
-        const net0=(income0+partner0)*(1-tax0)-c401k0;
+        const net0=(income0+partner0)-Math.round(taxable0*tax0);
         const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:(ftRows[0]?.netsav||0);
         const free0=Math.round((net0-housing0-kids0-reqSav0)/12);
         function specialCell(c,nwVal,isOvd,which){
@@ -8655,8 +8636,7 @@
               if(c==='partner') return '<td class="ft-editable'+(ovPart?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'partner\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'partner\')" title="click to override · dblclick to clear">'+ftFmt(r.partner)+'</td>';
               if(c==='freeSpend'){
                 if(r.freeSpend<0){const tip=(r.discTooltip||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');return '<td><span class="ft-disc-warn">⚠ '+ftFmt(r.freeSpend)+'/mo<span class="ft-wtt">'+(tip||'Free to spend is negative this year.')+'</span></span></td>';}
-                const aheadBadge=ftGlobals.discMode==='goal'&&r.goalAhead?'<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600">ahead</span>':'';
-                return '<td style="color:'+(r.freeSpend>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.freeSpend>0?'+':'')+ftFmt(r.freeSpend)+'/mo'+aheadBadge+'</td>';
+                return '<td style="color:'+(r.freeSpend>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.freeSpend>0?'+':'')+ftFmt(r.freeSpend)+'/mo</td>';
               }
               return '<td>'+ftFmt(r[c])+'</td>';
             }).join('')
