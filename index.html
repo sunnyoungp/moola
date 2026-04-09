@@ -2581,6 +2581,94 @@
       #ft-req-savings-card > div { flex-direction:column; gap:12px; }
       .ft-sec-hdr { flex-wrap:wrap; gap:6px; }
     }
+    /* ═══ ACCOUNT SWITCHER ═════════════════════════════════════ */
+    .ac-switcher-wrapper {
+      position: relative;
+      margin: 0 10px 10px 10px;
+      font-family: inherit;
+    }
+    .ac-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all .15s ease;
+      color: var(--ink);
+    }
+    .ac-trigger:hover, .ac-trigger.active {
+      border-color: var(--border-strong);
+      background: var(--s2);
+    }
+    .ac-trigger-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ac-avatar {
+      background: var(--fm);
+      color: #fff;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .ac-avatar.small { width: 18px; height: 18px; font-size: 10px; border-radius: 4px; }
+    .ac-trigger-label { font-size: 13px; font-weight: 500; }
+    .ac-chevron { color: var(--ink3); transition: transform 0.2s; }
+    .ac-chevron.open { transform: rotate(180deg); }
+
+    .ac-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 260px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      box-shadow: var(--sh3);
+      z-index: 210;
+      overflow: hidden;
+      display: none;
+      animation: dropdownIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .ac-dropdown-header { padding: 12px 14px 6px; }
+    .ac-dropdown-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink3); }
+    .ac-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+    .ac-empty { padding: 12px; text-align: center; font-size: 12px; color: var(--ink3); }
+    .ac-list-item {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px;
+      background: transparent; border: none; border-radius: var(--rx); cursor: pointer; transition: background .12s; text-align: left; color: var(--ink);
+    }
+    .ac-list-item:hover { background: var(--s2); }
+    .ac-list-item.selected { background: var(--th-sidebar-active-bg); }
+    .ac-list-item.selected .ac-item-name { color: var(--f); font-weight: 600; }
+    .ac-item-name { font-size: 13px; flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .ac-check { color: var(--f); }
+    
+    .ac-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .ac-create-btn {
+      display: flex; align-items: center; gap: 8px; width: calc(100% - 8px); margin: 0 4px 4px; padding: 8px;
+      background: transparent; border: none; border-radius: var(--rx); color: var(--ink2); font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .ac-create-btn:hover { background: var(--s2); color: var(--ink); }
+    .ac-create-form { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .ac-create-form input { width: 100%; padding: 7px 9px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: var(--rx); outline: none; background: var(--surface); color: var(--ink); }
+    .ac-create-form input:focus { border-color: var(--f); box-shadow: 0 0 0 2px var(--th-sidebar-active-bg); }
+    .ac-form-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .ac-btn-ghost { padding: 6px 10px; font-size: 12px; background: none; border: none; color: var(--ink3); cursor: pointer; border-radius: var(--rx); }
+    .ac-btn-ghost:hover { background: var(--s2); color: var(--ink); }
+    .ac-btn-primary { padding: 6px 12px; font-size: 12px; font-weight: 600; background: var(--f); color: #fff; border: none; border-radius: var(--rx); cursor: pointer; }
+    .ac-btn-primary:disabled { opacity: 0.6; }
+    @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
   </style>
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2717,6 +2805,44 @@
             <polyline points="10,4 6,8 10,12" />
           </svg>
         </button>
+      </div>
+
+      <div id="ac-switcher-container" class="ac-switcher-wrapper">
+        <button id="ac-trigger" class="ac-trigger" onclick="toggleAccountDropdown(event)" disabled>
+          <div class="ac-trigger-left" id="ac-trigger-label">
+            <span class="ac-trigger-label">Loading...</span>
+          </div>
+          <svg id="ac-chevron" class="ac-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <div id="ac-dropdown" class="ac-dropdown">
+          <div class="ac-dropdown-header">
+            <span class="ac-dropdown-title">Your accounts</span>
+          </div>
+          <div id="ac-list" class="ac-list">
+             <!-- Injected by JS -->
+          </div>
+          <div class="ac-divider"></div>
+          
+          <div id="ac-create-section">
+            <button id="ac-create-btn" class="ac-create-btn" onclick="openCreateAccountForm()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Create Account
+            </button>
+            <form id="ac-create-form" class="ac-create-form" style="display: none;" onsubmit="handleCreateAccount(event)">
+              <input id="ac-new-name" type="text" placeholder="Account name..." autocomplete="off">
+              <div class="ac-form-actions">
+                <button type="button" class="ac-btn-ghost" onclick="closeCreateAccountForm()">Cancel</button>
+                <button id="ac-submit-btn" type="submit" class="ac-btn-primary" disabled>Create</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
 
       <div class="sb-nav" id="sb-nav"></div>
@@ -4112,10 +4238,160 @@
         location.reload();
       }
 
+      // Account Switcher Logic
+      let acAccounts = [];
+      let currentAccountId = localStorage.getItem('currentAccountId') || null;
+      let acDropdownOpen = false;
+
+      async function fetchAccounts() {
+        try {
+          const { data: userData } = await db.auth.getUser();
+          if (!userData || !userData.user) return;
+          
+          const { data, error } = await db.from('account_members')
+            .select('account_id, accounts(id, name)')
+            .eq('user_id', userData.user.id);
+          
+          if (error) throw error;
+
+          acAccounts = data.filter(r => r.accounts).map(r => ({
+            id: r.accounts.id,
+            name: r.accounts.name
+          }));
+          
+          if (!currentAccountId && acAccounts.length > 0) {
+            selectAccount(acAccounts[0].id, false);
+          } else {
+            renderAccountSwitcher();
+          }
+        } catch (e) {
+          console.error('[moola] error fetching accounts:', e);
+        }
+      }
+
+      function renderAccountSwitcher() {
+        const container = document.getElementById('ac-switcher-container');
+        if (!container) return;
+        
+        const triggerLabel = document.getElementById('ac-trigger-label');
+        const triggerBtn = document.getElementById('ac-trigger');
+        const listEl = document.getElementById('ac-list');
+        const curr = acAccounts.find(a => a.id === currentAccountId);
+        
+        if (curr) {
+          triggerLabel.innerHTML = `
+            <div class="ac-avatar">${curr.name.charAt(0).toUpperCase()}</div>
+            <span class="ac-trigger-label">${curr.name}</span>
+          `;
+          triggerBtn.disabled = false;
+        } else if (acAccounts.length === 0) {
+          triggerLabel.innerHTML = '<span class="ac-trigger-label">No accounts</span>';
+          triggerBtn.disabled = false;
+        }
+
+        listEl.innerHTML = '';
+        if (acAccounts.length === 0) {
+          listEl.innerHTML = '<div class="ac-empty">No accounts yet</div>';
+        } else {
+          acAccounts.forEach(acc => {
+            const btn = document.createElement('button');
+            btn.className = 'ac-list-item ' + (acc.id === currentAccountId ? 'selected' : '');
+            btn.onclick = () => selectAccount(acc.id);
+            btn.innerHTML = `
+              <div class="ac-avatar small">${acc.name.charAt(0).toUpperCase()}</div>
+              <span class="ac-item-name">${acc.name}</span>
+              ${acc.id === currentAccountId ? '<svg class="ac-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+            `;
+            listEl.appendChild(btn);
+          });
+        }
+      }
+
+      function toggleAccountDropdown(e) {
+        if (e) e.stopPropagation();
+        acDropdownOpen = !acDropdownOpen;
+        document.getElementById('ac-dropdown').style.display = acDropdownOpen ? 'block' : 'none';
+        
+        const triggerBtn = document.getElementById('ac-trigger');
+        const chevron = document.getElementById('ac-chevron');
+        if (acDropdownOpen) {
+          triggerBtn.classList.add('active');
+          chevron.classList.add('open');
+        } else {
+          triggerBtn.classList.remove('active');
+          chevron.classList.remove('open');
+          closeCreateAccountForm();
+        }
+      }
+
+      function selectAccount(id, toggle = true) {
+        currentAccountId = id;
+        localStorage.setItem('currentAccountId', id);
+        if (toggle) toggleAccountDropdown();
+        renderAccountSwitcher();
+        console.log(`[moola] Account switched to: ${id}`);
+        window.dispatchEvent(new CustomEvent('accountChanged', { detail: { accountId: id } }));
+      }
+
+      function openCreateAccountForm() {
+        document.getElementById('ac-create-btn').style.display = 'none';
+        document.getElementById('ac-create-form').style.display = 'flex';
+        const inp = document.getElementById('ac-new-name');
+        inp.focus();
+        inp.oninput = (e) => {
+          document.getElementById('ac-submit-btn').disabled = !e.target.value.trim();
+        };
+      }
+
+      function closeCreateAccountForm() {
+        document.getElementById('ac-create-btn').style.display = 'flex';
+        document.getElementById('ac-create-form').style.display = 'none';
+        document.getElementById('ac-new-name').value = '';
+        document.getElementById('ac-submit-btn').disabled = true;
+      }
+
+      async function handleCreateAccount(e) {
+        e.preventDefault();
+        const inp = document.getElementById('ac-new-name');
+        const name = inp.value.trim();
+        if (!name) return;
+
+        const subBtn = document.getElementById('ac-submit-btn');
+        subBtn.disabled = true;
+        subBtn.textContent = 'Saving...';
+
+        try {
+          const { data: userData } = await db.auth.getUser();
+          
+          const { data: accData, error: accErr } = await db.from('accounts').insert([{ name }]).select().single();
+          if (accErr) throw accErr;
+          
+          const { error: memErr } = await db.from('account_members').insert([{ account_id: accData.id, user_id: userData.user.id }]);
+          if (memErr) throw memErr;
+
+          await fetchAccounts();
+          selectAccount(accData.id, false);
+          closeCreateAccountForm();
+        } catch (err) {
+          console.error('[moola] Create account failed', err);
+        } finally {
+          subBtn.disabled = false;
+          subBtn.textContent = 'Create';
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const container = document.getElementById('ac-switcher-container');
+        if (acDropdownOpen && container && !container.contains(e.target)) {
+          toggleAccountDropdown();
+        }
+      });
+
       // Load data async on startup
       let S = null;
       let appInitialized = false;
       async function initApp() {
+        await fetchAccounts();
         if (appInitialized) return;
         appInitialized = true;
         S = await ls() || mkDef();
