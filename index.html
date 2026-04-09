@@ -2551,6 +2551,36 @@
       .ft-panel-grid { grid-template-columns:1fr !important; }
       .ft-ev-stage { flex-wrap:wrap; }
     }
+
+    /* ── Future tab: collapsible sections ─────────────────────── */
+    .ft-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--rl); margin-bottom:10px; overflow:hidden; box-shadow:var(--sh1); }
+    .ft-sec-hdr { display:flex; align-items:center; gap:8px; padding:11px 16px; cursor:pointer; user-select:none; transition:background .1s; }
+    .ft-sec-hdr:hover { background:var(--s2); }
+    .ft-sec-chevron { font-size:10px; color:var(--ink3); transition:transform .2s; flex-shrink:0; }
+    .ft-section.collapsed .ft-sec-chevron { transform:rotate(-90deg); }
+    .ft-sec-label { font-size:12px; font-weight:600; letter-spacing:-.1px; color:var(--ink2); }
+    .ft-sec-body { padding:0 16px 14px; overflow:hidden; }
+    .ft-sec-body.ft-sec-hidden { display:none; }
+
+    /* ── Future settings slide panel ──────────────────────────── */
+    .ft-ptab { padding:9px 14px; font-size:12px; font-weight:500; color:var(--ink3); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color .12s,border-color .12s; font-family:var(--sans); }
+    .ft-ptab:hover { color:var(--ink); }
+    .ft-ptab.on { color:var(--f); border-bottom-color:var(--f); font-weight:600; }
+
+    /* ── Life timeline card (read-only) ───────────────────────── */
+    .ft-tl-chip { display:inline-flex; flex-direction:column; gap:1px; padding:5px 10px; border-radius:var(--rs); font-size:11px; border:1px solid var(--border); background:var(--s2); cursor:pointer; transition:background .1s; }
+    .ft-tl-chip:hover { background:var(--fll); border-color:var(--fl); }
+    .ft-tl-chip-name { font-weight:600; color:var(--ink); font-size:11px; }
+    .ft-tl-chip-detail { color:var(--ink3); font-size:10px; }
+    .ft-tl-chips-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+
+    /* ── Phase 3: overflow / mobile ───────────────────────────── */
+    @media(max-width:767px){
+      #ft-settings-panel { width:100vw !important; }
+      .g4#ft-metrics { grid-template-columns:1fr 1fr !important; }
+      #ft-req-savings-card > div { flex-direction:column; gap:12px; }
+      .ft-sec-hdr { flex-wrap:wrap; gap:6px; }
+    }
   </style>
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3108,69 +3138,126 @@
 
       <!-- FUTURE -->
       <div id="tab-future" class="tc" style="padding-bottom:2rem">
-        <div class="page-hdr">
-          <div>
-            <div class="page-title">Future</div>
-            <div class="page-sub">Life projection · net worth to age 100</div>
-          </div>
-        </div>
-        <div style="height:16px"></div>
-
-        <!-- metric cards -->
-        <div class="g4 mb-3" id="ft-metrics"></div>
-
-        <!-- chart -->
-        <div class="card mb-3">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="sec" style="margin:0">Net worth projection</div>
-            <div style="display:flex;gap:12px;font-size:11px;color:var(--ink3)">
-              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:2px;background:var(--fm);border-radius:1px"></span>net worth</span>
-              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--teal)"></span>cumulative savings</span>
-            </div>
-          </div>
-          <div style="position:relative;height:220px;min-height:120px;max-height:280px;overflow:hidden"><canvas id="ft-chart" role="img" aria-label="Net worth and cumulative savings projection from age 25 to 100">Projection from age 25 to 100.</canvas></div>
+        <!-- Title row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:40px;margin-bottom:14px">
+          <div class="page-title">Future</div>
+          <button class="btn" id="ft-settings-btn" onclick="ftOpenSettings()">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="7" cy="7" r="2"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06"/>
+            </svg>
+            Settings
+          </button>
         </div>
 
-        <!-- scenario bar -->
+        <!-- Scenario pills -->
         <div class="ft-sc-bar" id="ft-scenario-bar"></div>
 
-        <!-- inline assumptions panel -->
-        <div class="card mb-3" id="ft-assumptions-panel" style="padding:16px 18px"></div>
-
-        <!-- required savings card -->
-        <div id="ft-req-savings-card"></div>
-
-        <!-- controls row -->
-        <div class="card mb-2" style="padding:12px 16px">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase">Columns</span>
-            <div style="display:flex;gap:5px;flex-wrap:wrap" id="ft-col-chips"></div>
-            <div style="flex:1;min-width:120px"></div>
-            <div id="ft-buy-ctrl" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)">
-              <span style="white-space:nowrap">Primary home — buy at age</span>
-              <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:72px" oninput="ftSetBuyAge(+this.value)">
-              <span id="ft-buy-out" style="font-size:13px;font-weight:600;color:var(--ink);min-width:22px;font-family:var(--mono)">—</span>
+        <!-- Section 1: Metric cards -->
+        <div class="ft-section" id="fts-metrics">
+          <div class="ft-sec-hdr" onclick="ftToggleSection('metrics')">
+            <span class="ft-sec-chevron" id="ftchv-metrics">▼</span>
+            <span class="ft-sec-label">Projections</span>
+          </div>
+          <div class="ft-sec-body" id="ftb-metrics">
+            <div class="g4 mb-2" id="ft-metrics" style="margin-top:2px"></div>
+            <!-- house readiness bar (inside metrics section) -->
+            <div id="ft-house-bar-row" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 2px">
+              <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">Property readiness</span>
+              <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div id="ft-house-fill" style="height:100%;border-radius:3px;transition:width .4s"></div></div>
+              <span id="ft-house-pct" style="font-size:12px;font-weight:600;min-width:34px;font-family:var(--mono)"></span>
+              <span id="ft-house-note" style="font-size:11px;color:var(--ink3);flex:1;min-width:120px"></span>
             </div>
           </div>
-          <div id="ft-house-bar-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">Property readiness</span>
-            <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div id="ft-house-fill" style="height:100%;border-radius:3px;transition:width .4s"></div></div>
-            <span id="ft-house-pct" style="font-size:12px;font-weight:600;min-width:34px;font-family:var(--mono)"></span>
-            <span id="ft-house-note" style="font-size:11px;color:var(--ink3);flex:1;min-width:120px"></span>
+        </div>
+
+        <!-- Section 2: Savings tracker -->
+        <div class="ft-section" id="fts-savings">
+          <div class="ft-sec-hdr" onclick="ftToggleSection('savings')">
+            <span class="ft-sec-chevron" id="ftchv-savings">▼</span>
+            <span class="ft-sec-label">Savings Tracker</span>
+          </div>
+          <div class="ft-sec-body" id="ftb-savings">
+            <div id="ft-req-savings-card" style="margin-bottom:0;border:none;padding:10px 0 2px"></div>
           </div>
         </div>
 
-        <!-- table -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
-          <span style="font-size:11px;color:var(--ink3)">click gross income or partner to override · dbl-click to clear · drag headers to reorder</span>
+        <!-- Section 3: Chart -->
+        <div class="ft-section" id="fts-graph">
+          <div class="ft-sec-hdr" onclick="ftToggleSection('graph')">
+            <span class="ft-sec-chevron" id="ftchv-graph">▼</span>
+            <span class="ft-sec-label">Net Worth Projection</span>
+            <span style="font-size:11px;color:var(--ink3);margin-left:auto;display:flex;gap:12px">
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:2px;background:var(--fm);border-radius:1px"></span>net worth</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--teal)"></span>savings</span>
+            </span>
+          </div>
+          <div class="ft-sec-body" id="ftb-graph">
+            <div style="position:relative;height:220px;min-height:120px;max-height:280px;overflow:hidden;margin-top:4px"><canvas id="ft-chart" role="img" aria-label="Net worth projection">Projection from age 25 to 100.</canvas></div>
+          </div>
         </div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overflow-y:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--r)">
-          <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px" id="ft-tbl">
-            <thead id="ft-thead"></thead>
-            <tbody id="ft-tbody"></tbody>
-          </table>
+
+        <!-- Section 4: Life timeline -->
+        <div class="ft-section" id="fts-timeline">
+          <div class="ft-sec-hdr" onclick="ftToggleSection('timeline')">
+            <span class="ft-sec-chevron" id="ftchv-timeline">▼</span>
+            <span class="ft-sec-label">Life Timeline</span>
+            <button class="btn bsm bgh" style="margin-left:auto;font-size:11px" onclick="event.stopPropagation();ftOpenSettings('expenses')">edit</button>
+          </div>
+          <div class="ft-sec-body" id="ftb-timeline">
+            <div id="ft-timeline-card" style="padding:6px 0 4px"></div>
+          </div>
         </div>
+
+        <!-- Section 5: Table -->
+        <div class="ft-section" id="fts-table">
+          <div class="ft-sec-hdr" onclick="ftToggleSection('table')">
+            <span class="ft-sec-chevron" id="ftchv-table">▼</span>
+            <span class="ft-sec-label">Projection Table</span>
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto" onclick="event.stopPropagation()">
+              <!-- column chips + buy ctrl moved here inline -->
+              <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center" id="ft-col-chips"></div>
+              <div id="ft-buy-ctrl" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink2)">
+                <span style="white-space:nowrap">Buy at age</span>
+                <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:64px" oninput="ftSetBuyAge(+this.value)">
+                <span id="ft-buy-out" style="font-size:12px;font-weight:600;color:var(--ink);min-width:20px;font-family:var(--mono)">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="ft-sec-body" id="ftb-table">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 5px">
+              <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
+              <span style="font-size:10.5px;color:var(--ink3)">click income/partner to override · dbl-click to clear</span>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overflow-y:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--r)">
+              <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px" id="ft-tbl">
+                <thead id="ft-thead"></thead>
+                <tbody id="ft-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FUTURE SETTINGS PANEL (slide-in from right) -->
+      <div id="ft-settings-backdrop" onclick="ftCloseSettings()" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.18)"></div>
+      <div id="ft-settings-panel" style="position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;z-index:301;background:var(--surface);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(28,27,25,.1);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)">
+        <!-- Panel header -->
+        <div style="display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <span style="font-size:15px;font-weight:600;letter-spacing:-.3px;color:var(--ink);flex:1">Settings</span>
+          <button class="btn bsm bgh" onclick="ftCloseSettings()" style="padding:5px 8px">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+          </button>
+        </div>
+        <!-- Panel tabs -->
+        <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+          <button class="ft-ptab on" id="ftptab-global" onclick="ftSwitchPanelTab('global')">Global</button>
+          <button class="ft-ptab" id="ftptab-income" onclick="ftSwitchPanelTab('income')">Income</button>
+          <button class="ft-ptab" id="ftptab-properties" onclick="ftSwitchPanelTab('properties')">Properties</button>
+          <button class="ft-ptab" id="ftptab-events" onclick="ftSwitchPanelTab('events')">Life events</button>
+          <button class="ft-ptab" id="ftptab-expenses" onclick="ftSwitchPanelTab('expenses')">Expenses</button>
+        </div>
+        <!-- Panel body (scrollable) -->
+        <div id="ft-panel-body" style="flex:1;overflow-y:auto;padding:18px 20px 24px"></div>
       </div>
 
       <!-- SETTINGS -->
@@ -7441,6 +7528,23 @@
       let ftColVis = { age:true, income:true, partner:false, living:true, housing:true, kids:true, netsav:true, nw:true, freeSpend:true };
       const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'free to spend / mo' };
       let ftDragSrc=null, ftRows=[], ftChart=null, ftNextId=100;
+      function ftResetNextId() {
+        // Scan all existing IDs across income streams, properties, life events, and expense phases
+        // to ensure ftNextId is always higher than any existing numeric suffix, preventing ID collisions
+        // after page reload or scenario switching.
+        const allIds = [
+          ...ftIncomeStreams.map(s=>s.id),
+          ...ftProperties.map(p=>p.id),
+          ...ftLifeEvents.map(e=>e.id),
+          ...ftExpPhases.map(p=>p.id)
+        ];
+        let maxNum = ftNextId - 1;
+        for (const id of allIds) {
+          const match = String(id).match(/(\d+)$/);
+          if (match) { const n = parseInt(match[1], 10); if (n > maxNum) maxNum = n; }
+        }
+        ftNextId = maxNum + 1;
+      }
       let ftActivePhaseId=null;
       const FT_PHASE_PALETTE=['#4E61A8','#6040A0','#C0884A','#9B3A58','#1E7A7A','#C0622A','#2E6EA6','#5060B8','#8A6820','#2E7A4A'];
       const FT_CITY_BENCHMARKS={'NYC':3200,'New York':3200,'San Francisco':3800,'SF':3800,'Los Angeles':2800,'LA':2800,'Seoul':1400,'London':3000,'Tokyo':2200,'Chicago':2200,'Austin':2000,'Seattle':2800,'Boston':3000,'Miami':2600,'Denver':2200};
@@ -7462,13 +7566,17 @@
         const ov = JSON.parse(JSON.stringify(ftOvMap));
         ov._nwToday = ftNwTodayOv;
         ov._nwEoy = ftNwEoyOv;
+        // Preserve section states from existing scenario data so they survive recalc saves
+        const existingSc = ftScenarios.find(s=>s.id===ftActiveScenarioId);
+        const existingStates = existingSc?.data?.ft_section_states || {};
         return {
           globals: JSON.parse(JSON.stringify(ftGlobals)),
           incomeStreams: JSON.parse(JSON.stringify(ftIncomeStreams)),
           properties: JSON.parse(JSON.stringify(ftProperties)),
           lifeEvents: JSON.parse(JSON.stringify(ftLifeEvents)),
           expPhases: JSON.parse(JSON.stringify(ftExpPhases)),
-          overrides: ov
+          overrides: ov,
+          ft_section_states: JSON.parse(JSON.stringify(existingStates))
         };
       }
 
@@ -7538,7 +7646,7 @@
         ftSaveScenario();
         ftActiveScenarioId = id;
         const sc = ftScenarios.find(s=>s.id===id);
-        if(sc?.data) ftLoadScenarioData(sc.data);
+        if(sc?.data) { ftLoadScenarioData(sc.data); ftResetNextId(); }
         ftRenderScenarioBar(); ftRenderPanel(); ftRecalc();
       }
 
@@ -7558,7 +7666,7 @@
         ftScenarios = ftScenarios.filter(s=>s.id!==id);
         if(ftActiveScenarioId===id) {
           ftActiveScenarioId = ftScenarios[0].id;
-          if(ftScenarios[0].data) ftLoadScenarioData(ftScenarios[0].data);
+          if(ftScenarios[0].data) { ftLoadScenarioData(ftScenarios[0].data); ftResetNextId(); }
         }
         ftRenderScenarioBar(); ftRenderPanel(); ftRecalc(); ftPersistScenarios();
       }
@@ -7921,7 +8029,8 @@
 
       function ftClickPhase(id) {
         ftActivePhaseId = ftActivePhaseId===id ? null : id;
-        ftRenderPanel();
+        // Open settings panel to expenses tab
+        ftOpenSettings('expenses');
       }
 
       // ── Event cards ─────────────────────────────────────────────────
@@ -8061,10 +8170,92 @@
           +'<div class="ft-ev-body">'+body+'</div></div>';
       }
 
-      // ── Panel render ────────────────────────────────────────────────
+      // ── Section collapse state ──────────────────────────────────────
+      let ftSectionStates = { metrics: false, savings: false, graph: false, timeline: false, table: false };
+
+      function ftGetSectionStates() {
+        const sc = ftScenarios.find(s=>s.id===ftActiveScenarioId);
+        if (sc?.data?.ft_section_states) return sc.data.ft_section_states;
+        return { metrics: false, savings: false, graph: false, timeline: false, table: false };
+      }
+
+      function ftApplySectionStates() {
+        const states = ftGetSectionStates();
+        ['metrics','savings','graph','timeline','table'].forEach(key => {
+          const sec = document.getElementById('fts-'+key);
+          const body = document.getElementById('ftb-'+key);
+          const chv = document.getElementById('ftchv-'+key);
+          if (!sec) return;
+          const collapsed = states[key] || false;
+          sec.classList.toggle('collapsed', collapsed);
+          if (body) body.classList.toggle('ft-sec-hidden', collapsed);
+        });
+      }
+
+      function ftToggleSection(key) {
+        const sc = ftScenarios.find(s=>s.id===ftActiveScenarioId);
+        if (!sc) return;
+        if (!sc.data) sc.data = ftGetScenarioData();
+        if (!sc.data.ft_section_states) sc.data.ft_section_states = {};
+        sc.data.ft_section_states[key] = !sc.data.ft_section_states[key];
+        ftPersistScenarios();
+        ftApplySectionStates();
+      }
+
+      // ── Settings panel ──────────────────────────────────────────────
+      let ftActivePanelTab = 'global';
+
+      function ftOpenSettings(tab) {
+        ftActivePanelTab = tab || ftActivePanelTab || 'global';
+        document.getElementById('ft-settings-backdrop').style.display = 'block';
+        const panel = document.getElementById('ft-settings-panel');
+        panel.style.transform = 'translateX(0)';
+        ftRenderSettingsPanel();
+      }
+
+      function ftCloseSettings() {
+        document.getElementById('ft-settings-backdrop').style.display = 'none';
+        document.getElementById('ft-settings-panel').style.transform = 'translateX(100%)';
+      }
+
+      function ftSwitchPanelTab(tab) {
+        ftActivePanelTab = tab;
+        document.querySelectorAll('.ft-ptab').forEach(b => b.classList.remove('on'));
+        const btn = document.getElementById('ftptab-'+tab);
+        if (btn) btn.classList.add('on');
+        ftRenderSettingsPanelBody();
+      }
+
+      function ftRenderSettingsPanel() {
+        document.querySelectorAll('.ft-ptab').forEach(b => b.classList.remove('on'));
+        const btn = document.getElementById('ftptab-'+ftActivePanelTab);
+        if (btn) btn.classList.add('on');
+        ftRenderSettingsPanelBody();
+      }
+
+      function ftRenderSettingsPanelBody() {
+        const el = document.getElementById('ft-panel-body');
+        if (!el) return;
+        switch(ftActivePanelTab) {
+          case 'global':    el.innerHTML = ftBuildGlobalTab(); break;
+          case 'income':    el.innerHTML = ftBuildIncomeTab(); break;
+          case 'properties':el.innerHTML = ftBuildPropertiesTab(); break;
+          case 'events':    el.innerHTML = ftBuildEventsTab(); break;
+          case 'expenses':  el.innerHTML = ftBuildExpensesTab(); break;
+          default:          el.innerHTML = ftBuildGlobalTab();
+        }
+      }
+
+      // ── Alias: ftRenderPanel now re-renders the open settings panel tab ─
       function ftRenderPanel() {
-        const el=document.getElementById('ft-assumptions-panel');
-        if(!el) return;
+        if (document.getElementById('ft-settings-panel')?.style.transform === 'translateX(0px)' ||
+            document.getElementById('ft-settings-panel')?.style.transform === 'translateX(0)') {
+          ftRenderSettingsPanelBody();
+        }
+      }
+
+      // ── Global tab ─────────────────────────────────────────────────
+      function ftBuildGlobalTab() {
         const pEv=ftLifeEvents.find(e=>e.type==='partner');
         const sampleGross=ftGetIncome(ftGlobals.currentAge);
         const married=!!(pEv&&pEv.age<=ftGlobals.currentAge);
@@ -8075,61 +8266,79 @@
         const discControls=ftGlobals.discMode==='rate'
           ?'<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.savingsRate+'" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
           :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% rule — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr</div>';
-        // Retirement tax section
         const rothBal=ftGlobals.rothBalanceOv!==null?ftGlobals.rothBalanceOv:(S?.accounts?.find(a=>a.type==='brokerage-roth')?.balance||0);
         const retTax=ftGlobals.retireTaxEnabled?'<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
           +'<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="'+rothBal+'" oninput="ftGlobals.rothBalanceOv=+this.value;ftRecalc()" style="width:110px">'+(ftGlobals.rothBalanceOv===null?'<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv='+rothBal+';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>':'<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>')+'</div>'
           +'<div class="ft-ev-fr"><label>401k tax rate</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.k401TaxRate||25)+'" oninput="ftGlobals.k401TaxRate=+this.value;ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-ev-fr"><label>Capital gains rate</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.capGainsRate||15)+'" oninput="ftGlobals.capGainsRate=+this.value;ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'</div>':'';
-        // Social Security
         const ssCtrl=ftGlobals.ssEnabled?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><div class="ft-ev-fr"><label>Monthly benefit</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.ssBenefit||2500)+'" oninput="ftGlobals.ssBenefit=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$/mo</span></div><div class="ft-ev-fr"><label>Claim age</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.ssClaimAge||67)+'" oninput="ftGlobals.ssClaimAge=+this.value;ftSaveScenario();ftRecalc()" style="width:65px"><span class="ft-gl-unit">yrs</span></div></div>':'';
-        // Active phase card
-        const activePh=ftActivePhaseId?ftExpPhases.find(p=>p.id===ftActivePhaseId):null;
-        const activePhi=activePh?ftExpPhases.indexOf(activePh):0;
-        const phaseCardHtml=activePh?ftRenderPhaseCard(activePh,activePhi):'<div style="font-size:11.5px;color:var(--ink3);padding:10px 0">Click a phase segment above to edit it.</div>';
-        el.innerHTML='<div class="ft-panel-grid">'
-          +'<div>'
-          +'<div class="ft-panel-hdr">Global Settings</div>'
+
+        // Starting NW section
+        const todayNW = ftGetTodayNW();
+        const nwCtrl = ftNwTodayOv !== null
+          ? '<span style="font-family:var(--mono);font-size:12px">'+ftFmt(ftNwTodayOv)+'</span> <button class="btn bsm" onclick="ftClearNwOv(\'today\');ftRenderPanel()" style="font-size:10px;padding:2px 6px;margin-left:4px">reset</button>'
+          : '<span style="font-size:10px;color:var(--teal);font-family:var(--mono)">'+ftFmt(todayNW)+' (synced)</span> <button class="btn bsm" onclick="ftStartEditNwOv(\'today\')" style="font-size:10px;padding:2px 6px;margin-left:4px">override</button>';
+
+        return '<div class="ft-panel-hdr">Global Settings</div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Your current age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.currentAge+'" oninput="ftGlobals.currentAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
-          +'<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.f401k+'" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span><span style="font-size:10px;color:var(--ink3)">(streams w/ 401k eligible)</span></div>'
+          +'<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Starting NW</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'+nwCtrl+'</div></div>'
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr<br><span style="font-size:10px;color:var(--ink3)">(401k-eligible streams only)</span></label><input class="ft-gl-inp" type="number" value="'+ftGlobals.f401k+'" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Real portfolio return<br><span style="font-size:10px;color:var(--ink3)">inflation-adjusted</span></label><input class="ft-gl-inp" type="number" value="'+ftGlobals.roc+'" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Expense inflation / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.expInflation+'" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Tax rate</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'+taxCtrl+'</div></div>'
-          +(ftGlobals.taxMode==='auto'?'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">US federal + CA state marginal · 401k-eligible streams reduce taxable income</div>':'')
-          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.numFormat!=='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip '+(ftGlobals.numFormat==='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
-          +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
+          +(ftGlobals.taxMode==='auto'?'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal + CA state marginal · 401k-eligible streams reduce taxable income</div>':'')
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.numFormat!=='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip '+(ftGlobals.numFormat==='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
+          +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           +'<div class="ft-panel-hdr" style="margin-bottom:8px">Free to Spend Budget</div>'
           +'<div class="ft-gl-row" style="align-items:flex-start;margin-bottom:10px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.discMode==='rate'?'on':'')+'" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip '+(ftGlobals.discMode==='goal'?'on':'')+'" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
           +discControls
-          +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
+          +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.ssEnabled?' checked':'')+' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
           +ssCtrl
-          +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
+          +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.retireTaxEnabled?' checked':'')+' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel()"> enabled</label></div>'
-          +retTax
-          +'</div>'
-          +'<div>'
-          +'<div class="ft-panel-hdr">Income Streams</div>'
+          +retTax;
+      }
+
+      // ── Income tab ─────────────────────────────────────────────────
+      function ftBuildIncomeTab() {
+        const pEv=ftLifeEvents.find(e=>e.type==='partner');
+        return '<div class="ft-panel-hdr">Income Streams</div>'
           +ftIncomeStreams.map(s=>ftRenderStreamCard(s)).join('')
-          +'<button class="ft-ev-add-btn" onclick="ftAddStream()" style="margin-bottom:14px">+ add income stream</button>'
-          +'<div class="ft-panel-hdr">Properties</div>'
+          +'<button class="ft-ev-add-btn" onclick="ftAddStream();ftRenderPanel()" style="margin-bottom:0">+ add income stream</button>';
+      }
+
+      // ── Properties tab ─────────────────────────────────────────────
+      function ftBuildPropertiesTab() {
+        return '<div class="ft-panel-hdr">Properties</div>'
           +ftProperties.map(p=>ftRenderPropertyCard(p)).join('')
-          +'<button class="ft-ev-add-btn" onclick="ftAddProperty()" style="margin-bottom:14px">+ add property</button>'
-          +'<div class="ft-panel-hdr">Life Events</div>'
+          +'<button class="ft-ev-add-btn" onclick="ftAddProperty();ftRenderPanel()">+ add property</button>';
+      }
+
+      // ── Life events tab ────────────────────────────────────────────
+      function ftBuildEventsTab() {
+        const pEv=ftLifeEvents.find(e=>e.type==='partner');
+        return '<div class="ft-panel-hdr">Life Events</div>'
           +ftLifeEvents.map(ev=>ftRenderEventCard(ev)).join('')
-          +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;margin-bottom:20px">'
-          +(!pEv?'<button class="btn bsm" onclick="ftAddEvent(\'partner\')">+ partner</button>':'')
-          +'<button class="btn bsm" onclick="ftAddEvent(\'child\')">+ child</button>'
-          +'<button class="btn bsm" onclick="ftAddEvent(\'oneTime\')">+ one-time event</button>'
-          +'<button class="btn bsm" onclick="ftAddEvent(\'healthcare\')">+ healthcare</button>'
-          +'</div>'
-          +'<div class="ft-panel-hdr">Expense Phases</div>'
-          +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px">Each phase is a life stage with its own spending level. Click a segment on the timeline bar to edit. Living expenses inflate at '+ftGlobals.expInflation+'%/yr.</div>'
+          +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px">'
+          +(!pEv?'<button class="btn bsm" onclick="ftAddEvent(\'partner\');ftRenderPanel()">+ partner</button>':'')
+          +'<button class="btn bsm" onclick="ftAddEvent(\'child\');ftRenderPanel()">+ child</button>'
+          +'<button class="btn bsm" onclick="ftAddEvent(\'oneTime\');ftRenderPanel()">+ one-time event</button>'
+          +'<button class="btn bsm" onclick="ftAddEvent(\'healthcare\');ftRenderPanel()">+ healthcare</button>'
+          +'</div>';
+      }
+
+      // ── Expenses tab ───────────────────────────────────────────────
+      function ftBuildExpensesTab() {
+        const activePh=ftActivePhaseId?ftExpPhases.find(p=>p.id===ftActivePhaseId):null;
+        const activePhi=activePh?ftExpPhases.indexOf(activePh):0;
+        const phaseCardHtml=activePh?ftRenderPhaseCard(activePh,activePhi):'<div style="font-size:11.5px;color:var(--ink3);padding:10px 0">Click a phase segment above to edit it.</div>';
+        return '<div class="ft-panel-hdr">Expense Phases</div>'
+          +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Each phase is a life stage with its own spending level. Click a segment on the timeline bar to edit. Living expenses inflate at '+ftGlobals.expInflation+'%/yr.</div>'
           +ftRenderTimeline()
           +phaseCardHtml
-          +'<button class="ft-ev-add-btn" onclick="ftAddExpPhase()" style="margin-top:6px">+ add phase</button>'
-          +'</div></div>';
+          +'<button class="ft-ev-add-btn" onclick="ftAddExpPhase();ftRenderPanel()" style="margin-top:6px">+ add phase</button>';
       }
 
       // ── Metrics ─────────────────────────────────────────────────────
@@ -8437,7 +8646,33 @@
         ftRenderChips();
         ftRenderReqSavings();
         ftRenderTable();
+        ftRenderTimelineCard();
+        ftApplySectionStates();
         ftSaveScenario();
+      }
+
+      // ── Life timeline card (read-only section 4) ────────────────────
+      function ftRenderTimelineCard() {
+        const el = document.getElementById('ft-timeline-card');
+        if (!el) return;
+        // Render the colored bar + dots (same as ftRenderTimeline but in a container that doesn't overflow)
+        el.innerHTML = '<div style="overflow:hidden">' + ftRenderTimeline() + '</div>'
+          + ftRenderPhaseChips();
+      }
+
+      function ftRenderPhaseChips() {
+        if (!ftExpPhases.length) return '';
+        return '<div class="ft-tl-chips-row">'
+          + ftExpPhases.map((ph, i) => {
+              const col = FT_PHASE_PALETTE[i % FT_PHASE_PALETTE.length];
+              const endLbl = ph.endAge === 999 ? '∞' : ph.endAge;
+              const cost = ftFmt((ph.monthlyLiving||0) + (ph.renting ? (ph.monthlyRent||0) : 0)) + '/mo';
+              return '<div class="ft-tl-chip" style="border-left:3px solid '+col+'" onclick="ftOpenSettings(\'expenses\')">'
+                + '<span class="ft-tl-chip-name">'+ph.name+'</span>'
+                + '<span class="ft-tl-chip-detail">age '+ph.startAge+'–'+endLbl+' · '+cost+'</span>'
+                + '</div>';
+            }).join('')
+          + '</div>';
       }
 
       function renderFuture(){
@@ -8463,7 +8698,8 @@
           }
         }
         ftActivePhaseId=null;
-        ftRenderScenarioBar(); ftRenderPanel(); ftRecalc();
+        ftResetNextId();
+        ftRenderScenarioBar(); ftRecalc();
       }
 
       function ftToggleCol(c){ftColVis[c]=!ftColVis[c];ftRenderChips();ftRenderTable();}
