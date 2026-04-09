@@ -9160,6 +9160,10 @@
             if (ph.renting === undefined) ph.renting = true;
             if (ph.location === undefined) ph.location = '';
           });
+          // If the first phase is the default "Solo" phase at age 25, update it to the current projectionStartingAge
+          if (ftExpPhases.length > 0 && ftExpPhases[0].name === 'Solo' && ftExpPhases[0].startAge !== ftGlobals.projectionStartingAge) {
+            ftExpPhases[0].startAge = ftGlobals.projectionStartingAge;
+          }
         }
         if (d.overrides) {
           const { _nwToday, _nwEoy, ...rest } = d.overrides;
