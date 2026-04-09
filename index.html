@@ -2458,10 +2458,10 @@
     .ft-chip { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink3); cursor: pointer; font-family: var(--sans); transition: all .12s; }
     .ft-chip:hover { border-color: var(--f); color: var(--ink); }
     .ft-chip.on { background: var(--fll); color: var(--f); border-color: var(--fl); }
-    #ft-tbl th { position: sticky; top: 0; z-index: 2; background: var(--surface); font-size: 11px; font-weight: 600; color: var(--ink3); padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); cursor: grab; user-select: none; white-space: nowrap; letter-spacing: -.1px; }
-    #ft-tbl th:first-child { text-align: left; cursor: default; width: 140px; }
-    #ft-tbl td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--border); color: var(--ink); font-size: 12px; font-family: var(--mono); }
-    #ft-tbl td:first-child { text-align: left; font-family: var(--sans); }
+    #ft-tbl th { position: sticky; top: 0; z-index: 2; background: var(--surface); font-size: 11px; font-weight: 600; color: var(--ink3); padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); cursor: grab; user-select: none; white-space: nowrap; letter-spacing: -.1px; min-width: 72px; }
+    #ft-tbl th:first-child { text-align: left; cursor: default; min-width: 100px; position: sticky; left: 0; z-index: 3; background: var(--surface); }
+    #ft-tbl td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--border); color: var(--ink); font-size: 12px; font-family: var(--mono); white-space: nowrap; }
+    #ft-tbl td:first-child { text-align: left; font-family: var(--sans); white-space: nowrap; }
     #ft-tbl tbody tr:nth-child(even) { background: var(--s2); }
     #ft-tbl tbody tr:hover { background: var(--fll); }
     #ft-tbl tbody tr:last-child td { border-bottom: none; }
