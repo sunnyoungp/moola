@@ -2700,9 +2700,22 @@
     .ac-btn-primary { padding: 6px 12px; font-size: 12px; font-weight: 600; background: var(--f); color: #fff; border: none; border-radius: var(--rx); cursor: pointer; }
     .ac-btn-primary:disabled { opacity: 0.6; }
     @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    */
+    .ft-today-row { background: #eff6ff !important; border-left: 4px solid #3b82f6 !important; }
+    .ft-today-row td { background: #eff6ff !important; }
+    .ft-ev-add-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1 !important;
+      color: #0f172a !important;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      margin: 4px;
+      display: inline-block;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .ft-nw-tip { cursor: help; text-decoration: underline dotted var(--ink3); }
   </style>
-  <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const { createClient } = supabase;
@@ -8195,7 +8208,13 @@
             const ov = ftOvMap[age]?.income;
             const streamVal = (ov !== undefined && s.id === 'is0') ? ov : amt; 
             income += streamVal;
-            if(s.incomeType==='salary'){
+            
+            if(s.takeHomeOverride && s.incomeType === 'salary'){
+              // If manual override is on, this is ALREADY net income.
+              // Exclude from taxableGrossAcc and add to fixedNetAcc.
+              const growthFac = Math.pow(1+(s.growth||0)/100, age-s.startAge);
+              fixedNetAcc += Math.round(s.takeHomeOverride * 12 * growthFac);
+            } else if(s.incomeType==='salary'){
               taxableGrossAcc += streamVal;
               if(s.eligible401k) contrib401k += Math.min(streamVal, ftGlobals.f401k);
             } else {
@@ -8207,6 +8226,11 @@
           const taxableTotal=Math.max(0,taxableGrossAcc-contrib401k); 
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
           let netHH=Math.round(taxableGrossAcc-taxableTotal*taxRate)+fixedNetAcc;
+          
+          // Use NW override if available (overrides previous calculation logic)
+          const nwOverride = ftOvMap[age]?.nw;
+          if(nwOverride !== undefined) liquidNW = nwOverride;
+
           const living=ftGetLiving(age);
           
           let taxTip='effective rate: '+((taxRate||0)*100).toFixed(1)+'% (marginal fed '+(ftGetFedMarginalRate(taxableTotal, married)*100).toFixed(1)+'% + state '+((STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default)*100).toFixed(1)+'%)';
@@ -8306,7 +8330,9 @@
           const freeSpend=Math.max(0, Math.round(rawFreeSpend));
           const monthlySurplus=Math.round(rawFreeSpend - (living/12));
           
-          const budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH/12)) + '/mo' +
+          const budgetTip = 'Calculation:\n' + 
+            (netHH - fixedCosts - requiredSavings > netHH - fixedCosts ? '⚠ Capped by net monthly pay: ' + ftFmt(Math.round(netHH/12)) + '\n' : '') +
+            'Net Take-home: ' + ftFmt(Math.round(netHH/12)) + '/mo' +
             '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts/12)) + '/mo' +
             '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings/12)) + '/mo' +
             '\n = Budget: ' + ftFmt(freeSpend) + '/mo';
@@ -9041,8 +9067,8 @@
       function ftStartEdit(td,field,age){
         const cur=ftRows.find(r=>r.age===age);
         if(!cur) return;
-        const curVal=field==='income'?cur.income:cur.partner;
-        td.innerHTML='<input class="ft-cell-input" type="number" value="'+curVal+'">';
+        const curVal = cur[field] || 0;
+        td.innerHTML='<input class="ft-cell-input" type="number" value="'+curVal+'" style="width:100px">';
         const inp=td.querySelector('input');
         inp.focus();inp.select();
         const commit=()=>{
