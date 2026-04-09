@@ -4241,16 +4241,26 @@
           const { data: userData } = await db.auth.getUser();
           if (!userData || !userData.user) return;
           
-          const { data, error } = await db.from('account_members')
+          let data, error;
+          const res = await db.from('account_members')
             .select('account_id, accounts(id, name, legacy_id)')
             .eq('user_id', userData.user.id);
           
-          if (error) throw error;
+          if (res.error) {
+            console.warn('[moola] legacy_id missing or db error. Falling back...');
+            const fallback = await db.from('account_members')
+              .select('account_id, accounts(id, name)')
+              .eq('user_id', userData.user.id);
+            if (fallback.error) throw fallback.error;
+            data = fallback.data;
+          } else {
+            data = res.data;
+          }
 
           acAccounts = data.filter(r => r.accounts).map(r => ({
             id: r.accounts.id,
             name: r.accounts.name,
-            legacy_id: r.accounts.legacy_id
+            legacy_id: r.accounts.legacy_id || null
           }));
           
           if (!currentAccountId && acAccounts.length > 0) {
@@ -4436,7 +4446,13 @@
           }
         });
         if (payloads.length > 0) {
-          for (const p of payloads) await db.from('accounts').update({ legacy_id: p.legacy_id }).eq('id', p.id);
+          for (const p of payloads) {
+            try { 
+              await db.from('accounts').update({ legacy_id: p.legacy_id }).eq('id', p.id); 
+            } catch(e) {
+              console.warn('[moola] Background update for legacy_id failed', e);
+            }
+          }
         }
 
         if (!S.tabs) S.tabs = mkDef().tabs;
