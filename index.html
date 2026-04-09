@@ -4242,14 +4242,15 @@
           if (!userData || !userData.user) return;
           
           const { data, error } = await db.from('account_members')
-            .select('account_id, accounts(id, name)')
+            .select('account_id, accounts(id, name, legacy_id)')
             .eq('user_id', userData.user.id);
           
           if (error) throw error;
 
           acAccounts = data.filter(r => r.accounts).map(r => ({
             id: r.accounts.id,
-            name: r.accounts.name
+            name: r.accounts.name,
+            legacy_id: r.accounts.legacy_id
           }));
           
           if (!currentAccountId && acAccounts.length > 0) {
@@ -4422,6 +4423,22 @@
         if (appInitialized) return;
         appInitialized = true;
         S = await ls() || mkDef();
+
+        // 1-Time Auto-Population of legacy_id for backward compatibility
+        const payloads = [];
+        acAccounts.forEach(acc => {
+          if (acc.legacy_id == null) {
+            const matched = S.accounts?.find(a => a.name === acc.name);
+            if (matched) {
+              acc.legacy_id = matched.id;
+              payloads.push({ id: acc.id, legacy_id: matched.id });
+            }
+          }
+        });
+        if (payloads.length > 0) {
+          for (const p of payloads) await db.from('accounts').update({ legacy_id: p.legacy_id }).eq('id', p.id);
+        }
+
         if (!S.tabs) S.tabs = mkDef().tabs;
         // Inject any new tabs added to mkDef that are missing from saved data
         const defTabs = mkDef().tabs;
@@ -4874,11 +4891,18 @@
       function getFilteredState() {
         if (!S) return { funds: [], accounts: [], goals: [], stressEvents: [] };
         if (!currentAccountId && currentAccountId !== '0') return S;
+        
+        let legacyId = null;
+        if(acAccounts) {
+          const curr = acAccounts.find(a => a.id === currentAccountId);
+          if (curr && curr.legacy_id != null) legacyId = curr.legacy_id;
+        }
+
         return {
           ...S,
-          // Only filter funds as per the original explicit instruction.
-          // We don't filter accounts yet because a.id maps to internal ID, NOT workspace ID.
-          funds: (S.funds || []).filter(f => String(f.acct) === String(currentAccountId)),
+          funds: (S.funds || []).filter(f => String(f.acct) === String(legacyId)),
+          accounts: (S.accounts || []).filter(a => String(a.id) === String(legacyId)),
+          goals: (S.goals || []).filter(g => String(g.acct) === String(legacyId) || !g.acct),
         };
       }
 
