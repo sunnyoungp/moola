@@ -8033,6 +8033,10 @@
         return fedEffective+stateRate;
       }
 
+      let ftActivePhaseId = null;
+      const FT_PHASE_PALETTE = ['#4E61A8','#6040A0','#C0884A','#9B3A58','#1E7A7A','#C0622A','#2E6EA6','#5060B8','#8A6820','#2E7A4A'];
+      const FT_CITY_BENCHMARKS = {'NYC':3200,'New York':3200,'San Francisco':3800,'SF':3800,'Los Angeles':2800,'LA':2800,'Seoul':1400,'London':3000,'Tokyo':2200,'Chicago':2200,'Austin':2000,'Seattle':2800,'Boston':3000,'Miami':2600,'Denver':2200};
+
       // ── Phase lookup ────────────────────────────────────────────────
       // Auto-sort phases by startAge. For overlapping ages, the later-starting phase wins.
       function ftGetPhase(age) {
