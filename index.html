@@ -8011,10 +8011,10 @@
       }
       function ftCalcAutoTax(gross, married) {
         if(!gross||gross<=0) return 0;
-        // Use marginal rate for the effective rate calculation as requested
-        const fedMarginal = ftGetFedMarginalRate(gross, married);
-        const stateRate = STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default;
-        return fedMarginal + stateRate;
+        const taxAmount=ftCalcFedTax(gross,married);
+        const fedEffective=taxAmount/gross;
+        const stateRate=STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default;
+        return fedEffective+stateRate;
       }
 
       // ── Phase lookup ────────────────────────────────────────────────
@@ -8442,7 +8442,8 @@
              const effRate=totalGross>0?tax/totalGross:0;
              const calcNet=Math.round((s.annual*(1-effRate))/12);
              return '<div class="ft-ev-fr"><label>Monthly take-home</label><input type="number" value="'+(s.takeHomeOverride||'')+'" placeholder="Calculated ~$'+calcNet+'" oninput="ftUpdateStream(\''+s.id+'\',\'takeHomeOverride\',this.value?+this.value:null)"><span style="font-size:11px;color:var(--ink3)">$/mo</span></div>'
-               +(s.takeHomeOverride?'<div style="font-size:10px;color:var(--teal);margin-bottom:6px;margin-left:90px">Using manual take-home — this stream is excluded from the auto-tax calculator for this and all future years.</div>':'');
+               +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:8px;margin-left:90px;opacity:0.8;display:flex;align-items:center;gap:4px">Calculated estimate: '+ftFmt(calcNet)+'/mo <span class="ft-wtt-trigger" title="Estimated based on current household effective tax rate. This value is used unless overridden.">ⓘ</span></div>'
+               +(s.takeHomeOverride?'<div style="font-size:10.5px;color:var(--teal);margin-bottom:8px;margin-left:90px;font-weight:500">Using manual override — this stream is excluded from auto-tax calculator.</div>':'');
            })()
           +'<div class="ft-ev-fr"><label>Income type</label><select onchange="ftUpdateStream(\''+s.id+'\',\'incomeType\',this.value)">'+typeOpts+'</select></div>'
           +'<div class="ft-ev-fr"><label>401k eligible</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(s.eligible401k?' checked':'')+' onchange="ftUpdateStream(\''+s.id+'\',\'eligible401k\',this.checked)"> Yes — 401k contribution deducted in years this is active</label></div>'
@@ -8928,7 +8929,7 @@
           const stickyStyle=c==='age'?'position:sticky;left:0;background:'+(which==='today'?'var(--fll)':'rgba(99,102,241,.04)')+';z-index:1':'';
           if(c==='age'&&which==='today') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span class="ft-live-badge">live</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'today\')" title="clear">✕</button>':'')+'</td>';
           if(c==='age'&&which==='eoy') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span style="font-size:10px;color:var(--ink3);margin-left:3px">eoy</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'eoy\')" title="clear">✕</button>':'')+'</td>';
-          if(c==='nw') return '<td class="ft-editable'+(isOvd?' ft-cell-ov':'')+'" onclick="ftStartEditNwOv(\''+which+'\')" title="click to override">'+MT(ftFmt(nwVal),'future')+'</td>';
+          if(c==='nw') return '<td class="ft-editable'+(isOvd?' ft-cell-ov':'')+'" onclick="ftStartEditNwOv(\''+which+'\')" title="'+(which==='eoy'?'Projected end-of-year value (includes '+(11-new Date().getMonth())+' months of growth)':'click to override')+'">'+MT(ftFmt(nwVal),'future')+'</td>';
           if(c==='income') return '<td>'+ftFmt(income0)+'</td>';
           if(c==='partner') return '<td>'+ftFmt(partner0)+'</td>';
           if(c==='living') return '<td>'+ftFmt(living0)+'</td>';
@@ -8942,8 +8943,9 @@
           }
           // netSavings: — only for today (live) row; eoy shows calculated value
           if(c==='netsav'&&which==='today') return '<td style="color:var(--ink3)">—</td>';
-          const netSavVal = which==='eoy' ? (net0-housing0-living0-kids0-healthcare0) : 0;
-          if(c==='netsav') return '<td class="pos">'+ftFmt(Math.round(netSavVal))+'</td>';
+          const netSavVal = Math.round(net0-housing0-living0-kids0-healthcare0);
+          const isNeg = netSavVal < 0;
+          if(c==='netsav') return '<td class="'+(isNeg?'neg':'pos')+'" title="Annualized rate of savings">'+(isNeg?'':'+')+ftFmt(netSavVal)+'</td>';
           return '<td>'+ftFmt(0)+'</td>';
         }
         const todayRow='<tr class="ft-today-row">'+vis.map(c=>specialCell(c,todayNW,todayOvd,'today')).join('')+'<td></td></tr>';
