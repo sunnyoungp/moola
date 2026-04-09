@@ -9519,8 +9519,12 @@
 
             if (s.takeHomeOverride && s.incomeType === 'salary' && !(incomeOv !== undefined && s === firstSalaryStream)) {
               // If manual take-home override is on and no cell override, this is ALREADY net income.
-              const growthFac = Math.pow(1 + (s.growth || 0) / 100, age - s.startAge);
-              fixedNetAcc += Math.round(s.takeHomeOverride * 12 * growthFac);
+              // Only apply within the stream's active age range.
+              const streamEndAge = s.ongoing ? Infinity : (s.endAge ?? Infinity);
+              if (age >= s.startAge && age <= streamEndAge) {
+                const growthFac = Math.pow(1 + (s.growth || 0) / 100, age - s.startAge);
+                fixedNetAcc += Math.round(s.takeHomeOverride * 12 * growthFac);
+              }
             } else if (s.incomeType === 'salary') {
               taxableGrossAcc += streamVal;
               if (s.eligible401k) contrib401k += Math.min(streamVal, ftGlobals.f401k);
