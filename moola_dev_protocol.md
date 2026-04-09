@@ -29,6 +29,20 @@ This document is the **Source of Truth** for the Moola project. It must be read 
 - Because the script block is large, a single misplaced brace `{}` or fragment like `.max()` will break the **entire app**.
 - **Constraint**: When using `replace_file_content`, always check 20 lines above and below the target to ensure you are not leaving fragmented function tails.
 
+### **Mandatory Dependency Audit (CRITICAL)**
+> **This rule exists because the entire Future tab was broken by ignoring it.**
+
+Before modifying or removing ANY block near the Future engine, run this grep and verify ALL of the following functions are still defined exactly once:
+```
+grep -n "function ftGetPhase\|function ftGetIncome\|function ftGetPartnerIncome\|function ftGetLiving\|function ftGetRent\|function ftCalcPropMortgage\|function ftCalcPropSchedule\|function ftCalcRemainingDebt\|function ftHas401kEligible\|function ftGetTodayNW\|function ftCalcRows\|function requiredSavingsForGoal" index.html
+```
+If any of these are missing → **STOP. Do not ship. Restore from git history immediately.**
+
+### **Git History Recovery Rule**
+- If a tab is blank after an edit, the most likely cause is a silent function deletion.
+- Run `git show <PREV_COMMIT>:index.html > old.html` and grep the old file to recover the lost functions.
+- **NEVER attempt to rewrite deleted logic from memory.** Always recover from git.
+
 ---
 
 ## 3. UI & Layout Philosophy
@@ -61,3 +75,19 @@ This document is the **Source of Truth** for the Moola project. It must be read 
 - **Engine**: `ftCalcRows()` is the heart of the "Future" tab.
 - **Events**: `ftLifeEvents`, `ftIncomeStreams`, `ftProperties`.
 - **UI State**: `ftActiveScenarioId` manages multiple financial simulations.
+
+### Critical Function Dependency Chain (Future Tab)
+These functions must ALL be present and in this order for the Future tab to render:
+1. `ftGetPhase` → phase lookup
+2. `ftGetPhaseOverlaps` → overlap detection for phase cards  
+3. `ftPrimaryHomeAgeRange` → mortgage vs. rent logic
+4. `ftHas401kEligible`, `ftGetStreamIncome`, `ftGetIncome` → income math
+5. `ftGetPartnerIncome` → partner income with override chain
+6. `ftGetLiving`, `ftGetRent` → expense math (inflation-adjusted)
+7. `ftCalcPropMortgage`, `ftCalcPropSchedule`, `ftCalcRemainingDebt` → mortgage math
+8. `ftCalcMortgage`, `ftCalcMortgageSchedule` → legacy aliases (keep for event cards)
+9. `requiredSavingsForGoal` → goal-based savings engine
+10. `ftGetTodayNW` → NW baseline anchor
+11. `ftCalcRows` → main projection loop (calls all of the above)
+
+> **Any gap in this chain = blank Future tab.**

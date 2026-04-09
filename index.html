@@ -7843,6 +7843,130 @@
         }
         ftNextId = maxNum + 1;
       }
+      // ── Phase lookup ────────────────────────────────────────────────
+      // Auto-sort phases by startAge. For overlapping ages, the later-starting phase wins.
+      function ftGetPhase(age) {
+        return ftExpPhases.slice().sort((a,b)=>b.startAge-a.startAge).find(p=>age>=p.startAge&&age<=p.endAge) || null;
+      }
+
+      // ── Overlap detection ───────────────────────────────────────────
+      function ftGetPhaseOverlaps() {
+        const sorted = ftExpPhases.slice().sort((a,b)=>a.startAge-b.startAge);
+        const conflicts = new Set();
+        for(let i=0;i<sorted.length-1;i++){
+          const a=sorted[i], b=sorted[i+1];
+          if(a.endAge>=b.startAge) { conflicts.add(a.id); conflicts.add(b.id); }
+          if(a.startAge===b.startAge) { conflicts.add(a.id); conflicts.add(b.id); }
+        }
+        return conflicts;
+      }
+
+      // ── Primary home ownership check ────────────────────────────────
+      function ftPrimaryHomeAgeRange() {
+        const primary = ftProperties.find(p=>p.propType==='primary');
+        if(!primary) return null;
+        const sched = ftCalcPropSchedule(primary);
+        return { start: primary.purchaseAge, payoff: sched.payoffAge };
+      }
+
+      // ── Income helpers ──────────────────────────────────────────────
+      function ftHas401kEligible(age) {
+        return ftIncomeStreams.some(s => {
+          if(!s.eligible401k) return false;
+          const endAge = s.ongoing ? Infinity : (s.endAge ?? Infinity);
+          return age >= s.startAge && age <= endAge;
+        });
+      }
+      function ftGetStreamIncome(s, age) {
+        if(s.incomeType==='rental') return 0; // handled by properties
+        const endAge = s.ongoing ? Infinity : (s.endAge ?? Infinity);
+        if(age < s.startAge || age > endAge) return 0;
+        return Math.round((s.annual||0) * Math.pow(1+(s.growth||0)/100, age-s.startAge));
+      }
+      function ftGetIncome(age) {
+        const ov = ftOvMap[age]?.income;
+        if(ov !== undefined) return ov;
+        let total = 0;
+        for(const s of ftIncomeStreams) total += ftGetStreamIncome(s, age);
+        // Rental income from investment properties
+        for(const p of ftProperties) {
+          if(p.propType!=='investment' || age < p.purchaseAge) continue;
+          const yrs = age - p.purchaseAge;
+          total += Math.round((p.rentalMonthly||0)*12 * Math.pow(1+(p.rentalGrowth||3)/100, yrs));
+        }
+        // Social Security
+        if(ftGlobals.ssEnabled && age >= ftGlobals.ssClaimAge) total += (ftGlobals.ssBenefit||2500)*12;
+        return total;
+      }
+      function ftGetPartnerIncome(age) {
+        const pEv = ftLifeEvents.find(e=>e.type==='partner');
+        if(!pEv || age < pEv.age) return 0;
+        const ov = ftOvMap[age]?.partner; if(ov!==undefined) return ov;
+        const prevOvs = Object.entries(ftOvMap).map(([a,v])=>({a:+a,v})).filter(x=>x.a>=pEv.age&&x.a<age&&x.v.partner!==undefined).sort((a,b)=>b.a-a.a);
+        if(prevOvs.length) return Math.round(prevOvs[0].v.partner*Math.pow(1+pEv.incomeGrowth/100,age-prevOvs[0].a));
+        return Math.round(pEv.income*Math.pow(1+pEv.incomeGrowth/100,age-pEv.age));
+      }
+
+      // ── Expense helpers (inflation-adjusted) ───────────────────────
+      function ftGetLiving(age) {
+        const ph = ftGetPhase(age); if(!ph) return 0;
+        const inf = ftGlobals.expInflation/100;
+        return Math.round((ph.monthlyLiving||0)*12 * Math.pow(1+inf, age-ph.startAge));
+      }
+      function ftGetRent(age) {
+        // If a primary home property covers this age, rent is $0 (mortgage takes over)
+        const primary = ftProperties.find(p=>p.propType==='primary');
+        if(primary && age >= primary.purchaseAge) return 0;
+        const ph = ftGetPhase(age); if(!ph || !ph.renting) return 0;
+        const inf = ftGlobals.expInflation/100;
+        return Math.round((ph.monthlyRent||0)*12 * Math.pow(1+inf, age-ph.startAge));
+      }
+
+      // ── Property mortgage helpers ──────────────────────────────────
+      function ftCalcPropMortgage(p) {
+        const P = p.price*(1-p.downPct/100);
+        const r = p.mrate/100/12, n = (p.termYrs||30)*12;
+        if(!r) return Math.round(P/n*12);
+        return Math.round(P*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1)*12);
+      }
+      function ftCalcPropSchedule(p) {
+        const P = p.price*(1-p.downPct/100);
+        const mr = p.mrate/100/12, termMonths = (p.termYrs||30)*12;
+        const extras = (p.extraPayments||[]).filter(ep=>ep.amount>0);
+        let mp = mr ? P*(mr*Math.pow(1+mr,termMonths))/(Math.pow(1+mr,termMonths)-1) : P/termMonths;
+        function simulate(withExtras) {
+          let bal=P,totalInt=0,months=0;
+          for(let m=0;m<termMonths&&bal>0.01;m++){
+            const interest=bal*mr; const princPaid=Math.min(mp-interest,bal);
+            totalInt+=interest; bal-=princPaid; months++;
+            if(withExtras&&m%12===11){
+              const loanYear=Math.floor(m/12)+1; const ageNow=p.purchaseAge+loanYear;
+              for(const lump of extras.filter(ep=>ep.age===ageNow)) bal=Math.max(0,bal-lump.amount);
+              if(bal<=0.01) break;
+            }
+          }
+          return {totalInt:Math.round(totalInt),months};
+        }
+        const base=simulate(false), withEx=simulate(true);
+        return { payoffAge:p.purchaseAge+Math.ceil(withEx.months/12), totalInterest:withEx.totalInt, interestSaved:Math.max(0,base.totalInt-withEx.totalInt) };
+      }
+      function ftCalcRemainingDebt(p, yearsOwned) {
+        const P = p.price*(1-p.downPct/100);
+        const mr = p.mrate/100/12, termMonths = (p.termYrs||30)*12;
+        if(!mr) return Math.max(0, P - (P/termMonths)*yearsOwned*12);
+        let mp = P*(mr*Math.pow(1+mr,termMonths))/(Math.pow(1+mr,termMonths)-1);
+        let bal = P;
+        const extras = (p.extraPayments||[]).filter(ep=>ep.amount>0);
+        for(let m=0;m<yearsOwned*12&&bal>0.01;m++){
+          const interest=bal*mr; bal-=Math.min(mp-interest,bal);
+          if(m%12===11){
+            const loanYear=Math.floor(m/12)+1; const ageNow=p.purchaseAge+loanYear;
+            for(const lump of extras.filter(ep=>ep.age===ageNow)) bal=Math.max(0,bal-lump.amount);
+          }
+        }
+        return Math.max(0, Math.round(bal));
+      }
+      // Legacy alias (used in some event card code)
       function ftCalcMortgage(hc) { return hc ? ftCalcPropMortgage(hc) : 0; }
       function ftCalcMortgageSchedule(hc) {
         if(!hc) return {payoffAge:null,totalInterest:0,interestSaved:0};
