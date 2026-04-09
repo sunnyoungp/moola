@@ -4876,9 +4876,9 @@
         if (!currentAccountId && currentAccountId !== '0') return S;
         return {
           ...S,
+          // Only filter funds as per the original explicit instruction.
+          // We don't filter accounts yet because a.id maps to internal ID, NOT workspace ID.
           funds: (S.funds || []).filter(f => String(f.acct) === String(currentAccountId)),
-          accounts: (S.accounts || []).filter(a => String(a.id) === String(currentAccountId)),
-          goals: (S.goals || []).filter(g => String(g.acct) === String(currentAccountId) || !g.acct),
         };
       }
 
