@@ -8310,7 +8310,7 @@
             else discTooltip='⚠ After '+ftGlobals.savingsRate+'% savings target, shortfall of '+ftFmt(Math.abs(rawFreeSpend*12))+'/yr. Floor at $0.';
           }
           // Tax tooltip
-          const fedRate=ftGetFedMarginalRate(taxable,married);
+          const fedRate=ftGetFedMarginalRate(taxableTotal,married);
           const stateRate=STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default;
           const effRate=fedRate+stateRate;
           const taxTip='effective rate: '+(effRate*100).toFixed(1)+'% (marginal fed '+(fedRate*100).toFixed(1)+'% + state '+(stateRate*100).toFixed(1)+'%)';
