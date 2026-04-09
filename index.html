@@ -4434,22 +4434,18 @@
         appInitialized = true;
         S = await ls() || mkDef();
 
-        // 1-Time Auto-Population of legacy_id for backward compatibility
+        // Correct and overwrite any incorrect legacy_id mappings using strict case-insensitive name matching
         const payloads = [];
-        acAccounts.forEach((acc, idx) => {
-          if (acc.legacy_id == null) {
-            let matched = S.accounts?.find(a => a.name === acc.name);
-            // Fallback match: if we can't find by name, try to map by identical index,
-            // or simply grab the first available account to prevent complete data loss.
-            if (!matched && S.accounts && S.accounts[idx]) {
-              matched = S.accounts[idx];
-            } else if (!matched && S.accounts && S.accounts.length > 0) {
-              matched = S.accounts[0];
-            }
+        acAccounts.forEach((acc) => {
+          if (S.accounts) {
+            let matched = S.accounts.find(a => 
+              a.name && acc.name && 
+              a.name.trim().toLowerCase() === acc.name.trim().toLowerCase()
+            );
             
-            if (matched) {
-              acc.legacy_id = matched.id;
-              payloads.push({ id: acc.id, legacy_id: matched.id });
+            if (matched && acc.legacy_id !== matched.id) {
+              acc.legacy_id = matched.id; // Update in memory
+              payloads.push({ id: acc.id, legacy_id: matched.id }); // Queue for DB update
             }
           }
         });
