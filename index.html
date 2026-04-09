@@ -2536,6 +2536,21 @@
     .ft-live-badge { font-size:9px; background:var(--f); color:#fff; border-radius:4px; padding:1px 4px; font-weight:600; letter-spacing:.02em; vertical-align:middle; margin-left:3px; }
     .ft-ov-clear { font-size:9px; color:var(--ink4); background:none; border:none; cursor:pointer; padding:0 1px; vertical-align:middle; }
     .ft-ov-clear:hover { color:#dc2626; }
+    /* New elements */
+    .ft-ms-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-left:3px; vertical-align:middle; cursor:help; flex-shrink:0; }
+    .ft-nw-tip { cursor:help; }
+    .ft-tl-seg { position:absolute; top:0; bottom:0; cursor:pointer; overflow:hidden; transition:filter .1s; }
+    .ft-tl-seg:hover { filter:brightness(1.15); }
+    .ft-tl-seg.active { filter:brightness(1.2); }
+    .ft-tl-seg-lbl { position:absolute; left:5px; top:50%; transform:translateY(-50%); font-size:9px; font-weight:600; color:rgba(255,255,255,.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; max-width:calc(100% - 8px); }
+    .ft-ph-card { animation:ft-fade-in .15s ease; }
+    @keyframes ft-fade-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+    #ft-req-savings-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:14px 18px; margin-bottom:10px; }
+    @media(max-width:600px){
+      #ft-req-savings-card > div { flex-direction:column; gap:12px; }
+      .ft-panel-grid { grid-template-columns:1fr !important; }
+      .ft-ev-stage { flex-wrap:wrap; }
+    }
   </style>
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3113,7 +3128,7 @@
               <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--teal)"></span>cumulative savings</span>
             </div>
           </div>
-          <div style="position:relative;height:220px"><canvas id="ft-chart" role="img" aria-label="Net worth and cumulative savings projection from age 25 to 100">Projection from age 25 to 100.</canvas></div>
+          <div style="position:relative;height:220px;min-height:120px;max-height:280px;overflow:hidden"><canvas id="ft-chart" role="img" aria-label="Net worth and cumulative savings projection from age 25 to 100">Projection from age 25 to 100.</canvas></div>
         </div>
 
         <!-- scenario bar -->
@@ -3122,6 +3137,9 @@
         <!-- inline assumptions panel -->
         <div class="card mb-3" id="ft-assumptions-panel" style="padding:16px 18px"></div>
 
+        <!-- required savings card -->
+        <div id="ft-req-savings-card"></div>
+
         <!-- controls row -->
         <div class="card mb-2" style="padding:12px 16px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -3129,16 +3147,16 @@
             <div style="display:flex;gap:5px;flex-wrap:wrap" id="ft-col-chips"></div>
             <div style="flex:1;min-width:120px"></div>
             <div id="ft-buy-ctrl" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)">
-              <span style="white-space:nowrap">House — buy at age</span>
-              <input type="range" id="ft-buy-sl" min="27" max="55" step="1" style="width:72px" oninput="ftSetBuyAge(+this.value)">
-              <span id="ft-buy-out" style="font-size:13px;font-weight:600;color:var(--ink);min-width:22px;font-family:var(--mono)">33</span>
+              <span style="white-space:nowrap">Primary home — buy at age</span>
+              <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:72px" oninput="ftSetBuyAge(+this.value)">
+              <span id="ft-buy-out" style="font-size:13px;font-weight:600;color:var(--ink);min-width:22px;font-family:var(--mono)">—</span>
             </div>
           </div>
-          <div id="ft-house-bar-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">House readiness</span>
-            <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div id="ft-house-fill" style="height:100%;border-radius:3px;transition:width .4s"></div></div>
+          <div id="ft-house-bar-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">Property readiness</span>
+            <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div id="ft-house-fill" style="height:100%;border-radius:3px;transition:width .4s"></div></div>
             <span id="ft-house-pct" style="font-size:12px;font-weight:600;min-width:34px;font-family:var(--mono)"></span>
-            <span id="ft-house-note" style="font-size:11px;color:var(--ink3);flex:1"></span>
+            <span id="ft-house-note" style="font-size:11px;color:var(--ink3);flex:1;min-width:120px"></span>
           </div>
         </div>
 
@@ -3147,8 +3165,8 @@
           <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
           <span style="font-size:11px;color:var(--ink3)">click gross income or partner to override · dbl-click to clear · drag headers to reorder</span>
         </div>
-        <div style="overflow-y:auto;max-height:400px;border:1px solid var(--border);border-radius:var(--r)">
-          <table style="width:100%;border-collapse:collapse;font-size:12px" id="ft-tbl">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overflow-y:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--r)">
+          <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px" id="ft-tbl">
             <thead id="ft-thead"></thead>
             <tbody id="ft-tbody"></tbody>
           </table>
@@ -7393,20 +7411,46 @@
       // ══════════════════════════════════════════════════════════════
 
       // ── Runtime state ──────────────────────────────────────────────
-      let ftGlobals = { f401k:23000, roc:5, taxMode:'auto', taxFlat:35, discMode:'rate', savingsRate:25, retireAge:60, retireNW:3000000, currentAge:25 };
-      let ftLifeEvents = [{ id:'job', type:'job', age:26, tc:150000, tcg:8, removable:false, expanded:false }];
-      let ftExpPhases = [{ id:'ph0', name:'Solo', startAge:25, endAge:999, annual:54000, rentMonthly:3000 }];
-      let ftOvMap = {};            // { age: { income?:v, partner?:v } }
+      let ftGlobals = {
+        f401k:23000, roc:5, taxMode:'auto', taxFlat:35,
+        discMode:'rate', savingsRate:25, retireAge:60, retireNW:3000000,
+        currentAge:25, expInflation:2.5,
+        ssEnabled:false, ssBenefit:2500, ssClaimAge:67,
+        rothBalanceOv:null, k401TaxRate:25, capGainsRate:15,
+        retireTaxEnabled:false, numFormat:'compact'
+      };
+      // Income streams (replaces single Job event)
+      let ftIncomeStreams = [
+        { id:'is0', name:'Career', startAge:26, endAge:null, ongoing:true,
+          annual:150000, growth:8, eligible401k:false, incomeType:'salary', expanded:false }
+      ];
+      // Properties (replaces single Buy a Home event)
+      let ftProperties = [];
+      // Life events: partner, child, oneTime, healthcare only
+      let ftLifeEvents = [];
+      // Expense phases
+      let ftExpPhases = [
+        { id:'ph0', name:'Solo', startAge:25, endAge:999,
+          monthlyLiving:2000, monthlyRent:2000, renting:true, location:'' }
+      ];
+      let ftOvMap = {};
       let ftNwTodayOv = null, ftNwEoyOv = null;
       let ftScenarios = [{ id:'sc0', name:'Base case', data:null }];
       let ftActiveScenarioId = 'sc0';
-      let ftColOrder = ['age','income','partner','living','housing','kids','netsav','nw','disc'];
-      let ftColVis = { age:true, income:true, partner:true, living:true, housing:true, kids:true, netsav:true, nw:true, disc:true };
-      const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', disc:'monthly discretionary' };
+      let ftColOrder = ['age','nw','netsav','freeSpend','income','partner','living','housing','kids'];
+      let ftColVis = { age:true, income:true, partner:false, living:true, housing:true, kids:true, netsav:true, nw:true, freeSpend:true };
+      const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'free to spend / mo' };
       let ftDragSrc=null, ftRows=[], ftChart=null, ftNextId=100;
+      let ftActivePhaseId=null;
+      const FT_PHASE_PALETTE=['#4E61A8','#6040A0','#C0884A','#9B3A58','#1E7A7A','#C0622A','#2E6EA6','#5060B8','#8A6820','#2E7A4A'];
+      const FT_CITY_BENCHMARKS={'NYC':3200,'New York':3200,'San Francisco':3800,'SF':3800,'Los Angeles':2800,'LA':2800,'Seoul':1400,'London':3000,'Tokyo':2200,'Chicago':2200,'Austin':2000,'Seattle':2800,'Boston':3000,'Miami':2600,'Denver':2200};
 
       function ftUid() { return 'ev'+(ftNextId++); }
       function ftFmt(n) {
+        if(ftGlobals.numFormat==='full') {
+          const s=n<0?'-':''; const a=Math.abs(n);
+          return s+'$'+Math.round(a).toLocaleString();
+        }
         const s=n<0?'-':''; const a=Math.abs(n);
         if(a>=1e6) return s+'$'+(a/1e6).toFixed(2)+'M';
         if(a>=1e3) return s+'$'+(a/1000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'k';
@@ -7420,6 +7464,8 @@
         ov._nwEoy = ftNwEoyOv;
         return {
           globals: JSON.parse(JSON.stringify(ftGlobals)),
+          incomeStreams: JSON.parse(JSON.stringify(ftIncomeStreams)),
+          properties: JSON.parse(JSON.stringify(ftProperties)),
           lifeEvents: JSON.parse(JSON.stringify(ftLifeEvents)),
           expPhases: JSON.parse(JSON.stringify(ftExpPhases)),
           overrides: ov
@@ -7429,11 +7475,42 @@
       function ftLoadScenarioData(d) {
         if(!d) return;
         if(d.globals) Object.assign(ftGlobals, d.globals);
-        if(d.lifeEvents) ftLifeEvents = JSON.parse(JSON.stringify(d.lifeEvents));
+        // Load income streams (new format) — migrate old job event
+        if(d.incomeStreams) {
+          ftIncomeStreams = JSON.parse(JSON.stringify(d.incomeStreams));
+        } else if(d.lifeEvents) {
+          const jobEv = d.lifeEvents.find(e=>e.type==='job');
+          if(jobEv) {
+            ftIncomeStreams = [{ id:'is0', name:'Career', startAge:jobEv.age, endAge:null, ongoing:true,
+              annual:jobEv.tc||150000, growth:jobEv.tcg||8, eligible401k:false, incomeType:'salary', expanded:false }];
+          }
+        }
+        // Load properties (new format) — migrate old house event
+        if(d.properties) {
+          ftProperties = JSON.parse(JSON.stringify(d.properties));
+        } else if(d.lifeEvents) {
+          const houseEv = d.lifeEvents.find(e=>e.type==='house');
+          if(houseEv) {
+            ftProperties = [{ id:'pr0', name:'Primary home', purchaseAge:houseEv.age,
+              price:houseEv.price, downPct:houseEv.downPct, mrate:houseEv.mrate,
+              termYrs:houseEv.termYrs||30, propType:'primary', appreciation:4,
+              rentalMonthly:0, rentalGrowth:3,
+              extraPayments:houseEv.extraPayments||[], extrasExpanded:false, expanded:false }];
+          }
+        }
+        // Load life events (partner, child, oneTime, healthcare — no job/house)
+        if(d.lifeEvents) {
+          ftLifeEvents = JSON.parse(JSON.stringify(d.lifeEvents.filter(e=>!['job','house'].includes(e.type))));
+        }
         if(d.expPhases) {
           ftExpPhases = JSON.parse(JSON.stringify(d.expPhases));
-          // migrate old annual-rent field to rentMonthly
-          ftExpPhases.forEach(ph => { if(ph.rent!==undefined && ph.rentMonthly===undefined) { ph.rentMonthly=Math.round(ph.rent/12); delete ph.rent; } });
+          // migrate old format
+          ftExpPhases.forEach(ph => {
+            if(ph.annual!==undefined && ph.monthlyLiving===undefined) ph.monthlyLiving=Math.round(ph.annual/12);
+            if(ph.rentMonthly!==undefined && ph.monthlyRent===undefined) { ph.monthlyRent=ph.rentMonthly; delete ph.rentMonthly; }
+            if(ph.renting===undefined) ph.renting = true;
+            if(ph.location===undefined) ph.location = '';
+          });
         }
         if(d.overrides) {
           const { _nwToday, _nwEoy, ...rest } = d.overrides;
@@ -7517,79 +7594,133 @@
         +'<button class="btn bsm" onclick="ftNewScenario()" style="white-space:nowrap;flex-shrink:0">+ new scenario</button>';
       }
 
-      // ── Auto tax ───────────────────────────────────────────────────
+      // ── Tax helpers ─────────────────────────────────────────────────
+      function ftBracketTax(inc, bkts) {
+        let tax=0,prev=0;
+        for(const[top,rate]of bkts){if(inc<=prev)break;tax+=(Math.min(inc,top)-prev)*rate;prev=top;if(top===Infinity)break;}
+        return tax;
+      }
+      function ftCalcFedTax(gross, married) {
+        if(!gross||gross<=0) return 0;
+        const std = married?29200:14600;
+        const taxable = Math.max(0, gross - std);
+        const fed = married?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
+        return ftBracketTax(taxable, fed);
+      }
+      function ftCalcCATax(gross, married) {
+        if(!gross||gross<=0) return 0;
+        const ca = married?[[20198,.01],[47884,.02],[75576,.04],[104910,.06],[132590,.08],[677278,.093],[812728,.103],[1000000,.113],[Infinity,.123]]:[[10099,.01],[23942,.02],[37788,.04],[52455,.06],[66295,.08],[338639,.093],[406364,.103],[677275,.113],[Infinity,.123]];
+        return ftBracketTax(gross, ca);
+      }
       function ftCalcAutoTax(gross, married) {
         if(!gross||gross<=0) return 0;
-        const fed=married?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
-        const ca=married?[[20198,.01],[47884,.02],[75576,.04],[104910,.06],[132590,.08],[677278,.093],[812728,.103],[1000000,.113],[Infinity,.123]]:[[10099,.01],[23942,.02],[37788,.04],[52455,.06],[66295,.08],[338639,.093],[406364,.103],[677275,.113],[Infinity,.123]];
-        function calc(inc,bkts){let tax=0,prev=0;for(const[top,rate]of bkts){if(inc<=prev)break;tax+=(Math.min(inc,top)-prev)*rate;prev=top;if(top===Infinity)break;}return tax;}
-        return (calc(gross,fed)+calc(gross,ca))/gross;
+        return (ftCalcFedTax(gross,married) + ftCalcCATax(gross,married)) / gross;
       }
 
-      // ── Income / housing helpers ───────────────────────────────────
+      // ── Phase lookup ────────────────────────────────────────────────
+      function ftGetPhase(age) {
+        return ftExpPhases.slice().sort((a,b)=>b.startAge-a.startAge).find(p=>age>=p.startAge&&age<=p.endAge) || null;
+      }
+
+      // ── Income helpers ──────────────────────────────────────────────
+      function ftHas401kEligible(age) {
+        return ftIncomeStreams.some(s => {
+          if(!s.eligible401k) return false;
+          const endAge = s.ongoing ? Infinity : (s.endAge ?? Infinity);
+          return age >= s.startAge && age <= endAge;
+        });
+      }
+      function ftGetStreamIncome(s, age) {
+        if(s.incomeType==='rental') return 0; // handled by properties
+        const endAge = s.ongoing ? Infinity : (s.endAge ?? Infinity);
+        if(age < s.startAge || age > endAge) return 0;
+        return Math.round((s.annual||0) * Math.pow(1+(s.growth||0)/100, age-s.startAge));
+      }
       function ftGetIncome(age) {
-        const jobEv=ftLifeEvents.find(e=>e.type==='job');
-        if(!jobEv) return 0;
-        const {age:startAge,tc,tcg}=jobEv;
-        if(age<startAge) return age<22?0:43000;
-        const ov=ftOvMap[age]?.income; if(ov!==undefined) return ov;
-        const prevOvs=Object.entries(ftOvMap).map(([a,v])=>({a:+a,v})).filter(x=>x.a>=startAge&&x.a<age&&x.v.income!==undefined).sort((a,b)=>b.a-a.a);
-        if(prevOvs.length) return Math.round(prevOvs[0].v.income*Math.pow(1+tcg/100,age-prevOvs[0].a));
-        return Math.round(tc*Math.pow(1+tcg/100,age-startAge));
+        const ov = ftOvMap[age]?.income;
+        if(ov !== undefined) return ov;
+        let total = 0;
+        for(const s of ftIncomeStreams) total += ftGetStreamIncome(s, age);
+        // Rental income from investment properties
+        for(const p of ftProperties) {
+          if(p.propType!=='investment' || age < p.purchaseAge) continue;
+          const yrs = age - p.purchaseAge;
+          total += Math.round((p.rentalMonthly||0)*12 * Math.pow(1+(p.rentalGrowth||3)/100, yrs));
+        }
+        // Social Security
+        if(ftGlobals.ssEnabled && age >= ftGlobals.ssClaimAge) total += (ftGlobals.ssBenefit||2500)*12;
+        return total;
       }
-
       function ftGetPartnerIncome(age) {
-        const pEv=ftLifeEvents.find(e=>e.type==='partner');
-        if(!pEv||age<pEv.age) return 0;
-        const ov=ftOvMap[age]?.partner; if(ov!==undefined) return ov;
-        const prevOvs=Object.entries(ftOvMap).map(([a,v])=>({a:+a,v})).filter(x=>x.a>=pEv.age&&x.a<age&&x.v.partner!==undefined).sort((a,b)=>b.a-a.a);
+        const pEv = ftLifeEvents.find(e=>e.type==='partner');
+        if(!pEv || age < pEv.age) return 0;
+        const ov = ftOvMap[age]?.partner; if(ov!==undefined) return ov;
+        const prevOvs = Object.entries(ftOvMap).map(([a,v])=>({a:+a,v})).filter(x=>x.a>=pEv.age&&x.a<age&&x.v.partner!==undefined).sort((a,b)=>b.a-a.a);
         if(prevOvs.length) return Math.round(prevOvs[0].v.partner*Math.pow(1+pEv.incomeGrowth/100,age-prevOvs[0].a));
         return Math.round(pEv.income*Math.pow(1+pEv.incomeGrowth/100,age-pEv.age));
       }
 
+      // ── Expense helpers (inflation-adjusted) ───────────────────────
       function ftGetLiving(age) {
-        const sorted=ftExpPhases.slice().sort((a,b)=>b.startAge-a.startAge);
-        const ph=sorted.find(p=>age>=p.startAge&&age<=p.endAge);
-        return ph?ph.annual:0;
+        const ph = ftGetPhase(age); if(!ph) return 0;
+        const inf = ftGlobals.expInflation/100;
+        return Math.round((ph.monthlyLiving||0)*12 * Math.pow(1+inf, age-ph.startAge));
       }
-
       function ftGetRent(age) {
-        const sorted=ftExpPhases.slice().sort((a,b)=>b.startAge-a.startAge);
-        const ph=sorted.find(p=>age>=p.startAge&&age<=p.endAge);
-        return ph?((ph.rentMonthly||0)*12):0;
+        const ph = ftGetPhase(age); if(!ph || !ph.renting) return 0;
+        const inf = ftGlobals.expInflation/100;
+        return Math.round((ph.monthlyRent||0)*12 * Math.pow(1+inf, age-ph.startAge));
       }
 
-      function ftCalcMortgage(houseEv) {
-        if(!houseEv) return 0;
-        const P=houseEv.price*(1-houseEv.downPct/100);
-        const r=houseEv.mrate/100/12, n=(houseEv.termYrs||30)*12;
+      // ── Property mortgage helpers ──────────────────────────────────
+      function ftCalcPropMortgage(p) {
+        const P = p.price*(1-p.downPct/100);
+        const r = p.mrate/100/12, n = (p.termYrs||30)*12;
         if(!r) return Math.round(P/n*12);
         return Math.round(P*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1)*12);
       }
-
-      function ftCalcMortgageSchedule(houseEv) {
-        if(!houseEv) return { payoffAge:null, totalInterest:0, interestSaved:0 };
-        const P=houseEv.price*(1-houseEv.downPct/100);
-        const mr=houseEv.mrate/100/12;
-        const termMonths=(houseEv.termYrs||30)*12;
-        const extras=(houseEv.extraPayments||[]).filter(ep=>ep.amount>0);
-        let mp; if(!mr) mp=P/termMonths; else mp=P*(mr*Math.pow(1+mr,termMonths))/(Math.pow(1+mr,termMonths)-1);
+      function ftCalcPropSchedule(p) {
+        const P = p.price*(1-p.downPct/100);
+        const mr = p.mrate/100/12, termMonths = (p.termYrs||30)*12;
+        const extras = (p.extraPayments||[]).filter(ep=>ep.amount>0);
+        let mp = mr ? P*(mr*Math.pow(1+mr,termMonths))/(Math.pow(1+mr,termMonths)-1) : P/termMonths;
         function simulate(withExtras) {
           let bal=P,totalInt=0,months=0;
           for(let m=0;m<termMonths&&bal>0.01;m++){
             const interest=bal*mr; const princPaid=Math.min(mp-interest,bal);
             totalInt+=interest; bal-=princPaid; months++;
             if(withExtras&&m%12===11){
-              const loanYear=Math.floor(m/12)+1; const ageNow=houseEv.age+loanYear;
-              const lumps=extras.filter(ep=>ep.age===ageNow);
-              for(const lump of lumps){bal=Math.max(0,bal-lump.amount);}
+              const loanYear=Math.floor(m/12)+1; const ageNow=p.purchaseAge+loanYear;
+              for(const lump of extras.filter(ep=>ep.age===ageNow)) bal=Math.max(0,bal-lump.amount);
               if(bal<=0.01) break;
             }
           }
           return {totalInt:Math.round(totalInt),months};
         }
         const base=simulate(false), withEx=simulate(true);
-        return { payoffAge:houseEv.age+Math.ceil(withEx.months/12), totalInterest:withEx.totalInt, interestSaved:Math.max(0,base.totalInt-withEx.totalInt) };
+        return { payoffAge:p.purchaseAge+Math.ceil(withEx.months/12), totalInterest:withEx.totalInt, interestSaved:Math.max(0,base.totalInt-withEx.totalInt) };
+      }
+      function ftCalcRemainingDebt(p, yearsOwned) {
+        const P = p.price*(1-p.downPct/100);
+        const mr = p.mrate/100/12, termMonths = (p.termYrs||30)*12;
+        if(!mr) return Math.max(0, P - (P/termMonths)*yearsOwned*12);
+        let mp = P*(mr*Math.pow(1+mr,termMonths))/(Math.pow(1+mr,termMonths)-1);
+        let bal = P;
+        const extras = (p.extraPayments||[]).filter(ep=>ep.amount>0);
+        for(let m=0;m<yearsOwned*12&&bal>0.01;m++){
+          const interest=bal*mr; bal-=Math.min(mp-interest,bal);
+          if(m%12===11){
+            const loanYear=Math.floor(m/12)+1; const ageNow=p.purchaseAge+loanYear;
+            for(const lump of extras.filter(ep=>ep.age===ageNow)) bal=Math.max(0,bal-lump.amount);
+          }
+        }
+        return Math.max(0, Math.round(bal));
+      }
+      // Legacy alias (used in some event card code)
+      function ftCalcMortgage(houseEv) { return houseEv ? ftCalcPropMortgage(houseEv) : 0; }
+      function ftCalcMortgageSchedule(houseEv) {
+        if(!houseEv) return {payoffAge:null,totalInterest:0,interestSaved:0};
+        return ftCalcPropSchedule({...houseEv, purchaseAge:houseEv.age, extraPayments:houseEv.extraPayments||[]});
       }
 
       function ftCalcPMT(currentNW, targetNW, years, roc) {
@@ -7607,20 +7738,25 @@
 
       function ftGetEoyNW() {
         if(ftNwEoyOv!==null) return ftNwEoyOv;
-        const todayNW=ftGetTodayNW();
-        const curAge=ftGlobals.currentAge;
-        const curMonth=new Date().getMonth();
-        const monthsRemaining=11-curMonth;
+        const todayNW=ftGetTodayNW(), curAge=ftGlobals.currentAge;
+        const monthsRemaining=11-new Date().getMonth();
         const income=ftGetIncome(curAge), partner=ftGetPartnerIncome(curAge);
         const grossHH=income+partner;
         const married=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
-        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(grossHH,married):ftGlobals.taxFlat/100;
-        const netHH=grossHH*(1-taxRate)-ftGlobals.f401k;
+        const has401k=ftHas401kEligible(curAge);
+        const contrib401k=has401k?ftGlobals.f401k:0;
+        const taxable=grossHH-contrib401k;
+        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(Math.max(0,taxable),married):ftGlobals.taxFlat/100;
+        const netHH=grossHH*(1-taxRate)-contrib401k;
         const living=ftGetLiving(curAge);
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
-        const buyAge=houseEv?houseEv.age:Infinity;
-        const mort=ftCalcMortgage(houseEv);
-        const housing=curAge>=buyAge?mort:ftGetRent(curAge);
+        let housing=0;
+        for(const p of ftProperties){
+          if(p.propType==='primary'&&curAge>=p.purchaseAge){
+            const sched=ftCalcPropSchedule(p);
+            if(curAge<sched.payoffAge) housing+=ftCalcPropMortgage(p);
+          }
+        }
+        if(!housing) housing=ftGetRent(curAge);
         let kids=0;
         for(const ce of ftLifeEvents.filter(e=>e.type==='child')){
           const childAge=curAge-ce.age;
@@ -7631,133 +7767,265 @@
 
       // ── Main projection ────────────────────────────────────────────
       function ftCalcRows() {
-        const f401k=ftGlobals.f401k, roc=ftGlobals.roc/100, curAge=ftGlobals.currentAge;
+        const roc=ftGlobals.roc/100, curAge=ftGlobals.currentAge;
         const pEv=ftLifeEvents.find(e=>e.type==='partner');
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
         const childEvs=ftLifeEvents.filter(e=>e.type==='child');
         const oneTimeEvs=ftLifeEvents.filter(e=>e.type==='oneTime');
-        const buyAge=houseEv?houseEv.age:Infinity;
+        const healthEvs=ftLifeEvents.filter(e=>e.type==='healthcare');
         const partnerAge=pEv?pEv.age:Infinity;
-        const mort=ftCalcMortgage(houseEv);
-        const downCash=houseEv?Math.round(houseEv.price*houseEv.downPct/100+houseEv.price*0.03):0;
-        const mortSched=ftCalcMortgageSchedule(houseEv);
-        const payoffAge=mortSched.payoffAge??Infinity;
-        // Extra lump sum payments from house card
-        const extraPmtByAge={};
-        if(houseEv?.extraPayments) for(const ep of houseEv.extraPayments) if(ep.amount>0) extraPmtByAge[ep.age]=(extraPmtByAge[ep.age]||0)+ep.amount;
-        // Update house pills if visible
-        const hPill=document.getElementById('ft-house-calc-pill');
-        if(hPill&&houseEv){const loanAmt=Math.round(houseEv.price*(1-houseEv.downPct/100));hPill.textContent='Down + closing = '+ftFmt(downCash)+'  ·  Monthly = '+ftFmt(Math.round(mort/12))+'/mo  ·  Loan = '+ftFmt(loanAmt);}
-        const extraPill=document.getElementById('ft-house-extra-pill');
-        if(extraPill&&houseEv) extraPill.textContent='Payoff at age '+(mortSched.payoffAge??'—')+'  ·  Saves '+ftFmt(mortSched.interestSaved)+' in interest';
-        let nw=ftGetEoyNW(), cumSav=0;
+        // Pre-compute property schedules
+        const propScheds=ftProperties.map(p=>({p,mort:ftCalcPropMortgage(p),sched:ftCalcPropSchedule(p)}));
+        // Update property pills
+        for(const {p,mort,sched} of propScheds){
+          const downCash=Math.round(p.price*p.downPct/100+p.price*0.03);
+          const pill=document.getElementById('ft-prop-pill-'+p.id);
+          if(pill) pill.textContent='Down+closing='+ftFmt(downCash)+'  ·  '+ftFmt(Math.round(mort/12))+'/mo  ·  Payoff age '+(sched.payoffAge??'—')+'  ·  Saves '+ftFmt(sched.interestSaved);
+        }
+        let liquidNW=ftGetEoyNW(), k401Bal=0, cumSav=0;
         const out=[];
         for(let age=curAge+1;age<=100;age++){
           const married=age>=partnerAge;
           const income=ftGetIncome(age), partner=ftGetPartnerIncome(age);
           const grossHH=income+partner;
-          const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(grossHH,married):ftGlobals.taxFlat/100;
-          const netHH=grossHH*(1-taxRate)-f401k;
+          const has401k=ftHas401kEligible(age);
+          const contrib401k=has401k?ftGlobals.f401k:0;
+          const taxable=Math.max(0,grossHH-contrib401k);
+          const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable,married):ftGlobals.taxFlat/100;
+          const netHH=grossHH*(1-taxRate)-contrib401k;
           const living=ftGetLiving(age);
+          // Housing: primary mortgage > rent
           let housing=0;
-          if(age<buyAge) housing=ftGetRent(age);
-          else if(age>=buyAge&&age<payoffAge) housing=mort;
+          for(const {p,mort,sched} of propScheds){
+            if(p.propType==='primary'&&age>=p.purchaseAge&&age<sched.payoffAge) housing+=mort;
+          }
+          if(!housing) housing=ftGetRent(age);
+          // Kids
           let kids=0;
-          for(const ce of childEvs){const childAge=age-ce.age;if(childAge>=0) for(const st of ce.stages){if(childAge>=st.childAgeStart&&childAge<st.childAgeEnd){kids+=st.annual;break;}}}
-          const ot=oneTimeEvs.filter(e=>e.age===age).reduce((s,e)=>s+e.amount,0);
-          const extraPmt=extraPmtByAge[age]||0;
-          const netsav=Math.round(netHH-living-housing-kids);
-          // Discretionary
+          for(const ce of childEvs){const ca=age-ce.age;if(ca>=0)for(const st of ce.stages){if(ca>=st.childAgeStart&&ca<st.childAgeEnd){kids+=st.annual;break;}}}
+          // Healthcare
+          let healthcare=0;
+          for(const he of healthEvs){if(age>=he.startAge&&age<=he.endAge)healthcare+=(he.monthlyCost||0)*12;}
+          // One-time events + property extra payments
+          let ot=oneTimeEvs.filter(e=>e.age===age).reduce((s,e)=>s+e.amount,0);
+          let extraPmt=0;
+          for(const {p} of propScheds) for(const ep of (p.extraPayments||[])) if(ep.age===age) extraPmt+=ep.amount;
+          // Required savings
           let reqSav=0, discTooltip='';
           if(ftGlobals.discMode==='rate'){
             reqSav=netHH*ftGlobals.savingsRate/100;
           } else {
             const pmts=[];
-            if(ftGlobals.retireAge>age){const r=ftCalcPMT(nw,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);if(r>0)pmts.push({label:'retirement target of '+ftFmt(ftGlobals.retireNW)+' by age '+ftGlobals.retireAge,req:r});}
-            if(houseEv&&houseEv.age>age){const r=ftCalcPMT(nw,downCash,houseEv.age-age,roc);if(r>0)pmts.push({label:'planned house purchase at age '+houseEv.age+' requires '+ftFmt(downCash)+' cash at closing',req:r});}
+            if(ftGlobals.retireAge>age){const r=ftCalcPMT(liquidNW,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);if(r>0)pmts.push({label:'retirement target '+ftFmt(ftGlobals.retireNW)+' by age '+ftGlobals.retireAge,req:r});}
+            for(const {p} of propScheds){
+              if(p.purchaseAge>age){const dc=Math.round(p.price*p.downPct/100+p.price*0.03);const r=ftCalcPMT(liquidNW,dc,p.purchaseAge-age,roc);if(r>0)pmts.push({label:'"'+p.name+'" at age '+p.purchaseAge+' requires '+ftFmt(dc)+' cash',req:r});}
+            }
             if(pmts.length){const top=pmts.reduce((a,b)=>a.req>b.req?a:b);reqSav=top.req;discTooltip=top.label;}
           }
-          const disc=Math.round((netHH-reqSav-living-housing-kids)/12);
-          if(disc<0&&!discTooltip) discTooltip=ftGlobals.discMode==='rate'?'After a '+ftGlobals.savingsRate+'% savings target and all fixed costs, '+ftFmt(Math.abs(disc*12))+'/yr shortfall.':'Goal-based savings requirements exceed your net income this year.';
-          else if(disc<0&&discTooltip) discTooltip+=' — requires '+ftFmt(Math.round(reqSav))+'/yr, leaving '+ftFmt(disc*12)+'/yr after expenses.';
-          cumSav+=Math.max(0,netsav);
-          let newNw=nw*(1+roc)+netsav+ot-extraPmt;
-          if(age===buyAge) newNw-=downCash;
-          nw=Math.round(newNw);
+          const netsav=Math.round(reqSav);
+          const freeSpend=Math.round((netHH-housing-kids-healthcare-netsav)/12);
+          if(freeSpend<0&&!discTooltip) discTooltip=ftGlobals.discMode==='rate'?'After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.':'Savings target exceeds net income this year.';
+          else if(freeSpend<0&&discTooltip) discTooltip+=' — needs '+ftFmt(netsav)+'/yr, leaving '+ftFmt(freeSpend*12)+'/yr after fixed costs.';
+          // Tax tooltip
+          const fedAmt=ftGlobals.taxMode==='auto'?ftCalcFedTax(taxable,married):taxable*ftGlobals.taxFlat/100;
+          const caAmt=ftGlobals.taxMode==='auto'?ftCalcCATax(taxable,married):0;
+          const effPct=taxable>0?((fedAmt+caAmt)/taxable*100).toFixed(1):'0.0';
+          const fedPct=taxable>0?(fedAmt/taxable*100).toFixed(1):'0.0';
+          const caPct=taxable>0?(caAmt/taxable*100).toFixed(1):'0.0';
+          const taxTip='effective rate: '+effPct+'% (federal '+fedPct+'% + CA '+caPct+'%)';
+          // 401k accumulation
+          k401Bal=k401Bal*(1+roc)+contrib401k;
+          // Real estate equity
+          let realEstateEquity=0;
+          for(const {p} of propScheds){
+            if(age>=p.purchaseAge){
+              const yo=age-p.purchaseAge;
+              const cv=p.price*Math.pow(1+(p.appreciation||4)/100,yo);
+              realEstateEquity+=cv-ftCalcRemainingDebt(p,yo);
+            }
+          }
+          // NW: liquid compounds + actual savings (income - ALL expenses)
+          const actualSavings=netHH-living-housing-kids-healthcare;
+          let newLiq=liquidNW*(1+roc)+actualSavings+ot-extraPmt;
+          for(const {p} of propScheds) if(p.purchaseAge===age) newLiq-=Math.round(p.price*p.downPct/100+p.price*0.03);
+          liquidNW=Math.round(newLiq);
+          const nw=liquidNW+Math.round(realEstateEquity);
+          cumSav+=Math.max(0,actualSavings);
+          // Milestones
           const ms=[];
-          const jobEv=ftLifeEvents.find(e=>e.type==='job');
-          if(jobEv&&age===jobEv.age) ms.push('job');
           if(pEv&&age===pEv.age) ms.push('partner');
-          if(houseEv&&age===houseEv.age) ms.push('house');
+          for(const {p} of propScheds) if(age===p.purchaseAge) ms.push(p.name);
           childEvs.forEach((ce,i)=>{if(age===ce.age)ms.push('child '+(i+1));});
           oneTimeEvs.filter(e=>e.age===age).forEach(e=>{if(e.label)ms.push(e.label);});
-          out.push({age,income,partner,living,housing,kids:Math.round(kids),netsav,nw,cumSav:Math.round(cumSav),ms,isHouse:age===buyAge,ot:ot+extraPmt,disc,discTooltip});
+          for(const s of ftIncomeStreams) if(age===s.startAge) ms.push(s.name+' starts');
+          // Milestone sufficiency dots
+          const msDots=[];
+          for(const {p} of propScheds){
+            if(age===p.purchaseAge){
+              const needed=Math.round(p.price*p.downPct/100+p.price*0.03);
+              const prevNW=out.length?out[out.length-1].nw:liquidNW;
+              if(prevNW>=needed*1.2) msDots.push({color:'#16a34a',tip:'Need '+ftFmt(needed)+' · Projected '+ftFmt(prevNW)+' · On track'});
+              else if(prevNW>=needed) msDots.push({color:'#d97706',tip:'Need '+ftFmt(needed)+' · Projected '+ftFmt(prevNW)+' · Tight'});
+              else msDots.push({color:'#dc2626',tip:'Need '+ftFmt(needed)+' · Projected '+ftFmt(prevNW)+' · Shortfall'});
+            }
+          }
+          if(age===ftGlobals.retireAge){
+            if(nw>=ftGlobals.retireNW*1.2) msDots.push({color:'#16a34a',tip:'Need '+ftFmt(ftGlobals.retireNW)+' · Projected '+ftFmt(nw)+' · On track'});
+            else if(nw>=ftGlobals.retireNW) msDots.push({color:'#d97706',tip:'Need '+ftFmt(ftGlobals.retireNW)+' · Projected '+ftFmt(nw)+' · Tight'});
+            else msDots.push({color:'#dc2626',tip:'Need '+ftFmt(ftGlobals.retireNW)+' · Projected '+ftFmt(nw)+' · Shortfall'});
+          }
+          const isBuy=propScheds.some(({p})=>p.purchaseAge===age);
+          out.push({age,income,partner,living,housing,kids:Math.round(kids),healthcare:Math.round(healthcare),netsav,freeSpend,nw,liquidNW,realEstateEquity:Math.round(realEstateEquity),cumSav:Math.round(cumSav),ms,msDots,isBuy,ot:ot+extraPmt,k401Bal:Math.round(k401Bal),taxTip,discTooltip});
         }
         return out;
       }
 
-      // ── Timeline ────────────────────────────────────────────────────
+      // ── Timeline (Option B: phase-segment bar) ──────────────────────
       function ftRenderTimeline() {
-        const minAge=25,maxAge=65,span=maxAge-minAge;
-        const evColors={job:'#6366f1',partner:'#8b5cf6',house:'#d97706',child:'#16a34a',oneTime:'#0891b2'};
-        const sorted=ftLifeEvents.filter(e=>e.type!=='oneTime').slice().sort((a,b)=>a.age-b.age);
-        const phases=[];
-        const jobAge=ftLifeEvents.find(e=>e.type==='job')?.age??26;
-        if(jobAge>minAge) phases.push({start:minAge,end:jobAge,color:'#94a3b8'});
-        for(let i=0;i<sorted.length;i++){
-          const ev=sorted[i];const start=Math.max(minAge,ev.age);const end=Math.min(i<sorted.length-1?sorted[i+1].age:maxAge,maxAge);
-          if(start<maxAge) phases.push({start,end,color:evColors[ev.type]||'#94a3b8'});
-        }
-        const phaseHtml=phases.map(p=>{const l=(p.start-minAge)/span*100,w=(p.end-p.start)/span*100;return '<div class="ft-tl-phase" style="left:'+l.toFixed(1)+'%;width:'+Math.max(0,w).toFixed(1)+'%;background:'+p.color+'"></div>';}).join('');
-        const dotHtml=ftLifeEvents.map(ev=>{const pct=(ev.age-minAge)/span*100;if(pct<0||pct>100)return '';return '<div class="ft-tl-dot" style="left:'+pct.toFixed(1)+'%;background:'+(evColors[ev.type]||'#94a3b8')+'" title="age '+ev.age+'"><div class="ft-tl-lbl">'+ev.age+'</div></div>';}).join('');
-        return '<div class="ft-timeline"><div class="ft-tl-track">'+phaseHtml+'</div>'+dotHtml+'</div>';
+        const minAge=25, maxAge=100, span=maxAge-minAge;
+        const evColors={partner:'#8b5cf6',child:'#16a34a',oneTime:'#0891b2',healthcare:'#e55a00'};
+        // Phase segments
+        const sortedPhases=ftExpPhases.slice().sort((a,b)=>a.startAge-b.startAge);
+        const phaseSegs=sortedPhases.map((ph,i)=>{
+          const s=Math.max(minAge,ph.startAge), e=Math.min(maxAge,ph.endAge===999?maxAge:ph.endAge);
+          if(s>=maxAge) return '';
+          const l=(s-minAge)/span*100, w=(e-s)/span*100;
+          const col=FT_PHASE_PALETTE[i%FT_PHASE_PALETTE.length];
+          const isActive=ftActivePhaseId===ph.id;
+          const label=ph.name||'Phase';
+          const tipLines='<b>'+label+'</b><br>age '+ph.startAge+'–'+(ph.endAge===999?'∞':ph.endAge)+'<br>$'+(ph.monthlyLiving||0).toLocaleString()+'/mo living'+(ph.renting?' · $'+(ph.monthlyRent||0).toLocaleString()+'/mo rent':'');
+          return '<div class="ft-tl-seg'+(isActive?' active':'')+'" style="left:'+l.toFixed(1)+'%;width:'+Math.max(0.5,w).toFixed(1)+'%;background:'+col+(isActive?';outline:2px solid '+col+';outline-offset:2px':'')+'" onclick="ftClickPhase(\''+ph.id+'\')" data-tip="'+tipLines.replace(/"/g,'&quot;')+'">'
+            +'<span class="ft-tl-seg-lbl">'+label+'</span>'
+            +'</div>';
+        }).join('');
+        // Event dots
+        const allDots=[
+          ...ftLifeEvents.map(ev=>({age:ev.age,color:evColors[ev.type]||'#94a3b8',label:(ev.type==='partner'?'partner':ev.type==='child'?'child':ev.label||ev.type)})),
+          ...ftProperties.map(p=>({age:p.purchaseAge,color:'#d97706',label:p.name})),
+          ...ftIncomeStreams.filter(s=>!s.ongoing||s.startAge>minAge).map(s=>({age:s.startAge,color:'#6366f1',label:s.name}))
+        ];
+        const dotHtml=allDots.map(d=>{
+          const pct=(d.age-minAge)/span*100;
+          if(pct<0||pct>100) return '';
+          return '<div class="ft-tl-dot" style="left:'+pct.toFixed(1)+'%;background:'+d.color+'" title="'+d.label+' · age '+d.age+'"><div class="ft-tl-lbl">'+d.age+'</div></div>';
+        }).join('');
+        // Age axis ticks
+        const ticks=[25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100].map(a=>{
+          const pct=(a-minAge)/span*100;
+          return '<div style="position:absolute;left:'+pct.toFixed(1)+'%;transform:translateX(-50%);font-size:9px;color:var(--ink4);top:4px">'+a+'</div>';
+        }).join('');
+        return '<div class="ft-tl-wrap" style="position:relative;width:100%;max-width:100%;overflow:hidden">'
+          +'<div class="ft-timeline" style="margin-bottom:32px"><div class="ft-tl-track">'+phaseSegs+'</div>'+dotHtml+'</div>'
+          +'<div style="position:relative;height:16px;margin-top:-20px">'+ticks+'</div>'
+          +'</div>';
+      }
+
+      function ftClickPhase(id) {
+        ftActivePhaseId = ftActivePhaseId===id ? null : id;
+        ftRenderPanel();
       }
 
       // ── Event cards ─────────────────────────────────────────────────
-      const ftEvColors={job:'#6366f1',partner:'#8b5cf6',house:'#d97706',child:'#16a34a',oneTime:'#0891b2'};
+      const ftEvColors={partner:'#8b5cf6',child:'#16a34a',oneTime:'#0891b2',healthcare:'#e55a00'};
+
+      // ── Income stream card ──────────────────────────────────────────
+      function ftRenderStreamCard(s) {
+        const cls=s.expanded?'expanded':'';
+        const typeColors={salary:'#4E61A8',freelance:'#6040A0',passive:'#1E7A7A',rental:'#C0884A'};
+        const col=typeColors[s.incomeType]||'#4E61A8';
+        const endLabel=s.ongoing?'ongoing':'ends age '+(s.endAge??'—');
+        const types=['salary','freelance','passive'];
+        const typeOpts=types.map(t=>'<option value="'+t+'"'+(s.incomeType===t?' selected':'')+'>'+t+'</option>').join('');
+        const rmBtn='<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveStream(\''+s.id+'\')" title="Remove">✕</button>';
+        return '<div class="ft-ev-card '+cls+'" id="ft-sc-'+s.id+'">'
+          +'<div class="ft-ev-card-hdr" onclick="ftToggleStreamExpand(\''+s.id+'\')">'
+          +'<div class="ft-ev-dot" style="background:'+col+'"></div>'
+          +'<span class="ft-ev-age-lbl">age '+s.startAge+'</span>'
+          +'<span class="ft-ev-title">'+s.name+'</span>'
+          +'<span class="ft-ev-summary">'+endLabel+' · '+ftFmt(s.annual)+'/yr</span>'
+          +'<span class="ft-ev-impact pos">+'+ftFmt(s.annual)+'/yr</span>'
+          +rmBtn+'<span class="ft-ev-chevron">▶</span></div>'
+          +'<div class="ft-ev-body">'
+          +'<div class="ft-ev-fr"><label>Name</label><input type="text" value="'+s.name+'" oninput="ftUpdateStream(\''+s.id+'\',\'name\',this.value)"></div>'
+          +'<div class="ft-ev-fr"><label>Start age</label><input type="number" value="'+s.startAge+'" oninput="ftUpdateStream(\''+s.id+'\',\'startAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
+          +'<div class="ft-ev-fr"><label>Ongoing</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(s.ongoing?' checked':'')+' onchange="ftUpdateStream(\''+s.id+'\',\'ongoing\',this.checked);ftRenderPanel()"> ongoing</label>'
+          +(s.ongoing?'':'<label style="margin-left:8px">End age</label><input type="number" value="'+(s.endAge||65)+'" oninput="ftUpdateStream(\''+s.id+'\',\'endAge\',+this.value)" style="width:65px"><span style="font-size:11px;color:var(--ink3)">yrs</span>')+'</div>'
+          +'<div class="ft-ev-fr"><label>Annual amount</label><input type="number" value="'+s.annual+'" oninput="ftUpdateStream(\''+s.id+'\',\'annual\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
+          +'<div class="ft-ev-fr"><label>Growth rate / yr</label><input type="number" value="'+(s.growth||0)+'" step="0.5" oninput="ftUpdateStream(\''+s.id+'\',\'growth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
+          +'<div class="ft-ev-fr"><label>Income type</label><select onchange="ftUpdateStream(\''+s.id+'\',\'incomeType\',this.value)">'+typeOpts+'</select></div>'
+          +'<div class="ft-ev-fr"><label>401k eligible</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(s.eligible401k?' checked':'')+' onchange="ftUpdateStream(\''+s.id+'\',\'eligible401k\',this.checked)"> Yes — 401k contribution deducted in years this is active</label></div>'
+          +'</div></div>';
+      }
+
+      // ── Property card ───────────────────────────────────────────────
+      function ftRenderPropertyCard(p) {
+        const cls=p.expanded?'expanded':'';
+        const downCash=Math.round(p.price*p.downPct/100+p.price*0.03);
+        const mort=ftCalcPropMortgage(p);
+        const sched=ftCalcPropSchedule(p);
+        const extras=p.extraPayments||[];
+        const extrasExpanded=p.extrasExpanded||false;
+        const epRows=extras.map((ep,pi)=>'<div class="ft-ev-fr"><label>Age</label><input type="number" value="'+ep.age+'" oninput="ftUpdatePropExtra(\''+p.id+'\','+pi+',\'age\',+this.value)" style="width:65px"><label style="margin-left:8px">Amount</label><input type="number" value="'+ep.amount+'" oninput="ftUpdatePropExtra(\''+p.id+'\','+pi+',\'amount\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span><label style="margin-left:8px">Label</label><input type="text" value="'+(ep.label||'')+'" oninput="ftUpdatePropExtra(\''+p.id+'\','+pi+',\'label\',this.value)" style="flex:1;min-width:60px"><button class="ft-rm-btn" onclick="ftRemovePropExtra(\''+p.id+'\','+pi+')">✕</button></div>').join('');
+        const rmBtn='<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveProperty(\''+p.id+'\')" title="Remove">✕</button>';
+        return '<div class="ft-ev-card '+cls+'" id="ft-pc-'+p.id+'">'
+          +'<div class="ft-ev-card-hdr" onclick="ftTogglePropExpand(\''+p.id+'\')">'
+          +'<div class="ft-ev-dot" style="background:#d97706"></div>'
+          +'<span class="ft-ev-age-lbl">age '+p.purchaseAge+'</span>'
+          +'<span class="ft-ev-title">'+p.name+'</span>'
+          +'<span class="ft-ev-summary">'+ftFmt(p.price)+' · '+p.propType+'</span>'
+          +'<span class="ft-ev-impact neg">-'+ftFmt(downCash)+' upfront</span>'
+          +rmBtn+'<span class="ft-ev-chevron">▶</span></div>'
+          +'<div class="ft-ev-body">'
+          +'<div class="ft-ev-fr"><label>Name</label><input type="text" value="'+p.name+'" oninput="ftUpdateProperty(\''+p.id+'\',\'name\',this.value)"></div>'
+          +'<div class="ft-ev-fr"><label>Purchase age</label><input type="number" value="'+p.purchaseAge+'" oninput="ftUpdateProperty(\''+p.id+'\',\'purchaseAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
+          +'<div class="ft-ev-fr"><label>Home price</label><input type="number" value="'+p.price+'" oninput="ftUpdateProperty(\''+p.id+'\',\'price\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
+          +'<div class="ft-ev-fr"><label>Down payment</label><input type="number" value="'+p.downPct+'" oninput="ftUpdateProperty(\''+p.id+'\',\'downPct\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
+          +'<div class="ft-ev-fr"><label>Mortgage rate</label><input type="number" value="'+p.mrate+'" step="0.1" oninput="ftUpdateProperty(\''+p.id+'\',\'mrate\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
+          +'<div class="ft-ev-fr"><label>Mortgage term</label><input type="number" value="'+(p.termYrs||30)+'" oninput="ftUpdateProperty(\''+p.id+'\',\'termYrs\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
+          +'<div class="ft-ev-fr"><label>Type</label><div style="display:flex;gap:5px"><button class="ft-chip '+(p.propType==='primary'?'on':'')+'" onclick="ftUpdateProperty(\''+p.id+'\',\'propType\',\'primary\');ftRenderPanel()">Primary home</button><button class="ft-chip '+(p.propType==='investment'?'on':'')+'" onclick="ftUpdateProperty(\''+p.id+'\',\'propType\',\'investment\');ftRenderPanel()">Investment</button></div></div>'
+          +'<div class="ft-ev-fr"><label>Appreciation / yr</label><input type="number" value="'+(p.appreciation||4)+'" step="0.5" oninput="ftUpdateProperty(\''+p.id+'\',\'appreciation\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
+          +(p.propType==='investment'?'<div class="ft-ev-fr"><label>Monthly rental income</label><input type="number" value="'+(p.rentalMonthly||0)+'" oninput="ftUpdateProperty(\''+p.id+'\',\'rentalMonthly\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/mo</span></div><div class="ft-ev-fr"><label>Rental income growth / yr</label><input type="number" value="'+(p.rentalGrowth||3)+'" step="0.5" oninput="ftUpdateProperty(\''+p.id+'\',\'rentalGrowth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>':'')
+          +'<div id="ft-prop-pill-'+p.id+'" class="ft-ev-pill">Down+closing='+ftFmt(downCash)+'  ·  '+ftFmt(Math.round(mort/12))+'/mo  ·  Payoff age '+(sched.payoffAge??'—')+'  ·  Saves '+ftFmt(sched.interestSaved)+'</div>'
+          +'<div style="border-top:1px solid var(--border);margin:10px 0 6px"></div>'
+          +'<div style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px" onclick="ftTogglePropExtras(\''+p.id+'\')">'
+          +'<span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Extra lump sum payments</span>'
+          +'<span style="font-size:9px;color:var(--ink3);transition:transform .15s;'+(extrasExpanded?'transform:rotate(90deg)':'')+'">▶</span>'
+          +'</div>'
+          +'<div style="display:'+(extrasExpanded?'block':'none')+'" id="ft-prex-'+p.id+'">'
+          +epRows
+          +'<button class="ft-ev-add-btn" onclick="ftAddPropExtra(\''+p.id+'\')" style="margin-top:4px">+ add lump sum payment</button>'
+          +'</div>'
+          +'</div></div>';
+      }
+
+      // ── Phase card (expanded from timeline click) ───────────────────
+      function ftRenderPhaseCard(ph, idx) {
+        const col=FT_PHASE_PALETTE[idx%FT_PHASE_PALETTE.length];
+        const benchmark=FT_CITY_BENCHMARKS[ph.location?.trim()]||0;
+        return '<div class="ft-ph-card" style="border-left:3px solid '+col+';padding:14px 16px;background:var(--surface);border-radius:var(--r);margin-bottom:6px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+          +'<span style="font-size:12px;font-weight:600;color:var(--ink)">'+ph.name+'</span>'
+          +'<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\''+ph.id+'\')" title="Delete phase">✕</button>'
+          +'</div>'
+          +'<div class="ft-ev-fr"><label>Phase name</label><input type="text" value="'+ph.name+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'name\',this.value)"></div>'
+          +'<div class="ft-ev-fr"><label>Start age</label><input type="number" value="'+ph.startAge+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'startAge\',+this.value)" style="width:65px"><label style="margin-left:8px">End age</label><input type="number" value="'+(ph.endAge===999?'':ph.endAge)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'endAge\',this.value===\'\'?999:+this.value)" placeholder="∞" style="width:65px"></div>'
+          +'<div class="ft-ev-fr"><label>Monthly living cost</label><input type="number" value="'+(ph.monthlyLiving||0)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (excl. rent &amp; housing)</span></div>'
+          +(benchmark?'<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">median single-person spend in '+(ph.location||'')+'&thinsp;~$'+benchmark.toLocaleString()+'/mo</div>':'')
+          +'<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(ph.renting?' checked':'')+' onchange="ftUpdateExpPhase(\''+ph.id+'\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
+          +(ph.renting?'<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="'+(ph.monthlyRent||0)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>':'')
+          +'<div class="ft-ev-fr"><label>Location</label><input type="text" value="'+(ph.location||'')+'" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'location\',this.value)"></div>'
+          +'</div>';
+      }
 
       function ftRenderEventCard(ev) {
         const col=ftEvColors[ev.type]||'#94a3b8';
         const cls=ev.expanded?'expanded':'';
         let title='',summary='',impact='',impactCls='pos',body='';
-        if(ev.type==='job'){
-          title='Job'; summary='age '+ev.age+' · $'+(ev.tc/1000).toFixed(0)+'k TC'; impact='+'+ftFmt(ev.tc)+'/yr';
-          body='<div class="ft-ev-fr"><label>Start age</label><input type="number" value="'+ev.age+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            +'<div class="ft-ev-fr"><label>Starting TC</label><input type="number" value="'+ev.tc+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'tc\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
-            +'<div class="ft-ev-fr"><label>TC growth rate / yr</label><input type="number" value="'+ev.tcg+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'tcg\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-            +'<div class="ft-ev-note">Compounds annually. Click any gross income cell in the table to override a specific year.</div>';
-        } else if(ev.type==='partner'){
+        if(ev.type==='partner'){
           title='Partner'; summary='age '+ev.age+' · $'+(ev.income/1000).toFixed(0)+'k'; impact='+'+ftFmt(ev.income)+'/yr';
           body='<div class="ft-ev-fr"><label>Age when partner joins</label><input type="number" value="'+ev.age+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
             +'<div class="ft-ev-fr"><label>Partner starting income</label><input type="number" value="'+ev.income+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'income\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
             +'<div class="ft-ev-fr"><label>Partner income growth / yr</label><input type="number" value="'+ev.incomeGrowth+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'incomeGrowth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
             +'<div class="ft-ev-note">Added to household income from this age. Click any partner cell in the table to override a specific year.</div>';
-        } else if(ev.type==='house'){
-          const downCash=Math.round(ev.price*ev.downPct/100+ev.price*0.03);
-          const mort=ftCalcMortgage(ev);
-          const loan=Math.round(ev.price*(1-ev.downPct/100));
-          title='Buy a Home'; summary='age '+ev.age+' · '+ftFmt(ev.price); impact='-'+ftFmt(downCash)+' upfront'; impactCls='neg';
-          const sched=ftCalcMortgageSchedule(ev);
-          const extras=(ev.extraPayments||[]);
-          const extrasExpanded=ev.extrasExpanded||false;
-          const epRows=extras.map((ep,pi)=>'<div class="ft-ev-fr"><label>Age</label><input type="number" value="'+ep.age+'" oninput="ftUpdateExtraPayment(\''+ev.id+'\','+pi+',\'age\',+this.value)" style="width:65px"><label style="margin-left:8px">Amount</label><input type="number" value="'+ep.amount+'" oninput="ftUpdateExtraPayment(\''+ev.id+'\','+pi+',\'amount\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span><label style="margin-left:8px">Label</label><input type="text" value="'+(ep.label||'')+'" oninput="ftUpdateExtraPayment(\''+ev.id+'\','+pi+',\'label\',this.value)" style="flex:1"><button class="ft-rm-btn" onclick="ftRemoveExtraPayment(\''+ev.id+'\','+pi+')">✕</button></div>').join('');
-          body='<div class="ft-ev-fr"><label>Age at purchase</label><input type="number" value="'+ev.age+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            +'<div class="ft-ev-fr"><label>Home price</label><input type="number" value="'+ev.price+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'price\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
-            +'<div class="ft-ev-fr"><label>Down payment</label><input type="number" value="'+ev.downPct+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'downPct\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-            +'<div class="ft-ev-fr"><label>Mortgage rate</label><input type="number" value="'+ev.mrate+'" step="0.1" oninput="ftUpdateEvent(\''+ev.id+'\',\'mrate\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-            +'<div class="ft-ev-fr"><label>Mortgage term</label><input type="number" value="'+ev.termYrs+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'termYrs\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            +'<div class="ft-ev-pill" id="ft-house-calc-pill">Down + closing = '+ftFmt(downCash)+'  ·  Monthly = '+ftFmt(Math.round(mort/12))+'/mo  ·  Loan = '+ftFmt(loan)+'</div>'
-            +'<div style="border-top:1px solid var(--border);margin:10px 0 6px"></div>'
-            +'<div style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px" onclick="ftToggleExtraPayments(\''+ev.id+'\')">'
-            +'<span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Extra payments</span>'
-            +'<span id="ft-ep-chev-'+ev.id+'" style="font-size:9px;color:var(--ink3);transition:transform .15s;'+(extrasExpanded?'transform:rotate(90deg)':'')+'">▶</span>'
-            +'</div>'
-            +'<div id="ft-ep-body-'+ev.id+'" style="display:'+(extrasExpanded?'block':'none')+'">'
-            +epRows
-            +'<button class="ft-ev-add-btn" onclick="ftAddExtraPayment(\''+ev.id+'\')" style="margin-top:4px">+ add lump sum payment</button>'
-            +'<div id="ft-house-extra-pill" class="ft-ev-pill" style="margin-top:6px">Payoff at age '+(sched.payoffAge??'—')+'  ·  Saves '+ftFmt(sched.interestSaved)+' in interest</div>'
-            +'</div>'
-            +'<div class="ft-ev-note">House readiness bar shows whether your NW at the buy age covers down + closing.</div>';
         } else if(ev.type==='child'){
           const totalCost=(ev.stages||[]).reduce((s,st)=>s+st.annual*(st.childAgeEnd-st.childAgeStart),0);
           title='Child'; summary='born when you\'re '+ev.age; impact='~'+ftFmt(totalCost)+' total'; impactCls='neg';
@@ -7769,13 +8037,19 @@
         } else if(ev.type==='oneTime'){
           const sign=ev.amount>=0?'+':'';
           title=ev.label||'One-time Event'; summary='age '+ev.age+' · '+(ev.oneTimeType||'event');
-          impact=sign+ftFmt(ev.amount); impactCls=ev.amount>=0?'pos':'neg';
+          impact=sign+ftFmt(ev.amount||0); impactCls=(ev.amount||0)>=0?'pos':'neg';
           body='<div class="ft-ev-fr"><label>Age</label><input type="number" value="'+ev.age+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            +'<div class="ft-ev-fr"><label>Amount (negative = expense)</label><input type="number" value="'+ev.amount+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'amount\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
+            +'<div class="ft-ev-fr"><label>Amount (negative = expense)</label><input type="number" value="'+(ev.amount||0)+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'amount\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
             +'<div class="ft-ev-fr"><label>Label</label><input type="text" value="'+(ev.label||'')+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'label\',this.value)"></div>'
             +'<div class="ft-ev-fr"><label>Type</label><select onchange="ftUpdateEvent(\''+ev.id+'\',\'oneTimeType\',this.value)">'+['bonus','inheritance','large purchase','extra mortgage payment','other'].map(t=>'<option '+(ev.oneTimeType===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>';
+        } else if(ev.type==='healthcare'){
+          title=ev.label||'Healthcare'; summary='age '+ev.startAge+'–'+ev.endAge;
+          impact='-'+ftFmt((ev.monthlyCost||0)*12)+'/yr'; impactCls='neg';
+          body='<div class="ft-ev-fr"><label>Label</label><input type="text" value="'+(ev.label||'')+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'label\',this.value)"></div>'
+            +'<div class="ft-ev-fr"><label>Start age</label><input type="number" value="'+(ev.startAge||30)+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'startAge\',+this.value)" style="width:70px"><label style="margin-left:8px">End age</label><input type="number" value="'+(ev.endAge||35)+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'endAge\',+this.value)" style="width:70px"></div>'
+            +'<div class="ft-ev-fr"><label>Monthly cost</label><input type="number" value="'+(ev.monthlyCost||0)+'" oninput="ftUpdateEvent(\''+ev.id+'\',\'monthlyCost\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>';
         }
-        const rmBtn=ev.removable!==false?'<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveEvent(\''+ev.id+'\')" title="Remove event">✕</button>':'';
+        const rmBtn='<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveEvent(\''+ev.id+'\')" title="Remove event">✕</button>';
         return '<div class="ft-ev-card '+cls+'" id="ft-evc-'+ev.id+'">'
           +'<div class="ft-ev-card-hdr" onclick="ftToggleEventExpand(\''+ev.id+'\')">'
           +'<div class="ft-ev-dot" style="background:'+col+'"></div>'
@@ -7787,67 +8061,73 @@
           +'<div class="ft-ev-body">'+body+'</div></div>';
       }
 
-      // ── Expense phases ──────────────────────────────────────────────
-      function ftRenderExpPhasesHtml() {
-        if(!ftExpPhases.length) return '<div style="font-size:12px;color:var(--ink3)">No phases yet.</div>';
-        return ftExpPhases.map(ph=>'<div class="ft-ph-row">'
-          +'<input type="text" value="'+ph.name+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'name\',this.value)" placeholder="Phase name">'
-          +'<span style="font-size:10.5px;color:var(--ink3)">age</span>'
-          +'<input type="number" value="'+ph.startAge+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'startAge\',+this.value)" placeholder="from">'
-          +'<span style="font-size:10.5px;color:var(--ink3)">–</span>'
-          +'<input type="number" value="'+(ph.endAge===999?'':ph.endAge)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'endAge\',this.value===\'\'?999:+this.value)" placeholder="∞" style="width:44px">'
-          +'<input type="number" value="'+ph.annual+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'annual\',+this.value)" title="Annual living (excl. rent)">'
-          +'<span style="font-size:10.5px;color:var(--ink3)">living</span>'
-          +'<input type="number" value="'+(ph.rentMonthly||0)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'rentMonthly\',+this.value)" style="width:64px" title="Monthly rent">'
-          +'<span style="font-size:10.5px;color:var(--ink3)">/mo rent</span>'
-          +'<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\''+ph.id+'\')">✕</button>'
-          +'</div>').join('');
-      }
-
       // ── Panel render ────────────────────────────────────────────────
       function ftRenderPanel() {
         const el=document.getElementById('ft-assumptions-panel');
         if(!el) return;
-        const jobEv=ftLifeEvents.find(e=>e.type==='job');
         const pEv=ftLifeEvents.find(e=>e.type==='partner');
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
-        const sampleGross=ftGetIncome(jobEv?.age??26);
-        const autoTaxPct=(ftCalcAutoTax(sampleGross,!!pEv)*100).toFixed(1);
+        const sampleGross=ftGetIncome(ftGlobals.currentAge);
+        const married=!!(pEv&&pEv.age<=ftGlobals.currentAge);
+        const autoTaxPct=(ftCalcAutoTax(sampleGross,married)*100).toFixed(1);
         const taxCtrl=ftGlobals.taxMode==='auto'
           ?'<span class="ft-tax-auto">auto ~'+autoTaxPct+'%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'flat\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Override</button>'
           :'<input class="ft-gl-inp" type="number" value="'+ftGlobals.taxFlat+'" oninput="ftGlobals.taxFlat=+this.value;ftRecalc()" style="width:70px"> <span class="ft-gl-unit">%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'auto\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Auto</button>';
-        const addBtns=[
-          !pEv?'<button class="btn bsm" onclick="ftAddEvent(\'partner\')">+ partner</button>':'',
-          !houseEv?'<button class="btn bsm" onclick="ftAddEvent(\'house\')">+ house</button>':'',
-          '<button class="btn bsm" onclick="ftAddEvent(\'child\')">+ child</button>',
-          '<button class="btn bsm" onclick="ftAddEvent(\'oneTime\')">+ one-time event</button>'
-        ].filter(Boolean).join('');
         const discControls=ftGlobals.discMode==='rate'
-          ?'<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.savingsRate+'" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Discretionary = (net income − saved − all expenses) ÷ 12.</div>'
+          ?'<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.savingsRate+'" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
           :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% rule — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr</div>';
+        // Retirement tax section
+        const rothBal=ftGlobals.rothBalanceOv!==null?ftGlobals.rothBalanceOv:(S?.accounts?.find(a=>a.type==='brokerage-roth')?.balance||0);
+        const retTax=ftGlobals.retireTaxEnabled?'<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
+          +'<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="'+rothBal+'" oninput="ftGlobals.rothBalanceOv=+this.value;ftRecalc()" style="width:110px">'+(ftGlobals.rothBalanceOv===null?'<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv='+rothBal+';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>':'<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>')+'</div>'
+          +'<div class="ft-ev-fr"><label>401k tax rate</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.k401TaxRate||25)+'" oninput="ftGlobals.k401TaxRate=+this.value;ftRecalc()"><span class="ft-gl-unit">%</span></div>'
+          +'<div class="ft-ev-fr"><label>Capital gains rate</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.capGainsRate||15)+'" oninput="ftGlobals.capGainsRate=+this.value;ftRecalc()"><span class="ft-gl-unit">%</span></div>'
+          +'</div>':'';
+        // Social Security
+        const ssCtrl=ftGlobals.ssEnabled?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><div class="ft-ev-fr"><label>Monthly benefit</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.ssBenefit||2500)+'" oninput="ftGlobals.ssBenefit=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$/mo</span></div><div class="ft-ev-fr"><label>Claim age</label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.ssClaimAge||67)+'" oninput="ftGlobals.ssClaimAge=+this.value;ftSaveScenario();ftRecalc()" style="width:65px"><span class="ft-gl-unit">yrs</span></div></div>':'';
+        // Active phase card
+        const activePh=ftActivePhaseId?ftExpPhases.find(p=>p.id===ftActivePhaseId):null;
+        const activePhi=activePh?ftExpPhases.indexOf(activePh):0;
+        const phaseCardHtml=activePh?ftRenderPhaseCard(activePh,activePhi):'<div style="font-size:11.5px;color:var(--ink3);padding:10px 0">Click a phase segment above to edit it.</div>';
         el.innerHTML='<div class="ft-panel-grid">'
           +'<div>'
           +'<div class="ft-panel-hdr">Global Settings</div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Your current age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.currentAge+'" oninput="ftGlobals.currentAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
-          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Starting TC (at age '+(jobEv?.age??26)+')</label><input class="ft-gl-inp" type="number" value="'+(jobEv?.tc??150000)+'" oninput="ftUpdateEvent(\'job\',\'tc\',+this.value)"><span class="ft-gl-unit">$/yr</span></div>'
-          +'<div class="ft-gl-row"><label class="ft-gl-lbl">TC growth rate / yr</label><input class="ft-gl-inp" type="number" value="'+(jobEv?.tcg??8)+'" oninput="ftUpdateEvent(\'job\',\'tcg\',+this.value)"><span class="ft-gl-unit">%</span></div>'
-          +'<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.f401k+'" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div>'
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.f401k+'" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span><span style="font-size:10px;color:var(--ink3)">(streams w/ 401k eligible)</span></div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Real portfolio return<br><span style="font-size:10px;color:var(--ink3)">inflation-adjusted</span></label><input class="ft-gl-inp" type="number" value="'+ftGlobals.roc+'" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Expense inflation / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.expInflation+'" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Tax rate</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'+taxCtrl+'</div></div>'
-          +(ftGlobals.taxMode==='auto'?'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">US federal + CA state marginal · recalculates each year</div>':'')
+          +(ftGlobals.taxMode==='auto'?'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">US federal + CA state marginal · 401k-eligible streams reduce taxable income</div>':'')
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.numFormat!=='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip '+(ftGlobals.numFormat==='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
           +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
-          +'<div class="ft-panel-hdr" style="margin-bottom:8px">Monthly Discretionary Budget</div>'
+          +'<div class="ft-panel-hdr" style="margin-bottom:8px">Free to Spend Budget</div>'
           +'<div class="ft-gl-row" style="align-items:flex-start;margin-bottom:10px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.discMode==='rate'?'on':'')+'" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip '+(ftGlobals.discMode==='goal'?'on':'')+'" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
           +discControls
+          +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
+          +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.ssEnabled?' checked':'')+' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
+          +ssCtrl
+          +'<div style="height:1px;background:var(--border);margin:10px 0 10px"></div>'
+          +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.retireTaxEnabled?' checked':'')+' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel()"> enabled</label></div>'
+          +retTax
           +'</div>'
           +'<div>'
+          +'<div class="ft-panel-hdr">Income Streams</div>'
+          +ftIncomeStreams.map(s=>ftRenderStreamCard(s)).join('')
+          +'<button class="ft-ev-add-btn" onclick="ftAddStream()" style="margin-bottom:14px">+ add income stream</button>'
+          +'<div class="ft-panel-hdr">Properties</div>'
+          +ftProperties.map(p=>ftRenderPropertyCard(p)).join('')
+          +'<button class="ft-ev-add-btn" onclick="ftAddProperty()" style="margin-bottom:14px">+ add property</button>'
           +'<div class="ft-panel-hdr">Life Events</div>'
-          +ftRenderTimeline()
           +ftLifeEvents.map(ev=>ftRenderEventCard(ev)).join('')
-          +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;margin-bottom:20px">'+addBtns+'</div>'
+          +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;margin-bottom:20px">'
+          +(!pEv?'<button class="btn bsm" onclick="ftAddEvent(\'partner\')">+ partner</button>':'')
+          +'<button class="btn bsm" onclick="ftAddEvent(\'child\')">+ child</button>'
+          +'<button class="btn bsm" onclick="ftAddEvent(\'oneTime\')">+ one-time event</button>'
+          +'<button class="btn bsm" onclick="ftAddEvent(\'healthcare\')">+ healthcare</button>'
+          +'</div>'
           +'<div class="ft-panel-hdr">Expense Phases</div>'
-          +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:8px">Base living expenses by phase. <em>Living</em> excludes rent — rent is the separate housing column before house purchase.</div>'
-          +ftRenderExpPhasesHtml()
+          +'<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px">Each phase is a life stage with its own spending level. Click a segment on the timeline bar to edit. Living expenses inflate at '+ftGlobals.expInflation+'%/yr.</div>'
+          +ftRenderTimeline()
+          +phaseCardHtml
           +'<button class="ft-ev-add-btn" onclick="ftAddExpPhase()" style="margin-top:6px">+ add phase</button>'
           +'</div></div>';
       }
@@ -7857,33 +8137,43 @@
         const r35=ftRows.find(r=>r.age===35)||ftRows[0];
         const r55=ftRows.find(r=>r.age===55)||ftRows[0];
         const r65=ftRows.find(r=>r.age===65)||ftRows[0];
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
-        const downNeeded=houseEv?Math.round(houseEv.price*houseEv.downPct/100+houseEv.price*0.03):0;
+        const rRet=ftRows.find(r=>r.age===ftGlobals.retireAge)||ftRows[ftRows.length-1];
         const el=document.getElementById('ft-metrics');
         if(!el) return;
+        // Spendable NW calculation
+        let spendableHtml='';
+        if(ftGlobals.retireTaxEnabled&&rRet){
+          const rothBal=ftGlobals.rothBalanceOv!==null?ftGlobals.rothBalanceOv:(S?.accounts?.find(a=>a.type==='brokerage-roth')?.balance||0);
+          const k401=rRet.k401Bal||0;
+          const totalNW=rRet.nw;
+          const taxable=Math.max(0,totalNW-rothBal-k401);
+          const spendable=Math.round(rothBal+k401*(1-ftGlobals.k401TaxRate/100)+taxable*(1-ftGlobals.capGainsRate/100));
+          spendableHtml='<div style="font-size:10.5px;color:var(--teal);margin-top:3px">~'+ftFmt(spendable)+' spendable after est. taxes</div>';
+        }
         el.innerHTML='<div class="csm"><div class="lbl">Net worth at 35</div><div class="mnum mt-1 '+((r35?.nw??0)>0?'pos':'neg')+'">'+MT(ftFmt(r35?.nw??0),'future')+'</div></div>'
           +'<div class="csm"><div class="lbl">Net worth at 55</div><div class="mnum mt-1 pos">'+MT(ftFmt(r55?.nw??0),'future')+'</div></div>'
-          +'<div class="csm"><div class="lbl">Net worth at 65</div><div class="mnum mt-1 pos">'+MT(ftFmt(r65?.nw??0),'future')+'</div></div>'
-          +'<div class="csm"><div class="lbl">Cash needed at closing</div><div class="mnum mt-1">'+(houseEv?ftFmt(downNeeded):'—')+'<div class="mut" style="font-size:10px;margin-top:2px">'+(houseEv?houseEv.downPct+'% down + 3% closing':'no house event')+'</div></div></div>';
+          +'<div class="csm"><div class="lbl">Net worth at '+ftGlobals.retireAge+'</div><div class="mnum mt-1 pos">'+MT(ftFmt(rRet?.nw??0),'future')+'</div>'+spendableHtml+'</div>'
+          +'<div class="csm"><div class="lbl">Net worth at 65</div><div class="mnum mt-1 pos">'+MT(ftFmt(r65?.nw??0),'future')+'</div></div>';
       }
 
-      // ── House readiness bar ─────────────────────────────────────────
+      // ── House readiness (shows primary property readiness) ──────────
       function ftRenderHouseBar() {
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
         const barRow=document.getElementById('ft-house-bar-row'),buyCtrl=document.getElementById('ft-buy-ctrl');
-        if(!houseEv){if(barRow)barRow.style.display='none';if(buyCtrl)buyCtrl.style.display='none';return;}
+        const primaryProp=ftProperties.find(p=>p.propType==='primary');
+        if(!primaryProp){if(barRow)barRow.style.display='none';if(buyCtrl)buyCtrl.style.display='none';return;}
         if(barRow)barRow.style.display='flex';if(buyCtrl)buyCtrl.style.display='flex';
-        const downNeeded=Math.round(houseEv.price*houseEv.downPct/100+houseEv.price*0.03);
-        const hRow=ftRows.find(r=>r.age===houseEv.age)||ftRows[0];
+        const downNeeded=Math.round(primaryProp.price*primaryProp.downPct/100+primaryProp.price*0.03);
+        const hRow=ftRows.find(r=>r.age===primaryProp.purchaseAge)||ftRows[0];
         const nwAtBuy=hRow?hRow.nw:0;
         const pct=Math.min(100,Math.max(0,Math.round(nwAtBuy/downNeeded*100)));
         const ready=pct>=100;
         const fill=document.getElementById('ft-house-fill'),pctEl=document.getElementById('ft-house-pct'),noteEl=document.getElementById('ft-house-note');
         if(fill)fill.style.cssText='width:'+pct+'%;background:'+(ready?'var(--teal)':'var(--gold)');
         if(pctEl){pctEl.textContent=pct+'%';pctEl.style.color=ready?'var(--teal)':'var(--gold)';}
-        if(noteEl){noteEl.textContent=ready?'NW at age '+houseEv.age+' covers the '+ftFmt(downNeeded)+' needed.':'At age '+houseEv.age+', NW is '+ftFmt(nwAtBuy)+' — short '+ftFmt(downNeeded-nwAtBuy)+'.';noteEl.style.color=ready?'var(--teal)':'var(--gold)';}
+        if(noteEl){noteEl.textContent=ready?primaryProp.name+' at age '+primaryProp.purchaseAge+' — NW covers '+ftFmt(downNeeded)+' needed.':primaryProp.name+' at age '+primaryProp.purchaseAge+', NW is '+ftFmt(nwAtBuy)+' — short '+ftFmt(downNeeded-nwAtBuy)+'.';noteEl.style.color=ready?'var(--teal)':'var(--gold)';}
         const sl=document.getElementById('ft-buy-sl'),out=document.getElementById('ft-buy-out');
-        if(sl)sl.value=houseEv.age;if(out)out.textContent=houseEv.age;
+        if(sl){sl.value=primaryProp.purchaseAge;sl.min=ftGlobals.currentAge+1;}
+        if(out)out.textContent=primaryProp.purchaseAge;
       }
 
       // ── Chart ───────────────────────────────────────────────────────
@@ -7900,10 +8190,39 @@
 
       // ── Column chips ────────────────────────────────────────────────
       function ftRenderChips() {
-        const toggleable=['income','partner','living','housing','kids','netsav','nw','disc'];
+        const toggleable=['income','partner','living','housing','kids','netsav','nw','freeSpend'];
         const el=document.getElementById('ft-col-chips');
         if(!el) return;
         el.innerHTML=toggleable.map(c=>'<button class="ft-chip '+(ftColVis[c]?'on':'')+'" onclick="ftToggleCol(\''+c+'\')">'+ftColLabels[c]+'</button>').join('');
+      }
+
+      // ── Required savings card ───────────────────────────────────────
+      function ftRenderReqSavings() {
+        const el=document.getElementById('ft-req-savings-card');
+        if(!el) return;
+        const curAge=ftGlobals.currentAge;
+        const curRow=ftRows.find(r=>r.age===curAge+1)||ftRows[0];
+        const needToSave=curRow?Math.round(curRow.netsav):0;
+        // On-track: compare actual NW growth
+        const prevYearNW=ftRows.find(r=>r.age===curAge)?.nw;
+        const todayNW=ftGetTodayNW();
+        let onTrackHtml='<span style="color:var(--ink3)">—</span><div style="font-size:10px;color:var(--ink3);margin-top:2px">log a snapshot to track real progress</div>';
+        const snaps=S?.snapshots;
+        if(snaps&&snaps.length>=2){
+          const sorted=snaps.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+          const recent=sorted[sorted.length-1], prev=sorted[sorted.length-2];
+          const actualSaved=recent.nw-prev.nw;
+          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSaved)+'/yr</span>';
+        } else if(todayNW&&prevYearNW!==undefined){
+          const gap=todayNW-prevYearNW;
+          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(gap)+'/yr est.</span>';
+        }
+        const gapVal=curRow?curRow.netsav-(snaps&&snaps.length>=2?(snaps[snaps.length-1].nw-snaps[snaps.length-2].nw):0):0;
+        el.innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap">'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Need to save this year</div><div style="font-size:18px;font-weight:600;color:var(--ink);font-family:var(--mono)">'+ftFmt(needToSave)+'</div></div>'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">On track to save</div><div style="font-size:18px;font-weight:600">'+onTrackHtml+'</div></div>'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Gap</div><div style="font-size:18px;font-weight:600;color:'+(gapVal>=0?'#16a34a':'#dc2626')+';font-family:var(--mono)">'+(gapVal>=0?'+':'')+ftFmt(gapVal)+'</div></div>'
+          +'</div>';
       }
 
       // ── Table ───────────────────────────────────────────────────────
@@ -7911,39 +8230,68 @@
         const vis=ftColOrder.filter(c=>ftColVis[c]);
         const thead=document.getElementById('ft-thead'),tbody=document.getElementById('ft-tbody');
         if(!thead||!tbody) return;
-        thead.innerHTML='<tr>'+vis.map((c,i)=>'<th draggable="true" ondragstart="ftDs(event,'+i+')" ondragover="ftDov(event)" ondrop="ftDp(event,'+i+')" style="'+(c==='age'?'text-align:left':'')+'">'+ftColLabels[c]+'</th>').join('')+'<th style="width:22px"></th></tr>';
+        thead.innerHTML='<tr>'+vis.map((c,i)=>'<th draggable="true" ondragstart="ftDs(event,'+i+')" ondragover="ftDov(event)" ondrop="ftDp(event,'+i+')" style="'+(c==='age'?'text-align:left;position:sticky;left:0;background:var(--surface);z-index:2':'')+'">'+ftColLabels[c]+'</th>').join('')+'<th style="width:22px"></th></tr>';
         const curAge=ftGlobals.currentAge;
         const todayNW=ftGetTodayNW(), eoyNW=ftGetEoyNW();
         const todayOvd=ftNwTodayOv!==null, eoyOvd=ftNwEoyOv!==null;
-        const income0=ftGetIncome(curAge),partner0=ftGetPartnerIncome(curAge),living0=ftGetLiving(curAge);
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
-        const buyAge=houseEv?houseEv.age:Infinity, mort=ftCalcMortgage(houseEv);
-        const housing0=curAge>=buyAge?mort:ftGetRent(curAge);
+        // Calculate all values for the special rows
+        const income0=ftGetIncome(curAge), partner0=ftGetPartnerIncome(curAge), living0=ftGetLiving(curAge);
+        let housing0=0;
+        for(const p of ftProperties){
+          if(p.propType==='primary'&&curAge>=p.purchaseAge){const sc=ftCalcPropSchedule(p);if(curAge<sc.payoffAge)housing0+=ftCalcPropMortgage(p);}
+        }
+        if(!housing0) housing0=ftGetRent(curAge);
+        let kids0=0;
+        for(const ce of ftLifeEvents.filter(e=>e.type==='child')){const ca=curAge-ce.age;if(ca>=0)for(const st of ce.stages){if(ca>=st.childAgeStart&&ca<st.childAgeEnd){kids0+=st.annual;break;}}}
+        const married0=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
+        const has401k0=ftHas401kEligible(curAge);
+        const c401k0=has401k0?ftGlobals.f401k:0;
+        const taxable0=Math.max(0,income0+partner0-c401k0);
+        const tax0=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable0,married0):ftGlobals.taxFlat/100;
+        const net0=(income0+partner0)*(1-tax0)-c401k0;
+        const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:0;
+        const free0=Math.round((net0-housing0-kids0-reqSav0)/12);
         function specialCell(c,nwVal,isOvd,which){
-          if(c==='age'&&which==='today') return '<td class="ft-ms-age">'+curAge+' <span class="ft-live-badge">live</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'today\')" title="clear override">✕</button>':'')+'</td>';
-          if(c==='age'&&which==='eoy') return '<td class="ft-ms-age">'+curAge+' <span style="font-size:10px;color:var(--ink3);margin-left:3px">eoy</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'eoy\')" title="clear override">✕</button>':'')+'</td>';
+          const stickyStyle=c==='age'?'position:sticky;left:0;background:'+(which==='today'?'var(--fll)':'rgba(99,102,241,.04)')+';z-index:1':'';
+          if(c==='age'&&which==='today') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span class="ft-live-badge">live</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'today\')" title="clear">✕</button>':'')+'</td>';
+          if(c==='age'&&which==='eoy') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span style="font-size:10px;color:var(--ink3);margin-left:3px">eoy</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'eoy\')" title="clear">✕</button>':'')+'</td>';
           if(c==='nw') return '<td class="ft-editable'+(isOvd?' ft-cell-ov':'')+'" onclick="ftStartEditNwOv(\''+which+'\')" title="click to override">'+MT(ftFmt(nwVal),'future')+'</td>';
           if(c==='income') return '<td>'+ftFmt(income0)+'</td>';
           if(c==='partner') return '<td>'+ftFmt(partner0)+'</td>';
           if(c==='living') return '<td>'+ftFmt(living0)+'</td>';
           if(c==='housing') return '<td>'+ftFmt(housing0)+'</td>';
+          if(c==='kids') return '<td>'+ftFmt(kids0)+'</td>';
+          if(c==='freeSpend') return '<td style="color:'+(free0>0?'#16a34a':free0<0?'#dc2626':'var(--ink)')+';font-family:var(--mono)">'+(free0>0?'+':'')+ftFmt(free0)+'/mo</td>';
+          if(c==='netsav'&&which==='today') return '<td style="color:var(--ink3)">—</td>';
+          if(c==='netsav') return '<td class="pos">'+ftFmt(Math.round(reqSav0))+'</td>';
           return '<td style="color:var(--ink3)">—</td>';
         }
         const todayRow='<tr class="ft-today-row">'+vis.map(c=>specialCell(c,todayNW,todayOvd,'today')).join('')+'<td></td></tr>';
         const eoyRow='<tr class="ft-eoy-row">'+vis.map(c=>specialCell(c,eoyNW,eoyOvd,'eoy')).join('')+'<td></td></tr>';
         const regularRows=ftRows.map((r,ri)=>{
-          const hasMile=r.ms.length>0, icons=r.ms.join(' · ');
+          const hasMile=r.ms.length>0;
+          const msDotsHtml=r.msDots.map(d=>'<span class="ft-ms-dot" style="background:'+d.color+'" title="'+d.tip.replace(/"/g,'&quot;')+'"></span>').join('');
           const ovInc=ftOvMap[r.age]?.income!==undefined, ovPart=ftOvMap[r.age]?.partner!==undefined;
-          return '<tr class="'+(r.isHouse?'ft-house-row':'')+(r.disc<0?' ft-disc-neg-row':'')+'">'
+          const nwTip=r.realEstateEquity>0?'liquid NW: '+ftFmt(r.liquidNW)+' · real estate equity: '+ftFmt(r.realEstateEquity)+' · total: '+ftFmt(r.nw):'';
+          return '<tr class="'+(r.isBuy?'ft-house-row':'')+(r.freeSpend<0?' ft-disc-neg-row':'')+'">'
             +vis.map(c=>{
-              if(c==='age') return '<td class="'+(hasMile?'ft-ms-age':'')+'">'+r.age+(icons?' <span style="font-size:10px;color:var(--ink3)">'+icons+'</span>':'')+(r.ot?' <span style="font-size:10px;color:var(--gold)">●</span>':'')+'</td>';
-              if(c==='nw') return '<td class="'+(r.nw<0?'neg':'')+'">'+MT(ftFmt(r.nw),'future')+'</td>';
+              if(c==='age') return '<td class="'+(hasMile?'ft-ms-age':'')+'" style="position:sticky;left:0;background:'+(r.freeSpend<0?'rgba(220,38,38,.05)':r.isBuy?'rgba(138,104,32,.05)':'var(--surface)')+';z-index:1">'
+                +r.age
+                +(r.ms.length?' <span style="font-size:10px;color:var(--ink3)">'+r.ms.join(' · ')+'</span>':'')
+                +(r.ot?' <span style="font-size:10px;color:var(--gold)">●</span>':'')
+                +msDotsHtml
+                +(r.age===ftGlobals.retireAge?' <span style="font-size:9px;background:var(--fll);color:var(--f);padding:1px 4px;border-radius:3px;font-weight:600">retire</span>':'')
+                +'</td>';
+              if(c==='nw'){
+                const tip=nwTip.replace(/"/g,'&quot;');
+                return '<td class="'+(r.nw<0?'neg':'')+'"'+(tip?' title="'+tip+'" style="cursor:help"':'')+'>'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
+              }
               if(c==='netsav') return '<td class="'+(r.netsav<0?'neg':'pos')+'">'+(r.netsav>=0?'+':'')+ftFmt(r.netsav)+'</td>';
-              if(c==='income') return '<td class="ft-editable'+(ovInc?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'income\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'income\')" title="click to override · dblclick to clear">'+ftFmt(r.income)+'</td>';
+              if(c==='income') return '<td class="ft-editable'+(ovInc?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'income\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'income\')" title="'+r.taxTip.replace(/"/g,'&quot;')+' · click to override">'+(r.income?ftFmt(r.income):ftFmt(0))+'</td>';
               if(c==='partner') return '<td class="ft-editable'+(ovPart?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'partner\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'partner\')" title="click to override · dblclick to clear">'+ftFmt(r.partner)+'</td>';
-              if(c==='disc'){
-                if(r.disc<0){const tip=(r.discTooltip||'').replace(/'/g,'&#39;');return '<td><span class="ft-disc-warn">⚠ '+ftFmt(r.disc)+'/mo<span class="ft-wtt">'+(tip||'Monthly discretionary is negative this year.')+'</span></span></td>';}
-                return '<td style="color:'+(r.disc>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.disc>0?'+':'')+ftFmt(r.disc)+'/mo</td>';
+              if(c==='freeSpend'){
+                if(r.freeSpend<0){const tip=(r.discTooltip||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');return '<td><span class="ft-disc-warn">⚠ '+ftFmt(r.freeSpend)+'/mo<span class="ft-wtt">'+(tip||'Free to spend is negative this year.')+'</span></span></td>';}
+                return '<td style="color:'+(r.freeSpend>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.freeSpend>0?'+':'')+ftFmt(r.freeSpend)+'/mo</td>';
               }
               return '<td>'+ftFmt(r[c])+'</td>';
             }).join('')
@@ -7958,64 +8306,48 @@
         if(ev){ev.expanded=!ev.expanded;ftRenderPanel();}
       }
 
-      function ftToggleExtraPayments(evId) {
-        const ev=ftLifeEvents.find(e=>e.id===evId);
-        if(ev){ev.extrasExpanded=!ev.extrasExpanded;ftRenderPanel();}
+      // Income stream handlers
+      function ftToggleStreamExpand(id){const s=ftIncomeStreams.find(x=>x.id===id);if(s){s.expanded=!s.expanded;ftRenderPanel();}}
+      function ftUpdateStream(id,field,val){const s=ftIncomeStreams.find(x=>x.id===id);if(s){s[field]=val;ftRecalc();}}
+      function ftRemoveStream(id){ftIncomeStreams=ftIncomeStreams.filter(x=>x.id!==id);ftRenderPanel();ftRecalc();}
+      function ftAddStream(){
+        ftIncomeStreams.push({id:ftUid(),name:'New stream',startAge:ftGlobals.currentAge+1,endAge:null,ongoing:true,annual:50000,growth:3,eligible401k:false,incomeType:'salary',expanded:true});
+        ftRenderPanel();ftRecalc();
       }
 
-      function ftAddExtraPayment(evId) {
-        const ev=ftLifeEvents.find(e=>e.id===evId);
-        if(!ev) return;
-        if(!ev.extraPayments) ev.extraPayments=[];
-        ev.extraPayments.push({age:ftGlobals.currentAge+5,amount:50000,label:'Extra payment'});
-        ev.extrasExpanded=true;
-        ftRenderPanel(); ftRecalc();
-      }
-
-      function ftRemoveExtraPayment(evId,pi) {
-        const ev=ftLifeEvents.find(e=>e.id===evId);
-        if(ev?.extraPayments){ev.extraPayments.splice(pi,1);ftRenderPanel();ftRecalc();}
-      }
-
-      function ftUpdateExtraPayment(evId,pi,field,val) {
-        const ev=ftLifeEvents.find(e=>e.id===evId);
-        if(ev?.extraPayments?.[pi]){ev.extraPayments[pi][field]=val;ftRecalc();}
+      // Property handlers
+      function ftTogglePropExpand(id){const p=ftProperties.find(x=>x.id===id);if(p){p.expanded=!p.expanded;ftRenderPanel();}}
+      function ftUpdateProperty(id,field,val){const p=ftProperties.find(x=>x.id===id);if(p){p[field]=val;ftRecalc();}}
+      function ftRemoveProperty(id){ftProperties=ftProperties.filter(x=>x.id!==id);ftRenderPanel();ftRecalc();}
+      function ftTogglePropExtras(id){const p=ftProperties.find(x=>x.id===id);if(p){p.extrasExpanded=!p.extrasExpanded;ftRenderPanel();}}
+      function ftAddPropExtra(id){const p=ftProperties.find(x=>x.id===id);if(p){if(!p.extraPayments)p.extraPayments=[];p.extraPayments.push({age:p.purchaseAge+5,amount:50000,label:'Extra payment'});p.extrasExpanded=true;ftRenderPanel();ftRecalc();}}
+      function ftRemovePropExtra(propId,pi){const p=ftProperties.find(x=>x.id===propId);if(p?.extraPayments){p.extraPayments.splice(pi,1);ftRenderPanel();ftRecalc();}}
+      function ftUpdatePropExtra(propId,pi,field,val){const p=ftProperties.find(x=>x.id===propId);if(p?.extraPayments?.[pi]){p.extraPayments[pi][field]=val;ftRecalc();}}
+      function ftAddProperty(){
+        ftProperties.push({id:ftUid(),name:'New property',purchaseAge:35,price:1200000,downPct:20,mrate:6.5,termYrs:30,propType:'primary',appreciation:4,rentalMonthly:0,rentalGrowth:3,extraPayments:[],extrasExpanded:false,expanded:true});
+        ftRenderPanel();ftRecalc();
       }
 
       function ftAddEvent(type) {
         const defaults={
-          partner:{type:'partner',age:30,income:150000,incomeGrowth:6,removable:true,expanded:true},
-          house:{type:'house',age:33,price:2000000,downPct:20,mrate:6.5,termYrs:30,extraPayments:[],extrasExpanded:false,removable:true,expanded:true},
-          child:{type:'child',age:32,removable:true,expanded:true,stages:[{name:'Daycare',childAgeStart:0,childAgeEnd:5,annual:30000},{name:'School + activities',childAgeStart:5,childAgeEnd:18,annual:12000},{name:'College',childAgeStart:18,childAgeEnd:22,annual:40000}]},
-          oneTime:{type:'oneTime',age:30,amount:50000,label:'Bonus',oneTimeType:'bonus',removable:true,expanded:true}
+          partner:{type:'partner',age:30,income:150000,incomeGrowth:6,expanded:true},
+          child:{type:'child',age:32,expanded:true,stages:[{name:'Daycare',childAgeStart:0,childAgeEnd:5,annual:30000},{name:'School',childAgeStart:5,childAgeEnd:18,annual:12000},{name:'College',childAgeStart:18,childAgeEnd:22,annual:40000}]},
+          oneTime:{type:'oneTime',age:30,amount:50000,label:'Bonus',oneTimeType:'bonus',expanded:true},
+          healthcare:{type:'healthcare',startAge:30,endAge:35,monthlyCost:500,label:'Between jobs',expanded:true}
         };
         if(!defaults[type]) return;
         const newEv={...defaults[type],id:ftUid()};
         if(type==='child') newEv.stages=defaults.child.stages.map(s=>({...s}));
-        if(type==='house') newEv.extraPayments=[];
         ftLifeEvents.push(newEv);
         if(type==='partner') ftAutoUpdateExpPhases(newEv.age);
         ftRenderPanel(); ftRecalc();
       }
 
-      function ftRemoveEvent(id) {
-        ftLifeEvents=ftLifeEvents.filter(e=>e.id!==id);
-        ftRenderPanel(); ftRecalc();
-      }
+      function ftRemoveEvent(id){ftLifeEvents=ftLifeEvents.filter(e=>e.id!==id);ftRenderPanel();ftRecalc();}
 
-      function ftUpdateEvent(id,field,val) {
+      function ftUpdateEvent(id,field,val){
         const ev=ftLifeEvents.find(e=>e.id===id);
-        if(!ev) return;
-        ev[field]=val;
-        if(ev.type==='house'&&field==='age'){
-          const sl=document.getElementById('ft-buy-sl'),out=document.getElementById('ft-buy-out');
-          if(sl)sl.value=val;if(out)out.textContent=val;
-        }
-        if(ev.type==='house'){
-          const pill=document.getElementById('ft-house-calc-pill');
-          if(pill){const downCash=Math.round(ev.price*ev.downPct/100+ev.price*0.03);const mort=ftCalcMortgage(ev);pill.textContent='Down + closing = '+ftFmt(downCash)+'  ·  Monthly = '+ftFmt(Math.round(mort/12))+'/mo  ·  Loan = '+ftFmt(Math.round(ev.price*(1-ev.downPct/100)));}
-        }
-        ftRecalc();
+        if(ev){ev[field]=val;ftRecalc();}
       }
 
       function ftUpdateStage(evId,si,field,val){const ev=ftLifeEvents.find(e=>e.id===evId);if(ev?.stages){ev.stages[si][field]=val;ftRecalc();}}
@@ -8024,29 +8356,29 @@
 
       function ftAddExpPhase() {
         const maxStart=ftExpPhases.reduce((m,p)=>Math.max(m,p.startAge),25);
-        ftExpPhases.push({id:ftUid(),name:'New phase',startAge:maxStart+1,endAge:999,annual:60000,rentMonthly:3000});
-        ftRenderPanel(); ftRecalc();
+        const newId=ftUid();
+        ftExpPhases.push({id:newId,name:'New phase',startAge:maxStart+1,endAge:999,monthlyLiving:2000,monthlyRent:2000,renting:true,location:''});
+        ftActivePhaseId=newId;
+        ftRenderPanel();ftRecalc();
       }
-      function ftRemoveExpPhase(id){ftExpPhases=ftExpPhases.filter(p=>p.id!==id);ftRenderPanel();ftRecalc();}
-      function ftUpdateExpPhase(id,field,val){const ph=ftExpPhases.find(p=>p.id===id);if(ph){ph[field]=val;ftRecalc();}}
+      function ftRemoveExpPhase(id){ftExpPhases=ftExpPhases.filter(p=>p.id!==id);if(ftActivePhaseId===id)ftActivePhaseId=null;ftRenderPanel();ftRecalc();}
+      function ftUpdateExpPhase(id,field,val){const ph=ftExpPhases.find(p=>p.id===id);if(ph){ph[field]=val;if(field!=='name'&&field!=='location')ftRecalc();}}
 
       function ftAutoUpdateExpPhases(partnerAge) {
         const existing=ftExpPhases.find(p=>p.startAge>=partnerAge);
         if(!existing){
           const soloPhase=ftExpPhases.find(p=>p.startAge<partnerAge&&p.endAge===999);
           if(soloPhase)soloPhase.endAge=partnerAge-1;
-          ftExpPhases.push({id:ftUid(),name:'With partner',startAge:partnerAge,endAge:999,annual:108000,rentMonthly:5000});
+          ftExpPhases.push({id:ftUid(),name:'With partner',startAge:partnerAge,endAge:999,monthlyLiving:3500,monthlyRent:3500,renting:true,location:''});
         }
       }
 
-      function ftSetTaxMode(mode){ftGlobals.taxMode=mode;ftRenderPanel();ftRecalc();}
+      function ftSetTaxMode(mode){ftGlobals.taxMode=mode;ftSaveScenario();ftRenderPanel();ftRecalc();}
       function ftSetDiscMode(mode){ftGlobals.discMode=mode;ftSaveScenario();ftRenderPanel();ftRecalc();}
 
       function ftSetBuyAge(v){
-        const houseEv=ftLifeEvents.find(e=>e.type==='house');
-        if(houseEv)houseEv.age=v;
-        const out=document.getElementById('ft-buy-out');if(out)out.textContent=v;
-        ftRecalc();
+        const p=ftProperties.find(x=>x.propType==='primary');
+        if(p){p.purchaseAge=v;const out=document.getElementById('ft-buy-out');if(out)out.textContent=v;ftRecalc();}
       }
 
       function ftStartEdit(td,field,age){
@@ -8103,11 +8435,18 @@
         ftRenderHouseBar();
         ftRenderChart();
         ftRenderChips();
+        ftRenderReqSavings();
         ftRenderTable();
         ftSaveScenario();
       }
 
       function renderFuture(){
+        // Reset to defaults before loading
+        ftIncomeStreams=[{id:'is0',name:'Career',startAge:26,endAge:null,ongoing:true,annual:150000,growth:8,eligible401k:false,incomeType:'salary',expanded:false}];
+        ftProperties=[];
+        ftLifeEvents=[];
+        ftExpPhases=[{id:'ph0',name:'Solo',startAge:25,endAge:999,monthlyLiving:2000,monthlyRent:2000,renting:true,location:''}];
+        Object.assign(ftGlobals,{f401k:23000,roc:5,taxMode:'auto',taxFlat:35,discMode:'rate',savingsRate:25,retireAge:60,retireNW:3000000,currentAge:25,expInflation:2.5,ssEnabled:false,ssBenefit:2500,ssClaimAge:67,rothBalanceOv:null,k401TaxRate:25,capGainsRate:15,retireTaxEnabled:false,numFormat:'compact'});
         if(S?.future_scenarios?.length){
           ftScenarios=JSON.parse(JSON.stringify(S.future_scenarios));
           ftActiveScenarioId=S.future_active_scenario||ftScenarios[0].id;
@@ -8116,7 +8455,6 @@
         } else {
           ftScenarios=[{id:'sc0',name:'Base case',data:null}];
           ftActiveScenarioId='sc0';
-          // migrate old S.future settings if present
           if(S?.future){
             if(S.future.discMode!==undefined)ftGlobals.discMode=S.future.discMode;
             if(S.future.savingsRate!==undefined)ftGlobals.savingsRate=S.future.savingsRate;
@@ -8124,12 +8462,13 @@
             if(S.future.retireNW!==undefined)ftGlobals.retireNW=S.future.retireNW;
           }
         }
+        ftActivePhaseId=null;
         ftRenderScenarioBar(); ftRenderPanel(); ftRecalc();
       }
 
       function ftToggleCol(c){ftColVis[c]=!ftColVis[c];ftRenderChips();ftRenderTable();}
-      function ftAppendRow(){const l=ftRows[ftRows.length-1];ftRows.push({...l,age:l.age+1,ms:[],isHouse:false,ot:0,disc:0,discTooltip:''});ftRenderTable();ftRenderChart();}
-      function ftInsertAfter(ri){const r=ftRows[ri];const nx=ftRows[ri+1];const na=nx?Math.ceil((r.age+nx.age)/2):r.age+1;ftRows.splice(ri+1,0,{...r,age:na,ms:[],isHouse:false,ot:0});ftRenderTable();}
+      function ftAppendRow(){const l=ftRows[ftRows.length-1];if(!l)return;ftRows.push({...l,age:l.age+1,ms:[],msDots:[],isBuy:false,ot:0,freeSpend:0,discTooltip:''});ftRenderTable();ftRenderChart();}
+      function ftInsertAfter(ri){const r=ftRows[ri];const nx=ftRows[ri+1];const na=nx?Math.ceil((r.age+nx.age)/2):r.age+1;ftRows.splice(ri+1,0,{...r,age:na,ms:[],msDots:[],isBuy:false,ot:0});ftRenderTable();}
       function ftDs(e,i){ftDragSrc=i;e.dataTransfer.effectAllowed='move';}
       function ftDov(e){e.preventDefault();}
       function ftDp(e,i){
