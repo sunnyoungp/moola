@@ -4436,9 +4436,17 @@
 
         // 1-Time Auto-Population of legacy_id for backward compatibility
         const payloads = [];
-        acAccounts.forEach(acc => {
+        acAccounts.forEach((acc, idx) => {
           if (acc.legacy_id == null) {
-            const matched = S.accounts?.find(a => a.name === acc.name);
+            let matched = S.accounts?.find(a => a.name === acc.name);
+            // Fallback match: if we can't find by name, try to map by identical index,
+            // or simply grab the first available account to prevent complete data loss.
+            if (!matched && S.accounts && S.accounts[idx]) {
+              matched = S.accounts[idx];
+            } else if (!matched && S.accounts && S.accounts.length > 0) {
+              matched = S.accounts[0];
+            }
+            
             if (matched) {
               acc.legacy_id = matched.id;
               payloads.push({ id: acc.id, legacy_id: matched.id });
