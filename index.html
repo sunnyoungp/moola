@@ -10324,7 +10324,7 @@
       function ftUpdateStream(id, field, val) { const s = ftIncomeStreams.find(x => x.id === id); if (s) { s[field] = val; ftSaveScenario(); ftRecalc(); } }
       function ftRemoveStream(id) { ftIncomeStreams = ftIncomeStreams.filter(x => x.id !== id); ftRenderPanel(); ftRecalc(); }
       function ftAddStream() {
-        ftIncomeStreams.push({ id: ftUid(), name: 'New stream', startAge: ftGlobals.projectionStartingAge + 1, endAge: null, ongoing: true, annual: 50000, growth: 3, eligible401k: false, incomeType: 'salary', takeHomeOverride: null, expanded: true });
+        ftIncomeStreams.push({ id: ftUid(), name: 'New stream', startAge: ftGlobals.projectionStartingAge, endAge: null, ongoing: true, annual: 50000, growth: 3, eligible401k: false, incomeType: 'salary', takeHomeOverride: null, expanded: true });
         ftRenderPanel(); ftRecalc();
       }
 
