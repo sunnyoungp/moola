@@ -10501,12 +10501,21 @@
       }
 
       function ftClearAllOverrides() {
-        ftOvMap = {};
-        ftNwTodayOv = null;
-        ftNwEoyOv = null;
         if (confirm('Clear all manual cell edits (income, partner, net worth overrides)?\n\nThis will reset the projection to pure calculated values from your settings.')) {
+          // Clear runtime overrides
+          ftOvMap = {};
+          ftNwTodayOv = null;
+          ftNwEoyOv = null;
+          
+          // Also clear from saved scenario data to prevent them from reloading
+          const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
+          if (sc && sc.data) {
+            sc.data.overrides = { _nwToday: null, _nwEoy: null };
+          }
+          
+          ftPersistScenarios();
           ftRecalc();
-          alert('✓ Overrides cleared. Projection recalculated fresh.');
+          alert('✓ All overrides cleared and saved. Projection recalculated from settings.');
         }
       }
 
