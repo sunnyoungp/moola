@@ -7935,21 +7935,71 @@
           let extraPmt=0;
           for(const {p} of propScheds) for(const ep of (p.extraPayments||[])) if(ep.age===age) extraPmt+=ep.amount;
           // Required savings
-          let reqSav=0, discTooltip='';
+          // actualSavings = what NW actually grows by each year (income minus all expenses, no savings rate applied)
+          const actualSavings=netHH-living-housing-kids-healthcare;
+          let reqSav=0, discTooltip='', goalAhead=false, noGoals=false;
           if(ftGlobals.discMode==='rate'){
             reqSav=netHH*ftGlobals.savingsRate/100;
           } else {
+            // Goal-based: find the maximum required annual savings across all future goals (binding constraint)
             const pmts=[];
-            if(ftGlobals.retireAge>age){const r=ftCalcPMT(liquidNW,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);if(r>0)pmts.push({label:'retirement target '+ftFmt(ftGlobals.retireNW)+' by age '+ftGlobals.retireAge,req:r});}
-            for(const {p} of propScheds){
-              if(p.purchaseAge>age){const dc=Math.round(p.price*p.downPct/100+p.price*0.03);const r=ftCalcPMT(liquidNW,dc,p.purchaseAge-age,roc);if(r>0)pmts.push({label:'"'+p.name+'" at age '+p.purchaseAge+' requires '+ftFmt(dc)+' cash',req:r});}
+            // 1. Retirement NW target
+            if(ftGlobals.retireAge>age && ftGlobals.retireNW>0){
+              const r=ftCalcPMT(liquidNW,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);
+              if(r>0)pmts.push({label:'retirement '+ftFmt(ftGlobals.retireNW)+' by age '+ftGlobals.retireAge,req:r});
             }
-            if(pmts.length){const top=pmts.reduce((a,b)=>a.req>b.req?a:b);reqSav=top.req;discTooltip=top.label;}
+            // 2. Property down payments + closing costs
+            for(const {p} of propScheds){
+              if(p.purchaseAge>age){
+                const dc=Math.round(p.price*p.downPct/100+p.price*0.03);
+                const r=ftCalcPMT(liquidNW,dc,p.purchaseAge-age,roc);
+                if(r>0)pmts.push({label:'"'+p.name+'" down+closing '+ftFmt(dc)+' at age '+p.purchaseAge,req:r});
+              }
+            }
+            // 3. One-time negative events (large purchases, sabbaticals, etc.)
+            for(const oe of oneTimeEvs){
+              if(oe.age>age && (oe.amount||0)<0){
+                const cost=Math.abs(oe.amount);
+                const r=ftCalcPMT(liquidNW,cost,oe.age-age,roc);
+                if(r>0)pmts.push({label:'"'+(oe.label||'large purchase')+'" '+ftFmt(cost)+' at age '+oe.age,req:r});
+              }
+            }
+            // 4. College costs — child cost stages named "college" treated as lump-sum goals
+            for(const ce of childEvs){
+              for(const st of (ce.stages||[])){
+                if(st.name&&st.name.toLowerCase().includes('college')){
+                  const parentAgeAtCollege=ce.age+st.childAgeStart;
+                  if(parentAgeAtCollege>age){
+                    const totalCost=st.annual*(st.childAgeEnd-st.childAgeStart);
+                    const r=ftCalcPMT(liquidNW,totalCost,parentAgeAtCollege-age,roc);
+                    if(r>0)pmts.push({label:'college (child born age '+ce.age+') '+ftFmt(totalCost)+' at age '+parentAgeAtCollege,req:r});
+                  }
+                }
+              }
+            }
+            const rateSavComp=netHH*ftGlobals.savingsRate/100;
+            if(pmts.length){
+              const top=pmts.reduce((a,b)=>a.req>b.req?a:b);
+              reqSav=top.req;
+              goalAhead=reqSav<rateSavComp;
+              // Cap so freeSpend never goes below $0 from goal pressure alone
+              const maxGoalSav=Math.max(0,netHH-housing-kids-healthcare);
+              const capped=reqSav>maxGoalSav;
+              if(capped) reqSav=maxGoalSav;
+              discTooltip='goal-based minimum: '+ftFmt(Math.round(top.req))
+                +' · binding: '+top.label
+                +' · you\'re saving: '+ftFmt(Math.round(actualSavings))
+                +' · '+(actualSavings>=top.req?'ahead by '+ftFmt(Math.round(actualSavings-top.req)):'behind by '+ftFmt(Math.round(top.req-actualSavings)))
+                +(capped?' · ⚠ goal requires more than this year\'s income':'');
+            } else {
+              noGoals=true; goalAhead=true; reqSav=0;
+              discTooltip='No active goals — NW growth covers all targets. Saving '+ftFmt(Math.round(actualSavings))+'/yr.';
+            }
           }
           const netsav=Math.round(reqSav);
           const freeSpend=Math.round((netHH-housing-kids-healthcare-netsav)/12);
-          if(freeSpend<0&&!discTooltip) discTooltip=ftGlobals.discMode==='rate'?'After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.':'Savings target exceeds net income this year.';
-          else if(freeSpend<0&&discTooltip) discTooltip+=' — needs '+ftFmt(netsav)+'/yr, leaving '+ftFmt(freeSpend*12)+'/yr after fixed costs.';
+          if(freeSpend<0&&ftGlobals.discMode==='rate'&&!discTooltip) discTooltip='After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.';
+          else if(freeSpend<0&&ftGlobals.discMode==='rate'&&discTooltip) discTooltip+=' — needs '+ftFmt(netsav)+'/yr, leaving '+ftFmt(freeSpend*12)+'/yr after fixed costs.';
           // Tax tooltip
           const fedAmt=ftGlobals.taxMode==='auto'?ftCalcFedTax(taxable,married):taxable*ftGlobals.taxFlat/100;
           const caAmt=ftGlobals.taxMode==='auto'?ftCalcCATax(taxable,married):0;
@@ -7969,7 +8019,6 @@
             }
           }
           // NW: liquid compounds + actual savings (income - ALL expenses)
-          const actualSavings=netHH-living-housing-kids-healthcare;
           let newLiq=liquidNW*(1+roc)+actualSavings+ot-extraPmt;
           for(const {p} of propScheds) if(p.purchaseAge===age) newLiq-=Math.round(p.price*p.downPct/100+p.price*0.03);
           liquidNW=Math.round(newLiq);
@@ -7999,7 +8048,7 @@
             else msDots.push({color:'#dc2626',tip:'Need '+ftFmt(ftGlobals.retireNW)+' · Projected '+ftFmt(nw)+' · Shortfall'});
           }
           const isBuy=propScheds.some(({p})=>p.purchaseAge===age);
-          out.push({age,income,partner,living,housing,kids:Math.round(kids),healthcare:Math.round(healthcare),netsav,freeSpend,nw,liquidNW,realEstateEquity:Math.round(realEstateEquity),cumSav:Math.round(cumSav),ms,msDots,isBuy,ot:ot+extraPmt,k401Bal:Math.round(k401Bal),taxTip,discTooltip});
+          out.push({age,income,partner,living,housing,kids:Math.round(kids),healthcare:Math.round(healthcare),netsav,freeSpend,nw,liquidNW,realEstateEquity:Math.round(realEstateEquity),cumSav:Math.round(cumSav),ms,msDots,isBuy,ot:ot+extraPmt,k401Bal:Math.round(k401Bal),taxTip,discTooltip,goalAhead,noGoals});
         }
         return out;
       }
@@ -8339,9 +8388,15 @@
         const taxCtrl=ftGlobals.taxMode==='auto'
           ?'<span class="ft-tax-auto">auto ~'+autoTaxPct+'%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'flat\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Override</button>'
           :'<input class="ft-gl-inp" type="number" value="'+ftGlobals.taxFlat+'" oninput="ftGlobals.taxFlat=+this.value;ftRecalc()" style="width:70px"> <span class="ft-gl-unit">%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'auto\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Auto</button>';
+        // Retirement conflict check for goal mode settings
+        const goalLastChildExpAge=ftLifeEvents.filter(e=>e.type==='child')
+          .flatMap(ce=>(ce.stages||[]).map(st=>ce.age+st.childAgeEnd))
+          .reduce((m,v)=>Math.max(m,v),0);
+        const goalRetireConflict=ftGlobals.discMode==='goal'&&ftGlobals.retireAge>0&&goalLastChildExpAge>ftGlobals.retireAge
+          ?'<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:6px">⚠ Retirement age '+ftGlobals.retireAge+' is before last child expense at age '+goalLastChildExpAge+' — extend retirement age or shorten child cost stages.</div>':'';
         const discControls=ftGlobals.discMode==='rate'
           ?'<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.savingsRate+'" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
-          :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% rule — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr</div>';
+          :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% withdrawal — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr in retirement spending</div>'+goalRetireConflict+'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
         const rothBal=ftGlobals.rothBalanceOv!==null?ftGlobals.rothBalanceOv:(S?.accounts?.find(a=>a.type==='brokerage-roth')?.balance||0);
         const retTax=ftGlobals.retireTaxEnabled?'<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
           +'<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="'+rothBal+'" oninput="ftGlobals.rothBalanceOv=+this.value;ftRecalc()" style="width:110px">'+(ftGlobals.rothBalanceOv===null?'<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv='+rothBal+';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>':'<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>')+'</div>'
@@ -8486,25 +8541,47 @@
         const curAge=ftGlobals.currentAge;
         const curRow=ftRows.find(r=>r.age===curAge+1)||ftRows[0];
         const needToSave=curRow?Math.round(curRow.netsav):0;
-        // On-track: compare actual NW growth
-        const prevYearNW=ftRows.find(r=>r.age===curAge)?.nw;
+        const isGoal=ftGlobals.discMode==='goal';
+        // No-goals fallback in goal mode
+        if(isGoal&&curRow?.noGoals){
+          el.innerHTML='<div style="font-size:12px;color:var(--ink3);line-height:1.6;padding:4px 0">Add a property, retirement target, or large purchase to use goal-based mode — showing full spending capacity (no savings constraint).</div>';
+          return;
+        }
+        // Retirement age conflict check
+        let conflictHtml='';
+        if(isGoal&&ftGlobals.retireAge>0){
+          const lastChildExpAge=ftLifeEvents.filter(e=>e.type==='child')
+            .flatMap(ce=>(ce.stages||[]).map(st=>ce.age+st.childAgeEnd))
+            .reduce((m,v)=>Math.max(m,v),0);
+          if(lastChildExpAge>ftGlobals.retireAge){
+            conflictHtml='<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:10px">⚠ Retirement age '+ftGlobals.retireAge+' is before last child expense at age '+lastChildExpAge+'. Adjust retirement age or child cost stages.</div>';
+          }
+        }
+        // On-track savings from snapshots or NW delta estimate
         const todayNW=ftGetTodayNW();
-        let onTrackHtml='<span style="color:var(--ink3)">—</span><div style="font-size:10px;color:var(--ink3);margin-top:2px">log a snapshot to track real progress</div>';
+        const prevYearNW=ftRows.find(r=>r.age===curAge)?.nw;
         const snaps=S?.snapshots;
+        let actualSavedVal=null;
+        let onTrackHtml='<span style="color:var(--ink3)">—</span><div style="font-size:10px;color:var(--ink3);margin-top:2px">log a snapshot to track real progress</div>';
         if(snaps&&snaps.length>=2){
           const sorted=snaps.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
           const recent=sorted[sorted.length-1], prev=sorted[sorted.length-2];
-          const actualSaved=recent.nw-prev.nw;
-          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSaved)+'/yr</span>';
+          actualSavedVal=recent.nw-prev.nw;
+          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSavedVal)+'/yr</span>';
         } else if(todayNW&&prevYearNW!==undefined){
-          const gap=todayNW-prevYearNW;
-          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(gap)+'/yr est.</span>';
+          actualSavedVal=todayNW-prevYearNW;
+          onTrackHtml='<span style="color:var(--ink);font-family:var(--mono)">'+ftFmt(actualSavedVal)+'/yr est.</span>';
         }
-        const gapVal=curRow?curRow.netsav-(snaps&&snaps.length>=2?(snaps[snaps.length-1].nw-snaps[snaps.length-2].nw):0):0;
-        el.innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap">'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Need to save this year</div><div style="font-size:18px;font-weight:600;color:var(--ink);font-family:var(--mono)">'+ftFmt(needToSave)+'</div></div>'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">On track to save</div><div style="font-size:18px;font-weight:600">'+onTrackHtml+'</div></div>'
-          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Gap</div><div style="font-size:18px;font-weight:600;color:'+(gapVal>=0?'#16a34a':'#dc2626')+';font-family:var(--mono)">'+(gapVal>=0?'+':'')+ftFmt(gapVal)+'</div></div>'
+        // Gap: in goal mode, positive = can spend more (ahead); in rate mode, positive = need to save more
+        const gapVal=isGoal?(actualSavedVal??0)-needToSave:needToSave-(actualSavedVal??0);
+        const lbl1=isGoal?'Minimum to save this year':'Need to save this year';
+        const lbl2=isGoal?'You\'re saving':'On track to save';
+        const lbl3=isGoal?'Gap (+ = can spend more)':'Gap';
+        el.innerHTML=conflictHtml
+          +'<div style="display:flex;gap:16px;flex-wrap:wrap">'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl1+'</div><div style="font-size:18px;font-weight:600;color:var(--ink);font-family:var(--mono)">'+ftFmt(needToSave)+'</div></div>'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl2+'</div><div style="font-size:18px;font-weight:600">'+onTrackHtml+'</div></div>'
+          +'<div style="flex:1;min-width:140px"><div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">'+lbl3+'</div><div style="font-size:18px;font-weight:600;color:'+(gapVal>=0?'#16a34a':'#dc2626')+';font-family:var(--mono)">'+(gapVal>=0?'+':'')+ftFmt(gapVal)+'</div></div>'
           +'</div>';
       }
 
@@ -8532,7 +8609,7 @@
         const taxable0=Math.max(0,income0+partner0-c401k0);
         const tax0=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable0,married0):ftGlobals.taxFlat/100;
         const net0=(income0+partner0)*(1-tax0)-c401k0;
-        const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:0;
+        const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:(ftRows[0]?.netsav||0);
         const free0=Math.round((net0-housing0-kids0-reqSav0)/12);
         function specialCell(c,nwVal,isOvd,which){
           const stickyStyle=c==='age'?'position:sticky;left:0;background:'+(which==='today'?'var(--fll)':'rgba(99,102,241,.04)')+';z-index:1':'';
@@ -8570,12 +8647,16 @@
                 const tip=nwTip.replace(/"/g,'&quot;');
                 return '<td class="'+(r.nw<0?'neg':'')+'"'+(tip?' title="'+tip+'" style="cursor:help"':'')+'>'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
               }
-              if(c==='netsav') return '<td class="'+(r.netsav<0?'neg':'pos')+'">'+(r.netsav>=0?'+':'')+ftFmt(r.netsav)+'</td>';
+              if(c==='netsav'){
+                const nsTip=ftGlobals.discMode==='goal'&&r.discTooltip?r.discTooltip.replace(/"/g,'&quot;'):'';
+                return '<td class="'+(r.netsav<0?'neg':'pos')+'"'+(nsTip?' title="'+nsTip+'" style="cursor:help"':'')+'>'+(r.netsav>=0?'+':'')+ftFmt(r.netsav)+'</td>';
+              }
               if(c==='income') return '<td class="ft-editable'+(ovInc?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'income\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'income\')" title="'+r.taxTip.replace(/"/g,'&quot;')+' · click to override">'+(r.income?ftFmt(r.income):ftFmt(0))+'</td>';
               if(c==='partner') return '<td class="ft-editable'+(ovPart?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'partner\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'partner\')" title="click to override · dblclick to clear">'+ftFmt(r.partner)+'</td>';
               if(c==='freeSpend'){
                 if(r.freeSpend<0){const tip=(r.discTooltip||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');return '<td><span class="ft-disc-warn">⚠ '+ftFmt(r.freeSpend)+'/mo<span class="ft-wtt">'+(tip||'Free to spend is negative this year.')+'</span></span></td>';}
-                return '<td style="color:'+(r.freeSpend>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.freeSpend>0?'+':'')+ftFmt(r.freeSpend)+'/mo</td>';
+                const aheadBadge=ftGlobals.discMode==='goal'&&r.goalAhead?'<span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600">ahead</span>':'';
+                return '<td style="color:'+(r.freeSpend>0?'#16a34a':'var(--ink)')+';font-family:var(--mono)">'+(r.freeSpend>0?'+':'')+ftFmt(r.freeSpend)+'/mo'+aheadBadge+'</td>';
               }
               return '<td>'+ftFmt(r[c])+'</td>';
             }).join('')
