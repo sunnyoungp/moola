@@ -5672,13 +5672,6 @@
         if (!S.tableGroupingMode) S.tableGroupingMode = 'category';
         if (!S.future) S.future = {};
         if (!S.future_scenarios) S.future_scenarios = [];
-        else {
-          S.future_scenarios.forEach(sc => {
-            if (sc?.data?.incomeStreams) {
-              sc.data.incomeStreams = ftSanitizeIncomeStreams(sc.data.incomeStreams);
-            }
-          });
-        }
 
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
@@ -9105,10 +9098,10 @@
         };
       }
 
-      function ftSanitizeIncomeStreams(streams) {
-        return JSON.parse(JSON.stringify(streams)).filter(s => {
-          return !(s.id === 'is0' && s.name === 'Career' && s.startAge === 26 && s.endAge === null && s.ongoing === true && s.annual === 150000 && s.growth === 8 && s.eligible401k === false && s.incomeType === 'salary' && (s.takeHomeOverride === undefined || s.takeHomeOverride === null));
-        });
+      function ftSaveScenario() {
+        const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
+        if (sc) sc.data = ftGetScenarioData();
+        ftPersistScenarios();
       }
 
       function ftLoadScenarioData(d) {
@@ -9116,13 +9109,7 @@
         if (d.globals) Object.assign(ftGlobals, d.globals);
         // Load income streams (new format) — migrate old job event
         if (d.incomeStreams) {
-          ftIncomeStreams = d.incomeStreams.filter(s => {
-            // Remove any streams that look like legacy defaults
-            const isLegacyDefault = (s.name === 'Career' && (s.startAge === 26 || s.startAge === 25) && s.annual > 50000 && s.growth === 8 && !s.takeHomeOverride);
-            const isLegacyIs0 = (s.id === 'is0' && s.annual > 50000 && s.growth === 8 && !s.expanded);
-            return !(isLegacyDefault || isLegacyIs0);
-          });
-          ftIncomeStreams = JSON.parse(JSON.stringify(ftIncomeStreams));
+          ftIncomeStreams = JSON.parse(JSON.stringify(d.incomeStreams));
         } else if (d.lifeEvents) {
           const jobEv = d.lifeEvents.find(e => e.type === 'job');
           if (jobEv) {
@@ -10119,9 +10106,7 @@
           + ssCtrl
           + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.retireTaxEnabled ? ' checked' : '') + ' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
-          + retTax
-          + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          + '<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px"><button class="btn bsm" style="background:#dc2626;color:white;font-size:10px" onclick="if(confirm(\'Clear all manual overrides and recalculate from scratch?\\n\\nCancel to keep current data.\')) ftClearAllOverrides()">🔄 Reset overrides</button><div style="font-size:10px;color:var(--ink3);margin-top:6px">If projections look wrong after changing settings, click here to clear all manual table edits and recalculate fresh.</div></div>';
+          + retTax;
       }
 
       // ── Income tab ─────────────────────────────────────────────────
@@ -10510,25 +10495,6 @@
         ftSaveScenario();
       }
 
-      function ftClearAllOverrides() {
-        if (confirm('Clear all manual cell edits (income, partner, net worth overrides)?\n\nThis will reset the projection to pure calculated values from your settings.')) {
-          // Clear runtime overrides
-          ftOvMap = {};
-          ftNwTodayOv = null;
-          ftNwEoyOv = null;
-          
-          // Also clear from saved scenario data to prevent them from reloading
-          const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
-          if (sc && sc.data) {
-            sc.data.overrides = { _nwToday: null, _nwEoy: null };
-          }
-          
-          ftPersistScenarios();
-          ftRecalc();
-          alert('✓ All overrides cleared and saved. Projection recalculated from settings.');
-        }
-      }
-
       // ── Life timeline card (read-only section 4) ────────────────────
       function ftRenderTimelineCard() {
         const el = document.getElementById('ft-timeline-card');
@@ -10571,8 +10537,6 @@
           const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
           if (sc?.data) {
             ftLoadScenarioData(sc.data);
-            // Remove any stale default Career streams after loading
-            ftIncomeStreams = ftIncomeStreams.filter(s => !(s.name === 'Career' && s.startAge === 26 && s.annual >= 100000));
           }
         } else {
           ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
