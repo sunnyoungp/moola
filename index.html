@@ -7808,7 +7808,7 @@
       let ftActiveScenarioId = 'sc0';
       let ftColOrder = ['age','nw','netsav','freeSpend','income','partner','living','housing','kids'];
       let ftColVis = { age:true, income:true, partner:false, living:true, housing:true, kids:true, netsav:true, nw:true, freeSpend:true };
-      const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'free to spend / mo' };
+      const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'discretionary budget / mo' };
       let ftDragSrc=null, ftRows=[], ftChart=null, ftNextId=100;
       function ftResetNextId() {
         // Scan all existing IDs across income streams, properties, life events, and expense phases
@@ -8265,7 +8265,8 @@
             }
           }
 
-          const rawFreeSpend=(netHH-housing-living-kids-healthcare-requiredSavings)/12;
+          // Discretionary Budget: and now excludes current 'living' expenses as per user request
+          const rawFreeSpend=(netHH-housing-kids-healthcare-requiredSavings)/12;
           const freeSpend=Math.max(0, Math.round(rawFreeSpend));
           if(rawFreeSpend<0){
             if(ftGlobals.discMode==='goal') discTooltip='⚠ Income cannot cover required savings for '+topGoalLabel+' + expenses. Floor at $0.';
@@ -8704,7 +8705,7 @@
           +(ftGlobals.taxMode==='auto'?'<div class="ft-gl-row" style="margin-top:4px"><label class="ft-gl-lbl" style="font-size:11px">State</label><input class="ft-gl-inp" type="text" value="'+(ftGlobals.state||'CA')+'" oninput="ftGlobals.state=this.value.toUpperCase();ftSaveScenario();ftRecalc()" style="width:70px"></div><div id="ft-tax-detail-note" style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal marginal + '+(ftGlobals.state||'CA')+' state ('+((STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default)*100).toFixed(1)+'%) · 401k-eligible streams reduce taxable income</div>':'')
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.numFormat!=='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip '+(ftGlobals.numFormat==='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
           +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          +'<div class="ft-panel-hdr" style="margin-bottom:8px">Free to Spend Budget</div>'
+          +'<div class="ft-panel-hdr" style="margin-bottom:8px">Discretionary Budgeting</div>'
           +'<div class="ft-gl-row" style="align-items:flex-start;margin-bottom:10px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.discMode==='rate'?'on':'')+'" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip '+(ftGlobals.discMode==='goal'?'on':'')+'" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
           +discControls
           +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
@@ -8889,11 +8890,10 @@
               if(c==='income') return '<td class="ft-editable'+(ovInc?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'income\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'income\')" title="'+r.taxTip.replace(/"/g,'&quot;')+' · click to override">'+(r.income?ftFmt(r.income):ftFmt(0))+'</td>';
               if(c==='partner') return '<td class="ft-editable'+(ovPart?' ft-cell-ov':'')+'" onclick="ftStartEdit(this,\'partner\','+r.age+')" ondblclick="ftClearOverride('+r.age+',\'partner\')" title="click to override · dblclick to clear">'+ftFmt(r.partner)+'</td>';
               if(c==='freeSpend'){
-                const rawFS = (r.netSavings - r.requiredSavings)/12;
                 const tip = (r.discTooltip||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-                const color = r.freeSpend > 0 ? '#16a34a' : (rawFS < -0.01 ? '#dc2626' : 'var(--ink)');
-                return '<td style="color:'+color+';font-family:var(--mono)" title="'+tip+'">'
-                  +(rawFS < -0.01 ? '⚠ ' : (r.freeSpend>0?'+':'')) + ftFmt(r.freeSpend)+'/mo</td>';
+                const color = r.freeSpend > (r.living/12) ? '#16a34a' : (r.freeSpend < 0 ? '#dc2626' : 'var(--ink)');
+                return '<td style="color:'+color+';font-family:var(--mono)" title="'+tip+' · current spending: '+ftFmt(Math.round(r.living/12))+'/mo">'
+                  +(r.freeSpend < (r.living/12) ? '⚠ ' : (r.freeSpend>0?'+':'')) + ftFmt(r.freeSpend)+'/mo</td>';
               }
               return '<td>'+ftFmt(r[c])+'</td>';
             }).join('')
