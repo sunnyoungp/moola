@@ -8162,46 +8162,6 @@
         return ftNwTodayOv!==null ? ftNwTodayOv : (nwTotal()||120000);
       }
 
-      function ftGetEoyNW() {
-        if(ftNwEoyOv!==null) return ftNwEoyOv;
-        const todayNW=ftGetTodayNW(), curAge=ftGlobals.currentAge;
-        const monthsRemaining=Math.max(0, 11-new Date().getMonth());
-        
-        let taxableGross=0, fixedNet=0;
-        for(const s of ftIncomeStreams){
-          if(curAge<s.startAge||(s.endAge&&curAge>s.endAge)) continue;
-          if(s.takeHomeOverride) fixedNet+=s.takeHomeOverride*12; // Initial year, no growth yet
-          else taxableGross+=s.annual||0;
-        }
-        taxableGross+=ftGetPartnerIncome(curAge);
-        
-        const married=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
-        const contrib401k=ftHas401kEligible(curAge)?ftGlobals.f401k:0;
-        const taxableTotal=Math.max(0,taxableGross-contrib401k);
-        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
-        const netHH=(taxableGross-Math.round(taxableTotal*taxRate))+fixedNet;
-
-        const living=ftGetLiving(curAge);
-        let housing=0;
-        for(const p of ftProperties){
-          if(p.propType==='primary'&&curAge>=p.purchaseAge){
-            const sched=ftCalcPropSchedule(p);
-            if(curAge<sched.payoffAge) housing+=ftCalcPropMortgage(p);
-          }
-        }
-        if(!housing) housing=ftGetRent(curAge);
-        let kids=0;
-        for(const ce of ftLifeEvents.filter(e=>e.type==='child')){
-          const childAge=curAge-ce.age;
-          if(childAge>=0) for(const st of ce.stages){if(childAge>=st.childAgeStart&&childAge<st.childAgeEnd){kids+=st.annual;break;}}
-        }
-        let healthcare=0;
-        const healthEvs=ftLifeEvents.filter(e=>e.type==='healthcare');
-        for(const he of healthEvs){if(curAge>=he.startAge&&curAge<=he.endAge)healthcare+=(he.monthlyCost||0)*12;}
-        const ot=ftLifeEvents.filter(e=>e.type==='oneTime'&&e.age===curAge).reduce((s,e)=>s+e.amount,0);
-        return Math.round(todayNW + (netHH-living-housing-kids-healthcare)/12*monthsRemaining + ot);
-      }
-
       // ── Main projection ────────────────────────────────────────────
       function ftCalcRows() {
         const roc=ftGlobals.roc/100, curAge=ftGlobals.currentAge;
@@ -8223,21 +8183,21 @@
         for(let age=curAge;age<=100;age++){
           const married=age>=partnerAge;
           const partner=ftGetPartnerIncome(age);
-          let taxableGross=partner, fixedNet=0, totalGross=partner;
+          let taxableGrossAcc=partner, fixedNetAcc=0, totalGrossAcc=partner;
           for(const s of ftIncomeStreams){
             if(age<s.startAge||(s.endAge&&age>s.endAge)) continue;
             const growthFac=Math.pow(1+(s.growth||0)/100, age-s.startAge);
-            totalGross+=(s.annual||0)*growthFac;
-            if(s.takeHomeOverride) fixedNet+=(s.takeHomeOverride*12)*growthFac;
-            else taxableGross+=(s.annual||0)*growthFac;
+            const gross=Math.round((s.annual||0)*growthFac);
+            totalGrossAcc+=gross;
+            if(s.takeHomeOverride) fixedNetAcc+=Math.round(s.takeHomeOverride*12*growthFac);
+            else taxableGrossAcc+=gross;
           }
-          const income=totalGross-partner; // For table display
-          const grossHH=totalGross;
+          const income=totalGrossAcc-partner;
           const has401k=ftHas401kEligible(age);
           const contrib401k=has401k?ftGlobals.f401k:0;
-          const taxableTotal=Math.max(0,grossHH-fixedNet-contrib401k); // Tax only what is not overriden
+          const taxableTotal=Math.max(0,taxableGrossAcc-contrib401k); 
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
-          let netHH=(grossHH-fixedNet)-Math.round(taxableTotal*taxRate)+fixedNet;
+          let netHH=Math.round(taxableGrossAcc-taxableTotal*taxRate)+fixedNetAcc;
           const living=ftGetLiving(age);
           // Housing: primary mortgage > rent
           let housing=0;
@@ -8900,7 +8860,7 @@
         if(!thead||!tbody) return;
         thead.innerHTML='<tr>'+vis.map((c,i)=>'<th draggable="true" ondragstart="ftDs(event,'+i+')" ondragover="ftDov(event)" ondrop="ftDp(event,'+i+')" style="'+(c==='age'?'text-align:left;position:sticky;left:0;background:var(--surface);z-index:2':'')+'">'+ftColLabels[c]+'</th>').join('')+'<th style="width:22px"></th></tr>';
         const curAge=ftGlobals.currentAge;
-        const todayNW=ftGetTodayNW(), eoyNW=ftGetEoyNW();
+        const todayNW=ftGetTodayNW();
         const todayOvd=ftNwTodayOv!==null, eoyOvd=ftNwEoyOv!==null;
         const regularRows=ftRows.map((r,ri)=>{
           const hasMile=r.ms.length>0;
