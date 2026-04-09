@@ -4339,6 +4339,7 @@
         }
       }
       mobMQ.addEventListener('change', handleMobSwitch);
+      document.addEventListener('DOMContentLoaded', () => handleMobSwitch(mobMQ));
 
       function selectAccount(id, toggle = true) {
         currentAccountId = id;
@@ -4853,27 +4854,31 @@
       // ══════════════════════════════════════════════════════════════
       // HELPERS
       function getAcctUSD(a) { return a.currency === 'KRW' ? a.balance / getFX() : (a.balance || 0); }
-      function getFundUSD(f) { const a = S.accounts.find(x => String(x.id) === String(f.acct)); return a && a.currency === 'KRW' ? f.value / getFX() : (f.value || 0); }
-      function nwTotal() { return S.accounts.reduce((s, a) => s + getAcctUSD(a), 0); }
+      function getFundUSD(f) { const state = getFilteredState(); const a = state.accounts.find(x => String(x.id) === String(f.acct)); return a && a.currency === 'KRW' ? f.value / getFX() : (f.value || 0); }
+      function nwTotal() { const state = getFilteredState(); return state.accounts.reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctCategory(acct) {
-        const atype = S.accountTypes?.find(t => t.id === acct.type);
-        return atype ? S.accountCategories?.find(c => c.id === atype.categoryId) : null;
+        const state = getFilteredState();
+        const atype = state.accountTypes?.find(t => t.id === acct.type);
+        return atype ? state.accountCategories?.find(c => c.id === atype.categoryId) : null;
       }
       function isInvestmentAcct(acct) {
-        const type = S.accountTypes.find(t => t.id === acct.type);
+        const state = getFilteredState();
+        const type = state.accountTypes.find(t => t.id === acct.type);
         return !!type?.isInvestment;
       }
-      function totInv() { return S.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
-      function totCash() { return S.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
+      function totInv() { const state = getFilteredState(); return state.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
+      function totCash() { const state = getFilteredState(); return state.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctTypeName(typeId) {
         return S.accountTypes?.find(t => t.id === typeId)?.name || typeId;
       }
       function getFilteredState() {
-        if (!S) return { funds: [] };
-        if (!currentAccountId) return S;
+        if (!S) return { funds: [], accounts: [], goals: [], stressEvents: [] };
+        if (!currentAccountId && currentAccountId !== '0') return S;
         return {
           ...S,
-          funds: S.funds.filter(f => String(f.acct) === String(currentAccountId))
+          funds: (S.funds || []).filter(f => String(f.acct) === String(currentAccountId)),
+          accounts: (S.accounts || []).filter(a => String(a.id) === String(currentAccountId)),
+          goals: (S.goals || []).filter(g => String(g.acct) === String(currentAccountId) || !g.acct),
         };
       }
 
