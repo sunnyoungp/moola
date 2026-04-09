@@ -8902,54 +8902,6 @@
         const curAge=ftGlobals.currentAge;
         const todayNW=ftGetTodayNW(), eoyNW=ftGetEoyNW();
         const todayOvd=ftNwTodayOv!==null, eoyOvd=ftNwEoyOv!==null;
-        // Calculate all values for the special rows
-        const income0=ftGetIncome(curAge), partner0=ftGetPartnerIncome(curAge), living0=ftGetLiving(curAge);
-        let housing0=0;
-        for(const p of ftProperties){
-          if(p.propType==='primary'&&curAge>=p.purchaseAge){const sc=ftCalcPropSchedule(p);if(curAge<sc.payoffAge)housing0+=ftCalcPropMortgage(p);}
-        }
-        if(!housing0) housing0=ftGetRent(curAge);
-        let kids0=0;
-        for(const ce of ftLifeEvents.filter(e=>e.type==='child')){const ca=curAge-ce.age;if(ca>=0)for(const st of ce.stages){if(ca>=st.childAgeStart&&ca<st.childAgeEnd){kids0+=st.annual;break;}}}
-        let healthcare0=0;
-        for(const he of ftLifeEvents.filter(e=>e.type==='healthcare')){if(curAge>=he.startAge&&curAge<=he.endAge)healthcare0+=(he.monthlyCost||0)*12;}
-        const married0=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
-        const has401k0=ftHas401kEligible(curAge);
-        const c401k0=has401k0?ftGlobals.f401k:0;
-        let taxableGross0=partner0, fixedNet0=0;
-        for(const s of ftIncomeStreams){
-          if(curAge<s.startAge||(s.endAge&&curAge>s.endAge)) continue;
-          if(s.takeHomeOverride) fixedNet0+=s.takeHomeOverride*12;
-          else taxableGross0+=s.annual||0;
-        }
-        const taxable0=Math.max(0,taxableGross0-(ftHas401kEligible(curAge)?ftGlobals.f401k:0));
-        const tax0=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable0,married0):ftGlobals.taxFlat/100;
-        const net0=(taxableGross0-Math.round(taxable0*tax0))+fixedNet0;
-        const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:(ftRows[0]?.requiredSavings||0);
-        const free0=Math.max(0, Math.round((net0-housing0-living0-kids0-healthcare0-reqSav0)/12));
-        function specialCell(c,nwVal,isOvd,which){
-          const stickyStyle=c==='age'?'position:sticky;left:0;background:'+(which==='today'?'var(--fll)':'rgba(99,102,241,.04)')+';z-index:1':'';
-          if(c==='age'&&which==='today') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span class="ft-live-badge">live</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'today\')" title="clear">✕</button>':'')+'</td>';
-          if(c==='age'&&which==='eoy') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span style="font-size:10px;color:var(--ink3);margin-left:3px">eoy</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'eoy\')" title="clear">✕</button>':'')+'</td>';
-          if(c==='nw') return '<td class="ft-editable'+(isOvd?' ft-cell-ov':'')+'" onclick="ftStartEditNwOv(\''+which+'\')" title="'+(which==='eoy'?'Projected end-of-year value (includes '+(11-new Date().getMonth())+' months of growth)':'click to override')+'">'+MT(ftFmt(nwVal),'future')+'</td>';
-          if(c==='income') return '<td>'+ftFmt(income0)+'</td>';
-          if(c==='partner') return '<td>'+ftFmt(partner0)+'</td>';
-          if(c==='living') return '<td>'+ftFmt(living0)+'</td>';
-          if(c==='housing') return '<td>'+ftFmt(housing0)+'</td>';
-          if(c==='kids') return '<td>'+ftFmt(kids0)+'</td>';
-          if(c==='freeSpend') {
-            const hasShortfall = (net0-housing0-living0-kids0-healthcare0-reqSav0) < 0;
-            const color = free0>0 ? '#16a34a' : (hasShortfall ? '#dc2626' : 'var(--ink)');
-            const tip = hasShortfall ? '⚠ Income cannot cover goal requirements. Floor at $0.' : '';
-            return '<td style="color:'+color+';font-family:var(--mono)" '+(tip?'title="'+tip+'"':'')+'>'+(free0>0?'+':'')+ftFmt(free0)+'/mo</td>';
-          }
-          // netSavings: — only for today (live) row; eoy shows calculated value
-          if(c==='netsav'&&which==='today') return '<td style="color:var(--ink3)">—</td>';
-          const netSavVal = Math.round(net0-housing0-living0-kids0-healthcare0);
-          const isNeg = netSavVal < 0;
-          if(c==='netsav') return '<td class="'+(isNeg?'neg':'pos')+'" title="Annualized rate of savings">'+(isNeg?'':'+')+ftFmt(netSavVal)+'</td>';
-          return '<td>'+ftFmt(0)+'</td>';
-        }
         const regularRows=ftRows.map((r,ri)=>{
           const hasMile=r.ms.length>0;
           const msDotsHtml=r.msDots.map(d=>'<span class="ft-ms-dot" style="background:'+d.color+'" title="'+d.tip.replace(/"/g,'&quot;')+'"></span>').join('');
@@ -8985,7 +8937,7 @@
             }).join('')
             +'<td><button onclick="ftInsertAfter('+ri+')" style="font-size:11px;color:var(--ink3);background:none;border:none;cursor:pointer" title="insert row after">+</button></td></tr>';
         }).join('');
-        tbody.innerHTML=todayRow+eoyRow+regularRows;
+        tbody.innerHTML=regularRows;
       }
 
       // ── Event handlers ──────────────────────────────────────────────
