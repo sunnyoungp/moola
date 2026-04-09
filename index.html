@@ -10533,7 +10533,11 @@
           ftScenarios = JSON.parse(JSON.stringify(S.future_scenarios));
           ftActiveScenarioId = S.future_active_scenario || ftScenarios[0].id;
           const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
-          if (sc?.data) ftLoadScenarioData(sc.data);
+          if (sc?.data) {
+            ftLoadScenarioData(sc.data);
+            // Remove any stale default Career streams after loading
+            ftIncomeStreams = ftIncomeStreams.filter(s => !(s.name === 'Career' && s.startAge === 26 && s.annual >= 100000));
+          }
         } else {
           ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
           ftActiveScenarioId = 'sc0';
