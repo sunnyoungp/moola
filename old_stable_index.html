@@ -2700,23 +2700,9 @@
     .ac-btn-primary { padding: 6px 12px; font-size: 12px; font-weight: 600; background: var(--f); color: #fff; border: none; border-radius: var(--rx); cursor: pointer; }
     .ac-btn-primary:disabled { opacity: 0.6; }
     @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    #ft-tbl tbody tr.ft-today-row { background: #eff6ff !important; border-left: 5px solid #3b82f6 !important; position: relative; }
-    #ft-tbl tbody tr.ft-today-row td { background: #eff6ff !important; font-weight: 600; }
-    .ft-ev-add-btn {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1 !important;
-      color: #0f172a !important;
-      padding: 4px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 700;
-      display: inline-block;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      font-size: 11px;
-    }
-    .ft-ev-add-btn:hover { background: #e2e8f0; }
-    .ft-nw-tip { cursor: pointer; text-decoration: underline dotted var(--ink3); }
+    */
   </style>
+  <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const { createClient } = supabase;
@@ -3447,12 +3433,11 @@
             </div>
           </div>
           <div class="ft-sec-body" id="ftb-table">
-            <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
-              <button class="btn bsm" onclick="ftAppendRow()">+ add row (future)</button>
-              <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
-              <span style="font-size:10.5px;color:var(--ink3);margin-left:auto">click net worth or income to override · dbl-click to clear</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 5px">
+              <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
+              <span style="font-size:10.5px;color:var(--ink3)">click income/partner to override · dbl-click to clear</span>
             </div>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:var(--r)">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overflow-y:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--r)">
               <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px" id="ft-tbl">
                 <thead id="ft-thead"></thead>
                 <tbody id="ft-tbody"></tbody>
@@ -7798,7 +7783,7 @@
       let ftGlobals = {
         f401k:23000, roc:5, taxMode:'auto', taxFlat:35,
         discMode:'rate', savingsRate:25, retireAge:60, retireNW:3000000,
-        currentAge:25, expInflation:2.5, maxAge:100,
+        currentAge:25, expInflation:2.5,
         ssEnabled:false, ssBenefit:2500, ssClaimAge:67,
         rothBalanceOv:null, k401TaxRate:25, capGainsRate:15,
         retireTaxEnabled:false, numFormat:'compact'
@@ -7843,6 +7828,10 @@
         }
         ftNextId = maxNum + 1;
       }
+      let ftActivePhaseId=null;
+      const FT_PHASE_PALETTE=['#4E61A8','#6040A0','#C0884A','#9B3A58','#1E7A7A','#C0622A','#2E6EA6','#5060B8','#8A6820','#2E7A4A'];
+      const FT_CITY_BENCHMARKS={'NYC':3200,'New York':3200,'San Francisco':3800,'SF':3800,'Los Angeles':2800,'LA':2800,'Seoul':1400,'London':3000,'Tokyo':2200,'Chicago':2200,'Austin':2000,'Seattle':2800,'Boston':3000,'Miami':2600,'Denver':2200};
+
       function ftUid() { return 'ev'+(ftNextId++); }
       function ftFmt(n) {
         if(ftGlobals.numFormat==='full') {
@@ -8157,11 +8146,12 @@
         return Math.max(0, Math.round(bal));
       }
       // Legacy alias (used in some event card code)
-      function ftCalcMortgage(hc) { return hc ? ftCalcPropMortgage(hc) : 0; }
-      function ftCalcMortgageSchedule(hc) {
-        if(!hc) return {payoffAge:null,totalInterest:0,interestSaved:0};
-        return ftCalcPropSchedule({...hc, purchaseAge:hc.age, extraPayments:hc.extraPayments||[]});
+      function ftCalcMortgage(houseEv) { return houseEv ? ftCalcPropMortgage(houseEv) : 0; }
+      function ftCalcMortgageSchedule(houseEv) {
+        if(!houseEv) return {payoffAge:null,totalInterest:0,interestSaved:0};
+        return ftCalcPropSchedule({...houseEv, purchaseAge:houseEv.age, extraPayments:houseEv.extraPayments||[]});
       }
+
       function requiredSavingsForGoal(currentNW, goalAmount, goalAge, currentAge, roc) {
         const yearsRemaining=goalAge-currentAge;
         if(yearsRemaining<=0) return 0;
@@ -8176,47 +8166,11 @@
       function ftGetTodayNW() {
         return ftNwTodayOv!==null ? ftNwTodayOv : (nwTotal()||120000);
       }
-      function ftGetEoyNW() {
-        if(ftNwEoyOv!==null) return ftNwEoyOv;
-        const todayNW=ftGetTodayNW(), curAge=ftGlobals.currentAge;
-        const monthsRemaining=Math.max(0, 11-new Date().getMonth());
-        let taxableGross=0, fixedNet=0;
-        for(const s of ftIncomeStreams){
-          if(curAge<s.startAge||(s.endAge&&curAge>s.endAge)) continue;
-          if(s.takeHomeOverride) fixedNet+=s.takeHomeOverride*12;
-          else taxableGross+=s.annual||0;
-        }
-        taxableGross+=ftGetPartnerIncome(curAge);
-        const married=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
-        const contrib401k=ftHas401kEligible(curAge)?ftGlobals.f401k:0;
-        const taxableTotal=Math.max(0,taxableGross-contrib401k);
-        const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
-        const netHH=(taxableGross-Math.round(taxableTotal*taxRate))+fixedNet;
-        const living=ftGetLiving(curAge);
-        let housing=0;
-        for(const p of ftProperties){
-          if(p.propType==='primary'&&curAge>=p.purchaseAge){
-            const sched=ftCalcPropSchedule(p);
-            if(curAge<sched.payoffAge) housing+=ftCalcPropMortgage(p);
-          }
-        }
-        if(!housing) housing=ftGetRent(curAge);
-        let kids=0;
-        for(const ce of ftLifeEvents.filter(e=>e.type==='child')){
-          const childAge=curAge-ce.age;
-          if(childAge>=0) for(const st of ce.stages){if(childAge>=st.childAgeStart&&childAge<st.childAgeEnd){kids+=st.annual;break;}}
-        }
-        let healthcare=0;
-        for(const he of ftLifeEvents.filter(e=>e.type==='healthcare')){if(curAge>=he.startAge&&curAge<=he.endAge)healthcare+=(he.monthlyCost||0)*12;}
-        const ot=ftLifeEvents.filter(e=>e.type==='oneTime'&&e.age===curAge).reduce((s,e)=>s+e.amount,0);
-        return Math.round(todayNW + (netHH-living-housing-kids-healthcare)/12*monthsRemaining + ot);
-      }
 
       // ── Main projection ────────────────────────────────────────────
       function ftCalcRows() {
         const curAge = ftGlobals.currentAge;
         const startAge = ftHistoryStartAge !== null ? Math.min(curAge, ftHistoryStartAge) : curAge;
-        const endAge = ftGlobals.maxAge || 100;
         const roc = ftGlobals.roc/100;
         const childEvs = ftLifeEvents.filter(e=>e.type==='child');
         const healthEvs = ftLifeEvents.filter(e=>e.type==='healthcare');
@@ -8228,8 +8182,7 @@
         let cumSav = 0;
         let out = [];
 
-        for(let age=startAge; age<=endAge; age++){
-          const isHistory = age < curAge;
+        for(let age=startAge; age<=100; age++){
           const married = ftLifeEvents.some(e=>e.type==='partner'&&age>=e.age);
           const partner = ftGetPartnerIncome(age);
           let income=0, taxableGrossAcc=partner, fixedNetAcc=0, contrib401k=0;
@@ -8242,12 +8195,7 @@
             const ov = ftOvMap[age]?.income;
             const streamVal = (ov !== undefined && s.id === 'is0') ? ov : amt; 
             income += streamVal;
-            
-            if(s.takeHomeOverride && s.incomeType === 'salary'){
-              // If manual override is on, this is ALREADY net income.
-              const growthFac = Math.pow(1+(s.growth||0)/100, age-s.startAge);
-              fixedNetAcc += Math.round(s.takeHomeOverride * 12 * growthFac);
-            } else if(s.incomeType==='salary'){
+            if(s.incomeType==='salary'){
               taxableGrossAcc += streamVal;
               if(s.eligible401k) contrib401k += Math.min(streamVal, ftGlobals.f401k);
             } else {
@@ -8259,11 +8207,6 @@
           const taxableTotal=Math.max(0,taxableGrossAcc-contrib401k); 
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
           let netHH=Math.round(taxableGrossAcc-taxableTotal*taxRate)+fixedNetAcc;
-          
-          // Use NW override if available (overrides previous calculation logic)
-          const nwOverride = ftOvMap[age]?.nw;
-          if(nwOverride !== undefined) liquidNW = nwOverride;
-
           const living=ftGetLiving(age);
           
           let taxTip='effective rate: '+((taxRate||0)*100).toFixed(1)+'% (marginal fed '+(ftGetFedMarginalRate(taxableTotal, married)*100).toFixed(1)+'% + state '+((STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default)*100).toFixed(1)+'%)';
@@ -8363,9 +8306,7 @@
           const freeSpend=Math.max(0, Math.round(rawFreeSpend));
           const monthlySurplus=Math.round(rawFreeSpend - (living/12));
           
-          const budgetTip = 'Calculation:\n' + 
-            (netHH - fixedCosts - requiredSavings > netHH - fixedCosts ? '⚠ Capped by net monthly pay: ' + ftFmt(Math.round(netHH/12)) + '\n' : '') +
-            'Net Take-home: ' + ftFmt(Math.round(netHH/12)) + '/mo' +
+          const budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH/12)) + '/mo' +
             '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts/12)) + '/mo' +
             '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings/12)) + '/mo' +
             '\n = Budget: ' + ftFmt(freeSpend) + '/mo';
@@ -8399,13 +8340,6 @@
             '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt));
 
           let newLiq = Math.round(liquidNW + growth + netSavings + ot - extraPmt);
-          
-          // Apply NW override if it exists
-          const nwOv = ftOvMap[age]?.nw;
-          if(nwOv !== undefined){
-            newLiq = nwOv - Math.round(realEstateEquity);
-          }
-          
           liquidNW = newLiq;
           const nw = liquidNW + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
@@ -8931,10 +8865,7 @@
         const toggleable=['income','partner','living','housing','kids','netsav','nw','freeSpend','monthlySurplus'];
         const el=document.getElementById('ft-col-chips');
         if(!el) return;
-        el.innerHTML=toggleable.map(c=>`<div class="ft-chip ${ftColVis[c]?'on':''}" style="display:inline-flex;align-items:center;gap:6px">
-          <span onclick="ftToggleCol('${c}')" ondblclick="ftStartRenameCol('${c}')" title="Hold to toggle · Double-click to rename" style="cursor:pointer">${ftColLabels[c]}</span>
-          <span onclick="ftColVis['${c}']=false;ftSaveScenario();ftRecalc();ftRenderChips()" style="opacity:0.6;cursor:pointer;font-size:10px" title="Hide column">✕</span>
-        </div>`).join('');
+        el.innerHTML=toggleable.map(c=>'<button class="ft-chip '+(ftColVis[c]?'on':'')+'" onclick="ftToggleCol(\''+c+'\')" ondblclick="ftStartRenameCol(\''+c+'\')" title="Click to toggle · Double-click to rename">'+ftColLabels[c]+'</button>').join('');
       }
 
       // ── Required savings card ───────────────────────────────────────
@@ -9000,7 +8931,7 @@
                 +'</td>';
               if(c==='nw'){
                 const tip=nwTip.replace(/"/g,'&quot;');
-                return '<td class="ft-editable '+(r.nw<0?'neg':'')+'" onclick="ftStartEdit(this,\'nw\','+r.age+')" title="'+tip+' · Click to override">'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
+                return '<td class="'+(r.nw<0?'neg':'')+'"'+(tip?' title="'+tip+'" style="cursor:help"':'')+'>'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
               }
               if(c==='netsav'){
                 const nsTip=ftGlobals.discMode==='goal'&&r.discTooltip?r.discTooltip.replace(/"/g,'&quot;'):'';
@@ -9021,10 +8952,7 @@
               }
               return '<td>'+ftFmt(r[c])+'</td>';
             }).join('')
-            +`<td style="white-space:nowrap">
-              <button onclick="ftInsertAfter(${ri})" style="font-size:11px;color:var(--ink3);background:none;border:none;cursor:pointer" title="insert row after">+</button>
-              <button onclick="ftDeleteRow(${r.age})" style="font-size:11px;color:var(--ink4);background:none;border:none;cursor:pointer;margin-left:4px" title="delete/reset row">✕</button>
-            </td></tr>`;
+            +'<td><button onclick="ftInsertAfter('+ri+')" style="font-size:11px;color:var(--ink3);background:none;border:none;cursor:pointer" title="insert row after">+</button></td></tr>';
         }).join('');
         tbody.innerHTML=regularRows;
       }
@@ -9113,8 +9041,8 @@
       function ftStartEdit(td,field,age){
         const cur=ftRows.find(r=>r.age===age);
         if(!cur) return;
-        const curVal = cur[field] || 0;
-        td.innerHTML='<input class="ft-cell-input" type="number" value="'+curVal+'" style="width:100px">';
+        const curVal=field==='income'?cur.income:cur.partner;
+        td.innerHTML='<input class="ft-cell-input" type="number" value="'+curVal+'">';
         const inp=td.querySelector('input');
         inp.focus();inp.select();
         const commit=()=>{
@@ -9131,35 +9059,6 @@
 
       function ftClearOverride(age,field){
         if(ftOvMap[age]){delete ftOvMap[age][field];if(!Object.keys(ftOvMap[age]).length)delete ftOvMap[age];}
-        ftRecalc();
-      }
-
-      function ftDeleteRow(age) {
-        if(age < ftGlobals.currentAge) {
-          // It is a historical year, shift the start up
-          if(ftHistoryStartAge === null) ftHistoryStartAge = ftGlobals.currentAge;
-          if(age === ftHistoryStartAge) {
-             ftHistoryStartAge++;
-          } else {
-             // Clear overrides if middle of history
-             delete ftOvMap[age];
-          }
-        } else if(age === ftGlobals.maxAge) {
-          // Last year, shift end down
-          ftGlobals.maxAge--;
-        } else {
-          // Future year, just clear all overrides for this specific age
-          delete ftOvMap[age];
-        }
-        ftSaveScenario();
-        ftRecalc();
-      }
-
-      function ftAddHistoryYear() {
-        const curAge = ftGlobals.currentAge;
-        if(ftHistoryStartAge === null) ftHistoryStartAge = curAge;
-        ftHistoryStartAge--;
-        ftSaveScenario();
         ftRecalc();
       }
 
