@@ -10554,7 +10554,6 @@
         ftIncomeStreams = [];
         ftProperties = [];
         ftLifeEvents = [];
-        ftExpPhases = [{ id: 'ph0', name: 'Solo', startAge: ftGlobals.projectionStartingAge, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '' }];
         Object.assign(ftGlobals, { f401k: 23000, roc: 5, taxMode: 'auto', taxFlat: 35, state: 'CA', discMode: 'rate', savingsRate: 25, retireAge: 60, retireNW: 3000000, projectionStartingAge: 25, expInflation: 2.5, ssEnabled: false, ssBenefit: 2500, ssClaimAge: 67, rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15, retireTaxEnabled: false, numFormat: 'compact' });
         if (S?.future_scenarios?.length) {
           ftScenarios = JSON.parse(JSON.stringify(S.future_scenarios));
@@ -10574,6 +10573,11 @@
             if (S.future.retireAge !== undefined) ftGlobals.retireAge = S.future.retireAge;
             if (S.future.retireNW !== undefined) ftGlobals.retireNW = S.future.retireNW;
           }
+        }
+        // NOW create default expense phase with the correct projectionStartingAge (after loading from scenario)
+        // Only create if no phases were loaded from scenario
+        if (ftExpPhases.length === 0) {
+          ftExpPhases = [{ id: 'ph0', name: 'Solo', startAge: ftGlobals.projectionStartingAge, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '' }];
         }
         ftActivePhaseId = null;
         ftResetNextId();
