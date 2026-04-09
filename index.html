@@ -9109,7 +9109,7 @@
           if (jobEv) {
             ftIncomeStreams = [{
               id: 'is0', name: 'Career', startAge: jobEv.age, endAge: null, ongoing: true,
-              annual: jobEv.tc || 150000, growth: jobEv.tcg || 8, eligible401k: false, incomeType: 'salary', expanded: false
+              annual: jobEv.tc ?? 0, growth: jobEv.tcg || 8, eligible401k: false, incomeType: 'salary', expanded: false
             }];
           }
         }
