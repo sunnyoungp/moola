@@ -9116,7 +9116,13 @@
         if (d.globals) Object.assign(ftGlobals, d.globals);
         // Load income streams (new format) — migrate old job event
         if (d.incomeStreams) {
-          ftIncomeStreams = ftSanitizeIncomeStreams(d.incomeStreams);
+          ftIncomeStreams = d.incomeStreams.filter(s => {
+            // Remove any streams that look like legacy defaults
+            const isLegacyDefault = (s.name === 'Career' && (s.startAge === 26 || s.startAge === 25) && s.annual > 50000 && s.growth === 8 && !s.takeHomeOverride);
+            const isLegacyIs0 = (s.id === 'is0' && s.annual > 50000 && s.growth === 8 && !s.expanded);
+            return !(isLegacyDefault || isLegacyIs0);
+          });
+          ftIncomeStreams = JSON.parse(JSON.stringify(ftIncomeStreams));
         } else if (d.lifeEvents) {
           const jobEv = d.lifeEvents.find(e => e.type === 'job');
           if (jobEv) {
