@@ -10109,7 +10109,9 @@
           + ssCtrl
           + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.retireTaxEnabled ? ' checked' : '') + ' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
-          + retTax;
+          + retTax
+          + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
+          + '<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px"><button class="btn bsm" style="background:#dc2626;color:white;font-size:10px" onclick="if(confirm(\'Clear all manual overrides and recalculate from scratch?\\n\\nCancel to keep current data.\')) ftClearAllOverrides()">🔄 Reset overrides</button><div style="font-size:10px;color:var(--ink3);margin-top:6px">If projections look wrong after changing settings, click here to clear all manual table edits and recalculate fresh.</div></div>';
       }
 
       // ── Income tab ─────────────────────────────────────────────────
@@ -10496,6 +10498,16 @@
         ftRenderTimelineCard();
         ftApplySectionStates();
         ftSaveScenario();
+      }
+
+      function ftClearAllOverrides() {
+        ftOvMap = {};
+        ftNwTodayOv = null;
+        ftNwEoyOv = null;
+        if (confirm('Clear all manual cell edits (income, partner, net worth overrides)?\n\nThis will reset the projection to pure calculated values from your settings.')) {
+          ftRecalc();
+          alert('✓ Overrides cleared. Projection recalculated fresh.');
+        }
       }
 
       // ── Life timeline card (read-only section 4) ────────────────────
