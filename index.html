@@ -10266,8 +10266,8 @@
             return '<tr>'
               + vis.map(c => {
                 if (c === 'age') return '<td style="position:sticky;left:0;background:var(--surface);z-index:1;color:var(--ink3)">' + r.age + ' <span style="font-size:9px;color:var(--ink4)">hist</span></td>';
-                if (c === 'nw') return '<td class="ft-editable' + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,'nw',' + r.age + ')" title="Click to enter actual net worth">' + (r.nw !== null ? ftFmt(r.nw) : '<span style="color:var(--ink4)">—</span>') + '</td>';
-                if (c === 'income') return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,'income',' + r.age + ')" title="Click to enter actual income">' + (r.income ? ftFmt(r.income) : '<span style="color:var(--ink4)">—</span>') + '</td>';
+                if (c === 'nw') return '<td class="ft-editable' + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" title="Click to enter actual net worth">' + (r.nw !== null ? ftFmt(r.nw) : '<span style="color:var(--ink4)">—</span>') + '</td>';
+                if (c === 'income') return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'income\',' + r.age + ')" title="Click to enter actual income">' + (r.income ? ftFmt(r.income) : '<span style="color:var(--ink4)">—</span>') + '</td>';
                 return '<td style="color:var(--ink4)">—</td>';
               }).join('')
               + '<td><button onclick="ftDeleteRow(' + r.age + ')" style="font-size:11px;color:var(--ink4);background:none;border:none;cursor:pointer" title="remove">✕</button></td></tr>';
