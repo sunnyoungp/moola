@@ -7983,6 +7983,12 @@
       }
 
       // ── Tax helpers ─────────────────────────────────────────────────
+      const STATE_TAX_RATES = {
+        CA: 0.093, NY: 0.0685, NYC: 0.10726, TX: 0, FL: 0, WA: 0,
+        IL: 0.0495, PA: 0.0307, NJ: 0.1075, MA: 0.05,
+        CO: 0.044, AZ: 0.025, GA: 0.055, NC: 0.0499,
+        VA: 0.0575, OH: 0.0399, MI: 0.0425, default: 0.05
+      };
       function ftBracketTax(inc, bkts) {
         let tax=0,prev=0;
         for(const[top,rate]of bkts){if(inc<=prev)break;tax+=(Math.min(inc,top)-prev)*rate;prev=top;if(top===Infinity)break;}
@@ -7995,14 +8001,20 @@
         const fed = married?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
         return ftBracketTax(taxable, fed);
       }
-      function ftCalcCATax(gross, married) {
-        if(!gross||gross<=0) return 0;
-        const ca = married?[[20198,.01],[47884,.02],[75576,.04],[104910,.06],[132590,.08],[677278,.093],[812728,.103],[1000000,.113],[Infinity,.123]]:[[10099,.01],[23942,.02],[37788,.04],[52455,.06],[66295,.08],[338639,.093],[406364,.103],[677275,.113],[Infinity,.123]];
-        return ftBracketTax(gross, ca);
+      function ftGetFedMarginalRate(taxable, married) {
+        if(!taxable||taxable<=0) return 0;
+        const std = married?29200:14600;
+        const inc = Math.max(0, taxable - std);
+        const fed = married?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
+        for(const[top,rate]of fed){if(inc<=top)return rate;}
+        return 0.37;
       }
       function ftCalcAutoTax(gross, married) {
         if(!gross||gross<=0) return 0;
-        return (ftCalcFedTax(gross,married) + ftCalcCATax(gross,married)) / gross;
+        // Use marginal rate for the effective rate calculation as requested
+        const fedMarginal = ftGetFedMarginalRate(gross, married);
+        const stateRate = STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default;
+        return fedMarginal + stateRate;
       }
 
       // ── Phase lookup ────────────────────────────────────────────────
@@ -8203,7 +8215,11 @@
           const contrib401k=has401k?ftGlobals.f401k:0;
           const taxable=Math.max(0,grossHH-contrib401k);
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable,married):ftGlobals.taxFlat/100;
-          const netHH=grossHH-Math.round(taxable*taxRate);
+          let netHH=grossHH-Math.round(taxable*taxRate);
+          // BUG 1: Monthly take-home override
+          if(ftGlobals.takeHomeOverride !== null) {
+            netHH = ftGlobals.takeHomeOverride * 12;
+          }
           const living=ftGetLiving(age);
           // Housing: primary mortgage > rent
           let housing=0;
@@ -8232,7 +8248,7 @@
             const pmts=[];
             // 1. Retirement NW target
             if(ftGlobals.retireAge>age && ftGlobals.retireNW>0){
-              const r=ftCalcPMT(liquidNW,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);
+              const r = (liquidNW >= ftGlobals.retireNW) ? 0 : ftCalcPMT(liquidNW,ftGlobals.retireNW,ftGlobals.retireAge-age,roc);
               if(r>0)pmts.push({label:'retirement '+ftFmt(ftGlobals.retireNW)+' by age '+ftGlobals.retireAge,req:r});
             }
             // 2. Property down payments + closing costs
@@ -8699,7 +8715,9 @@
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Real portfolio return<br><span style="font-size:10px;color:var(--ink3)">inflation-adjusted</span></label><input class="ft-gl-inp" type="number" value="'+ftGlobals.roc+'" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Expense inflation / yr</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.expInflation+'" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           +'<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Tax rate</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'+taxCtrl+'</div></div>'
-          +(ftGlobals.taxMode==='auto'?'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal + CA state marginal · 401k-eligible streams reduce taxable income</div>':'')
+          +(ftGlobals.taxMode==='auto'?'<div class="ft-gl-row" style="margin-top:4px"><label class="ft-gl-lbl" style="font-size:11px">State</label><input class="ft-gl-inp" type="text" value="'+(ftGlobals.state||'CA')+'" oninput="ftGlobals.state=this.value.toUpperCase();ftRecalc()" style="width:70px"></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal marginal + '+(ftGlobals.state||'CA')+' state ('+((STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default)*100).toFixed(1)+'%) · 401k-eligible streams reduce taxable income</div>':'')
+          +'<div class="ft-gl-row"><label class="ft-gl-lbl">Override: actual monthly take-home<br><span style="font-size:10px;color:var(--ink3)">(what hits your bank account)</span></label><input class="ft-gl-inp" type="number" value="'+(ftGlobals.takeHomeOverride||'')+'" placeholder="Calculated" oninput="ftGlobals.takeHomeOverride=this.value?+this.value:null;ftRecalc()"></div>'
+          +(ftGlobals.takeHomeOverride?'<div style="font-size:10.5px;color:var(--teal);line-height:1.5;margin-bottom:8px">Using manual take-home — gross income and tax rate are ignored for net income calculation.</div>':'')
           +'<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip '+(ftGlobals.numFormat!=='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip '+(ftGlobals.numFormat==='full'?'on':'')+'" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
           +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
           +'<div class="ft-panel-hdr" style="margin-bottom:8px">Free to Spend Budget</div>'
@@ -8709,7 +8727,7 @@
           +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.ssEnabled?' checked':'')+' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
           +ssCtrl
           +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.retireTaxEnabled?' checked':'')+' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel()"> enabled</label></div>'
+          +'<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"'+(ftGlobals.retireTaxEnabled?' checked':'')+' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
           +retTax;
       }
 
@@ -8871,14 +8889,17 @@
         if(!housing0) housing0=ftGetRent(curAge);
         let kids0=0;
         for(const ce of ftLifeEvents.filter(e=>e.type==='child')){const ca=curAge-ce.age;if(ca>=0)for(const st of ce.stages){if(ca>=st.childAgeStart&&ca<st.childAgeEnd){kids0+=st.annual;break;}}}
+        let healthcare0=0;
+        for(const he of ftLifeEvents.filter(e=>e.type==='healthcare')){if(curAge>=he.startAge&&curAge<=he.endAge)healthcare0+=(he.monthlyCost||0)*12;}
         const married0=!!(ftLifeEvents.find(e=>e.type==='partner')?.age<=curAge);
         const has401k0=ftHas401kEligible(curAge);
         const c401k0=has401k0?ftGlobals.f401k:0;
         const taxable0=Math.max(0,income0+partner0-c401k0);
         const tax0=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxable0,married0):ftGlobals.taxFlat/100;
-        const net0=(income0+partner0)-Math.round(taxable0*tax0);
+        let net0=(income0+partner0)-Math.round(taxable0*tax0);
+        if(ftGlobals.takeHomeOverride!==null) net0=ftGlobals.takeHomeOverride*12;
         const reqSav0=ftGlobals.discMode==='rate'?net0*ftGlobals.savingsRate/100:(ftRows[0]?.netsav||0);
-        const free0=Math.round((net0-housing0-kids0-reqSav0)/12);
+        const free0=Math.round((net0-housing0-living0-kids0-healthcare0-reqSav0)/12);
         function specialCell(c,nwVal,isOvd,which){
           const stickyStyle=c==='age'?'position:sticky;left:0;background:'+(which==='today'?'var(--fll)':'rgba(99,102,241,.04)')+';z-index:1':'';
           if(c==='age'&&which==='today') return '<td class="ft-ms-age" style="'+stickyStyle+'">'+curAge+' <span class="ft-live-badge">live</span>'+(isOvd?'<button class="ft-ov-clear" onclick="ftClearNwOv(\'today\')" title="clear">✕</button>':'')+'</td>';
@@ -9110,7 +9131,7 @@
         ftProperties=[];
         ftLifeEvents=[];
         ftExpPhases=[{id:'ph0',name:'Solo',startAge:25,endAge:999,monthlyLiving:2000,monthlyRent:2000,renting:true,location:''}];
-        Object.assign(ftGlobals,{f401k:23000,roc:5,taxMode:'auto',taxFlat:35,discMode:'rate',savingsRate:25,retireAge:60,retireNW:3000000,currentAge:25,expInflation:2.5,ssEnabled:false,ssBenefit:2500,ssClaimAge:67,rothBalanceOv:null,k401TaxRate:25,capGainsRate:15,retireTaxEnabled:false,numFormat:'compact'});
+        Object.assign(ftGlobals,{f401k:23000,roc:5,taxMode:'auto',taxFlat:35,state:'CA',takeHomeOverride:null,discMode:'rate',savingsRate:25,retireAge:60,retireNW:3000000,currentAge:25,expInflation:2.5,ssEnabled:false,ssBenefit:2500,ssClaimAge:67,rothBalanceOv:null,k401TaxRate:25,capGainsRate:15,retireTaxEnabled:false,numFormat:'compact'});
         if(S?.future_scenarios?.length){
           ftScenarios=JSON.parse(JSON.stringify(S.future_scenarios));
           ftActiveScenarioId=S.future_active_scenario||ftScenarios[0].id;
