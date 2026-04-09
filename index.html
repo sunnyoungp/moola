@@ -5672,6 +5672,13 @@
         if (!S.tableGroupingMode) S.tableGroupingMode = 'category';
         if (!S.future) S.future = {};
         if (!S.future_scenarios) S.future_scenarios = [];
+        else {
+          S.future_scenarios.forEach(sc => {
+            if (sc?.data?.incomeStreams) {
+              sc.data.incomeStreams = ftSanitizeIncomeStreams(sc.data.incomeStreams);
+            }
+          });
+        }
 
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
@@ -9098,12 +9105,18 @@
         };
       }
 
+      function ftSanitizeIncomeStreams(streams) {
+        return JSON.parse(JSON.stringify(streams)).filter(s => {
+          return !(s.id === 'is0' && s.name === 'Career' && s.startAge === 26 && s.endAge === null && s.ongoing === true && s.annual === 150000 && s.growth === 8 && s.eligible401k === false && s.incomeType === 'salary' && (s.takeHomeOverride === undefined || s.takeHomeOverride === null));
+        });
+      }
+
       function ftLoadScenarioData(d) {
         if (!d) return;
         if (d.globals) Object.assign(ftGlobals, d.globals);
         // Load income streams (new format) — migrate old job event
         if (d.incomeStreams) {
-          ftIncomeStreams = JSON.parse(JSON.stringify(d.incomeStreams));
+          ftIncomeStreams = ftSanitizeIncomeStreams(d.incomeStreams);
         } else if (d.lifeEvents) {
           const jobEv = d.lifeEvents.find(e => e.type === 'job');
           if (jobEv) {
