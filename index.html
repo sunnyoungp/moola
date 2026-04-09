@@ -8276,7 +8276,7 @@
             }
           }
           const netsav=Math.round(reqSav);
-          const freeSpend=Math.round((netHH-housing-kids-healthcare-netsav)/12);
+          const freeSpend=Math.round((netHH-housing-living-kids-healthcare-netsav)/12);
           if(freeSpend<0){
             if(ftGlobals.discMode==='goal') discTooltip='Your income at this age cannot cover required savings for '+topGoalLabel+' plus expenses — consider pushing the goal later or increasing income.';
             else discTooltip='After '+ftGlobals.savingsRate+'% savings target and fixed costs, '+ftFmt(Math.abs(freeSpend*12))+'/yr shortfall.';
