@@ -4609,9 +4609,10 @@
             </div>
           </div>
           <div class="ft-sec-body" id="ftb-table">
-            <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
+            <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
               <button class="btn bsm" onclick="ftAppendRow()">+ add row (future)</button>
               <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
+              <button class="btn bsm" id="ft-reset-ov-btn" onclick="ftResetAllOverrides()" style="display:none;background:var(--rose-l);color:var(--rose);border-color:var(--rose)" title="Clear all cell overrides (income, net worth)">↺ reset overrides</button>
               <span style="font-size:10.5px;color:var(--ink3);margin-left:auto">click net worth or income to override ·
                 dbl-click to clear</span>
             </div>
@@ -9508,14 +9509,16 @@
 
           if (partner > 0) incBreakdown.push('Partner: ' + ftFmt(partner));
 
+          const incomeOv = ftOvMap[age]?.income;
+          const firstSalaryStream = ftIncomeStreams.find(s => s.incomeType === 'salary' || !s.incomeType);
           for (const s of ftIncomeStreams) {
             const amt = ftGetStreamIncome(s, age);
-            const ov = ftOvMap[age]?.income;
-            const streamVal = (ov !== undefined && s.id === 'is0') ? ov : amt;
+            // Apply the income override to the first salary stream only
+            const streamVal = (incomeOv !== undefined && s === firstSalaryStream) ? incomeOv : amt;
             income += streamVal;
 
-            if (s.takeHomeOverride && s.incomeType === 'salary') {
-              // If manual override is on, this is ALREADY net income.
+            if (s.takeHomeOverride && s.incomeType === 'salary' && !(incomeOv !== undefined && s === firstSalaryStream)) {
+              // If manual take-home override is on and no cell override, this is ALREADY net income.
               const growthFac = Math.pow(1 + (s.growth || 0) / 100, age - s.startAge);
               fixedNetAcc += Math.round(s.takeHomeOverride * 12 * growthFac);
             } else if (s.incomeType === 'salary') {
@@ -9677,14 +9680,15 @@
             newLiq = nwOv - Math.round(realEstateEquity);
           }
 
-          // After currentAge row, anchor liquidNW to real today NW
-          // so all future rows compound from the correct base
-          if (age === curAge) {
-            newLiq = todayNW - Math.round(realEstateEquity);
+          // For the projection starting age row, display NW = todayNW (what you actually have today).
+          // But let liquidNW carry forward the computed value so future rows compound correctly.
+          let displayLiq = newLiq;
+          if (age === curAge && nwOv === undefined) {
+            displayLiq = todayNW - Math.round(realEstateEquity);
           }
 
           liquidNW = newLiq;
-          const nw = liquidNW + Math.round(realEstateEquity);
+          const nw = displayLiq + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
           cumSav += Math.max(0, netSavings);
 
@@ -9711,7 +9715,7 @@
             else msDots.push({ color: '#dc2626', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · Shortfall' });
           }
           const isBuy = propScheds.some(({ p }) => p.purchaseAge === age);
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals });
         }
         return out;
       }
@@ -10322,6 +10326,7 @@
             </td></tr>`;
         }).join('');
         tbody.innerHTML = regularRows;
+        ftUpdateResetBtn();
       }
 
       // ── Event handlers ──────────────────────────────────────────────
@@ -10427,6 +10432,21 @@
       function ftClearOverride(age, field) {
         if (ftOvMap[age]) { delete ftOvMap[age][field]; if (!Object.keys(ftOvMap[age]).length) delete ftOvMap[age]; }
         ftRecalc();
+      }
+
+      function ftResetAllOverrides() {
+        if (!confirm('Clear all overrides (income and net worth for all years)?')) return;
+        ftOvMap = {};
+        ftNwTodayOv = null;
+        ftNwEoyOv = null;
+        ftRecalc();
+      }
+
+      function ftUpdateResetBtn() {
+        const btn = document.getElementById('ft-reset-ov-btn');
+        if (!btn) return;
+        const hasOv = Object.keys(ftOvMap).length > 0 || ftNwTodayOv !== null || ftNwEoyOv !== null;
+        btn.style.display = hasOv ? 'inline-flex' : 'none';
       }
 
       function ftDeleteRow(age) {
