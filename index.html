@@ -7808,7 +7808,8 @@
       let ftActiveScenarioId = 'sc0';
       let ftColOrder = ['age','nw','netsav','freeSpend','monthlySurplus','income','partner','living','housing','kids'];
       let ftColVis = { age:true, income:true, partner:false, living:true, housing:true, kids:true, netsav:true, nw:true, freeSpend:true, monthlySurplus:true };
-      const ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'discretionary budget / mo', monthlySurplus:'savings surplus / mo' };
+      let ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'discretionary budget / mo', monthlySurplus:'savings surplus / mo' };
+      let ftMinAge = null; // Overridden if user adds historical years
       let ftDragSrc=null, ftRows=[], ftChart=null, ftNextId=100;
       function ftResetNextId() {
         // Scan all existing IDs across income streams, properties, life events, and expense phases
@@ -8166,41 +8167,45 @@
 
       // ── Main projection ────────────────────────────────────────────
       function ftCalcRows() {
-        const roc=ftGlobals.roc/100, curAge=ftGlobals.currentAge;
-        const pEv=ftLifeEvents.find(e=>e.type==='partner');
-        const childEvs=ftLifeEvents.filter(e=>e.type==='child');
-        const oneTimeEvs=ftLifeEvents.filter(e=>e.type==='oneTime');
-        const healthEvs=ftLifeEvents.filter(e=>e.type==='healthcare');
-        const partnerAge=pEv?pEv.age:Infinity;
-        // Pre-compute property schedules
-        const propScheds=ftProperties.map(p=>({p,mort:ftCalcPropMortgage(p),sched:ftCalcPropSchedule(p)}));
-        // Update property pills
-        for(const {p,mort,sched} of propScheds){
-          const downCash=Math.round(p.price*p.downPct/100+p.price*0.03);
-          const pill=document.getElementById('ft-prop-pill-'+p.id);
-          if(pill) pill.textContent='Down+closing='+ftFmt(downCash)+'  ·  '+ftFmt(Math.round(mort/12))+'/mo  ·  Payoff age '+(sched.payoffAge??'—')+'  ·  Saves '+ftFmt(sched.interestSaved);
-        }
-        let liquidNW=ftGetTodayNW(), k401Bal=0, cumSav=0;
-        const out=[];
-        for(let age=curAge;age<=100;age++){
-          const married=age>=partnerAge;
-          const partner=ftGetPartnerIncome(age);
-          let taxableGrossAcc=partner, fixedNetAcc=0, totalGrossAcc=partner;
+        const curAge = ftGlobals.currentAge;
+        const startAge = ftMinAge !== null ? Math.min(curAge, ftMinAge) : curAge;
+        const roc = ftGlobals.roc/100;
+        const childEvs = ftLifeEvents.filter(e=>e.type==='child');
+        const healthEvs = ftLifeEvents.filter(e=>e.type==='healthcare');
+        const oneTimeEvs = ftLifeEvents.filter(e=>e.type==='oneTime');
+        const propScheds = ftProperties.map(p=>({p,mort:ftCalcPropMortgage(p),sched:ftCalcPropSchedule(p)}));
+
+        let liquidNW = ftGetTodayNW();
+        let k401Bal = 0;
+        let cumSav = 0;
+        let out = [];
+
+        for(let age=startAge; age<=100; age++){
+          const married = ftLifeEvents.some(e=>e.type==='partner'&&age>=e.age);
+          let income=0, taxableGrossAcc=0, fixedNetAcc=0, contrib401k=0;
+          let incBreakdown = [];
           for(const s of ftIncomeStreams){
-            if(age<s.startAge||(s.endAge&&age>s.endAge)) continue;
-            const growthFac=Math.pow(1+(s.growth||0)/100, age-s.startAge);
-            const gross=Math.round((s.annual||0)*growthFac);
-            totalGrossAcc+=gross;
-            if(s.takeHomeOverride) fixedNetAcc+=Math.round(s.takeHomeOverride*12*growthFac);
-            else taxableGrossAcc+=gross;
+            const amt = ftGetStreamIncome(s, age);
+            const ov = ftOvMap[age]?.income;
+            const streamVal = (ov !== undefined && s.id === 'is0') ? ov : amt; 
+            income += streamVal;
+            if(s.incomeType==='salary'){
+              taxableGrossAcc += streamVal;
+              if(s.eligible401k) contrib401k += Math.min(streamVal, ftGlobals.f401k);
+            } else {
+              fixedNetAcc += streamVal;
+            }
+            if(streamVal > 0) incBreakdown.push(s.name + ': ' + ftFmt(streamVal));
           }
-          const income=totalGrossAcc-partner;
-          const has401k=ftHas401kEligible(age);
-          const contrib401k=has401k?ftGlobals.f401k:0;
+
           const taxableTotal=Math.max(0,taxableGrossAcc-contrib401k); 
           const taxRate=ftGlobals.taxMode==='auto'?ftCalcAutoTax(taxableTotal,married):ftGlobals.taxFlat/100;
           let netHH=Math.round(taxableGrossAcc-taxableTotal*taxRate)+fixedNetAcc;
           const living=ftGetLiving(age);
+          
+          let taxTip='effective rate: '+((taxRate||0)*100).toFixed(1)+'% (marginal fed '+(ftGetFedMarginalRate(taxableTotal, married)*100).toFixed(1)+'% + state '+((STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default)*100).toFixed(1)+'%)';
+          const incomeTip = 'Calculation:\n' + incBreakdown.join('\n') + '\n—\nTotal take-home: ' + ftFmt(netHH) + ' (tax: ' + ftFmt(taxableTotal*taxRate) + ')';
+
           // Housing: primary mortgage > rent
           let housing=0;
           for(const {p,mort,sched} of propScheds){
@@ -8213,15 +8218,19 @@
           // Healthcare
           let healthcare=0;
           for(const he of healthEvs){if(age>=he.startAge&&age<=he.endAge)healthcare+=(he.monthlyCost||0)*12;}
+          
+          const fixedCosts = housing + kids + healthcare;
+
           // One-time events + property extra payments
           let ot=oneTimeEvs.filter(e=>e.age===age).reduce((s,e)=>s+e.amount,0);
           let extraPmt=0;
           for(const {p} of propScheds) for(const ep of (p.extraPayments||[])) if(ep.age===age) extraPmt+=ep.amount;
           // Required savings vs Actual surplus
-          const netSavings=netHH-living-housing-kids-healthcare;
+          const netSavings=netHH-living-fixedCosts;
           let requiredSavings=0, discTooltip='', noGoals=false, topGoalLabel='';
           if(ftGlobals.discMode==='rate'){
             requiredSavings=netHH*ftGlobals.savingsRate/100;
+            discTooltip = 'Target savings based on ' + ftGlobals.savingsRate + '% rate';
           } else {
             const pmts=[];
             if(ftGlobals.retireAge>age&&ftGlobals.retireNW>0){
@@ -8261,26 +8270,29 @@
               discTooltip='goal-based minimum: '+ftFmt(Math.round(top.req))+' · binding: '+top.label;
             } else {
               noGoals=true; requiredSavings=0;
-              discTooltip='No active goals — NW growth covers all targets. Saving '+ftFmt(Math.round(netSavings))+'/yr.';
+              discTooltip='No active goals — NW growth covers all targets.';
             }
           }
 
-          // Discretionary Budget: and now excludes current 'living' expenses as per user request
-          const rawFreeSpend=(netHH-housing-kids-healthcare-requiredSavings)/12;
+          const rawFreeSpend=(netHH-fixedCosts-requiredSavings)/12;
           const freeSpend=Math.max(0, Math.round(rawFreeSpend));
           const monthlySurplus=Math.round(rawFreeSpend - (living/12));
-          if(rawFreeSpend<0){
-            if(ftGlobals.discMode==='goal') discTooltip='⚠ Income cannot cover required savings for '+topGoalLabel+' + expenses. Floor at $0.';
-            else discTooltip='⚠ After '+ftGlobals.savingsRate+'% savings target, shortfall of '+ftFmt(Math.abs(rawFreeSpend*12))+'/yr. Floor at $0.';
-          }
-          // Tax tooltip
-          const fedRate=ftGetFedMarginalRate(taxableTotal,married);
-          const stateRate=STATE_TAX_RATES[ftGlobals.state]??STATE_TAX_RATES.default;
-          const effRate=fedRate+stateRate;
-          const taxTip='effective rate: '+(effRate*100).toFixed(1)+'% (marginal fed '+(fedRate*100).toFixed(1)+'% + state '+(stateRate*100).toFixed(1)+'%)';
-          // 401k accumulation
+          
+          const budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH/12)) + '/mo' +
+            '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts/12)) + '/mo' +
+            '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings/12)) + '/mo' +
+            '\n = Budget: ' + ftFmt(freeSpend) + '/mo';
+
+          const surplusTip = 'Calculation:\nDiscretionary Budget: ' + ftFmt(freeSpend) + '/mo' +
+            '\n - Actual Living: ' + ftFmt(Math.round(living/12)) + '/mo' +
+            '\n = Surplus: ' + (monthlySurplus>=0?'+':'') + ftFmt(monthlySurplus) + '/mo';
+
+          const netSavTip = 'Calculation:\nNet Take-home: ' + ftFmt(netHH) + '/yr' +
+            '\n - Adjusted Living: ' + ftFmt(living) +
+            '\n - Fixed costs: ' + ftFmt(fixedCosts) +
+            '\n = Added wealth: ' + ftFmt(netSavings) + '/yr';
+
           k401Bal=k401Bal*(1+roc)+contrib401k;
-          // Real estate equity
           let realEstateEquity=0;
           for(const {p} of propScheds){
             if(age>=p.purchaseAge){
@@ -8289,20 +8301,28 @@
               realEstateEquity+=cv-ftCalcRemainingDebt(p,yo);
             }
           }
-          // NW: liquid compounds + actual surplus (netSavings)
+
+          const growth = liquidNW * roc;
+          const nwTip = 'Calculation:\nPrevious Balance: ' + ftFmt(liquidNW) +
+            '\n + Return (' + (roc*100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
+            '\n + Added Wealth: ' + ftFmt(netSavings) +
+            (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
+            (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
+            '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt));
+
           let newLiq=liquidNW*(1+roc)+netSavings+ot-extraPmt;
           for(const {p} of propScheds) if(p.purchaseAge===age) newLiq-=Math.round(p.price*p.downPct/100+p.price*0.03);
           liquidNW=Math.round(newLiq);
           const nw=liquidNW+Math.round(realEstateEquity);
           cumSav+=Math.max(0,netSavings);
-          // Milestones
+          
           const ms=[];
+          const pEv=ftLifeEvents.find(e=>e.type==='partner');
           if(pEv&&age===pEv.age) ms.push('partner');
           for(const {p} of propScheds) if(age===p.purchaseAge) ms.push(p.name);
           childEvs.forEach((ce,i)=>{if(age===ce.age)ms.push('child '+(i+1));});
           oneTimeEvs.filter(e=>e.age===age).forEach(e=>{if(e.label)ms.push(e.label);});
           for(const s of ftIncomeStreams) if(age===s.startAge) ms.push(s.name+' starts');
-          // Milestone sufficiency dots
           const msDots=[];
           for(const {p} of propScheds){
             if(age===p.purchaseAge){
@@ -8319,7 +8339,7 @@
             else msDots.push({color:'#dc2626',tip:'Need '+ftFmt(ftGlobals.retireNW)+' · Projected '+ftFmt(nw)+' · Shortfall'});
           }
           const isBuy=propScheds.some(({p})=>p.purchaseAge===age);
-          out.push({age,income,partner,living,housing,kids:Math.round(kids),healthcare:Math.round(healthcare),requiredSavings:Math.round(requiredSavings),netSavings:Math.round(netSavings),freeSpend,monthlySurplus,nw,liquidNW,realEstateEquity:Math.round(realEstateEquity),cumSav:Math.round(cumSav),ms,msDots,isBuy,ot:ot+extraPmt,k401Bal:Math.round(k401Bal),taxTip,discTooltip,noGoals});
+          out.push({age,income,partner:ftGetPartnerIncome(age),living,housing,kids:Math.round(kids),healthcare:Math.round(healthcare),requiredSavings:Math.round(requiredSavings),netSavings:Math.round(netSavings),freeSpend,monthlySurplus,nw,liquidNW,realEstateEquity:Math.round(realEstateEquity),cumSav:Math.round(cumSav),ms,msDots,isBuy,ot:ot+extraPmt,k401Bal:Math.round(k401Bal),taxTip,budgetTip,surplusTip,netSavTip,nwTip,incomeTip,discTooltip,noGoals});
         }
         return out;
       }
@@ -8681,7 +8701,7 @@
           ?'<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:6px">⚠ Retirement age '+ftGlobals.retireAge+' is before last child expense at age '+goalLastChildExpAge+' — extend retirement age or shorten child cost stages.</div>':'';
         const discControls=ftGlobals.discMode==='rate'
           ?'<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.savingsRate+'" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
-          :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% withdrawal — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr in retirement spending</div>'+goalRetireConflict+'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
+          :'<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireAge+'" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="'+ftGlobals.retireNW+'" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% withdrawal — '+ftFmt(ftGlobals.retireNW)+' supports ~'+ftFmt(Math.round(ftGlobals.retireNW*0.04))+'/yr in retirement spending</div>'+goalRetireConflict+'<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
         const rothBal=ftGlobals.rothBalanceOv!==null?ftGlobals.rothBalanceOv:(S?.accounts?.find(a=>a.type==='brokerage-roth')?.balance||0);
         const retTax=ftGlobals.retireTaxEnabled?'<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
           +'<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="'+rothBal+'" oninput="ftGlobals.rothBalanceOv=+this.value;ftSaveScenario();ftRecalc()" style="width:110px">'+(ftGlobals.rothBalanceOv===null?'<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv='+rothBal+';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>':'<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>')+'</div>'
@@ -8813,10 +8833,10 @@
 
       // ── Column chips ────────────────────────────────────────────────
       function ftRenderChips() {
-        const toggleable=['income','partner','living','housing','kids','netsav','nw','freeSpend'];
+        const toggleable=['income','partner','living','housing','kids','netsav','nw','freeSpend','monthlySurplus'];
         const el=document.getElementById('ft-col-chips');
         if(!el) return;
-        el.innerHTML=toggleable.map(c=>'<button class="ft-chip '+(ftColVis[c]?'on':'')+'" onclick="ftToggleCol(\''+c+'\')">'+ftColLabels[c]+'</button>').join('');
+        el.innerHTML=toggleable.map(c=>'<button class="ft-chip '+(ftColVis[c]?'on':'')+'" onclick="ftToggleCol(\''+c+'\')" ondblclick="ftStartRenameCol(\''+c+'\')" title="Click to toggle · Double-click to rename">'+ftColLabels[c]+'</button>').join('');
       }
 
       // ── Required savings card ───────────────────────────────────────
@@ -9108,6 +9128,18 @@
       }
 
       function ftToggleCol(c){ftColVis[c]=!ftColVis[c];ftRenderChips();ftRenderTable();}
+      function ftStartRenameCol(c){
+        const name=prompt('Enter new label for "'+ftColLabels[c]+'":', ftColLabels[c]);
+        if(name!==null && name.trim()){
+          ftColLabels[c]=name.trim();
+          ftRenderChips(); ftRenderTable();
+        }
+      }
+      function ftAddYearBefore(){
+        const curMin = ftMinAge !== null ? ftMinAge : ftGlobals.currentAge;
+        ftMinAge = curMin - 1;
+        ftRecalc();
+      }
       function ftAppendRow(){const l=ftRows[ftRows.length-1];if(!l)return;ftRows.push({...l,age:l.age+1,ms:[],msDots:[],isBuy:false,ot:0,freeSpend:0,discTooltip:''});ftRenderTable();ftRenderChart();}
       function ftInsertAfter(ri){const r=ftRows[ri];const nx=ftRows[ri+1];const na=nx?Math.ceil((r.age+nx.age)/2):r.age+1;ftRows.splice(ri+1,0,{...r,age:na,ms:[],msDots:[],isBuy:false,ot:0});ftRenderTable();}
       function ftDs(e,i){ftDragSrc=i;e.dataTransfer.effectAllowed='move';}
