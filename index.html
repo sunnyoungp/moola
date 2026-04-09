@@ -2700,21 +2700,22 @@
     .ac-btn-primary { padding: 6px 12px; font-size: 12px; font-weight: 600; background: var(--f); color: #fff; border: none; border-radius: var(--rx); cursor: pointer; }
     .ac-btn-primary:disabled { opacity: 0.6; }
     @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    .ft-today-row { background: #eff6ff !important; border-left: 4px solid #3b82f6 !important; }
-    .ft-today-row td { background: #eff6ff !important; }
+    #ft-tbl tbody tr.ft-today-row { background: #eff6ff !important; border-left: 5px solid #3b82f6 !important; position: relative; }
+    #ft-tbl tbody tr.ft-today-row td { background: #eff6ff !important; font-weight: 600; }
     .ft-ev-add-btn {
       background: #f1f5f9;
       border: 1px solid #cbd5e1 !important;
       color: #0f172a !important;
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-weight: 700;
-      margin: 4px;
       display: inline-block;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      font-size: 11px;
     }
-    .ft-nw-tip { cursor: help; text-decoration: underline dotted var(--ink3); }
+    .ft-ev-add-btn:hover { background: #e2e8f0; }
+    .ft-nw-tip { cursor: pointer; text-decoration: underline dotted var(--ink3); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -3446,9 +3447,10 @@
             </div>
           </div>
           <div class="ft-sec-body" id="ftb-table">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 5px">
-              <button class="btn bsm" onclick="ftAppendRow()">+ add row</button>
-              <span style="font-size:10.5px;color:var(--ink3)">click income/partner to override · dbl-click to clear</span>
+            <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
+              <button class="btn bsm" onclick="ftAppendRow()">+ add row (future)</button>
+              <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
+              <span style="font-size:10.5px;color:var(--ink3);margin-left:auto">click net worth or income to override · dbl-click to clear</span>
             </div>
             <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:var(--r)">
               <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:12px" id="ft-tbl">
@@ -8366,6 +8368,13 @@
             '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt));
 
           let newLiq = Math.round(liquidNW + growth + netSavings + ot - extraPmt);
+          
+          // Apply NW override if it exists
+          const nwOv = ftOvMap[age]?.nw;
+          if(nwOv !== undefined){
+            newLiq = nwOv - Math.round(realEstateEquity);
+          }
+          
           liquidNW = newLiq;
           const nw = liquidNW + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
@@ -8957,7 +8966,7 @@
                 +'</td>';
               if(c==='nw'){
                 const tip=nwTip.replace(/"/g,'&quot;');
-                return '<td class="'+(r.nw<0?'neg':'')+'"'+(tip?' title="'+tip+'" style="cursor:help"':'')+'>'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
+                return '<td class="ft-editable '+(r.nw<0?'neg':'')+'" onclick="ftStartEdit(this,\'nw\','+r.age+')" title="'+tip+' · Click to override">'+(r.liquidNW!==undefined?'<span class="ft-nw-tip">':'')+MT(ftFmt(r.nw),'future')+(r.liquidNW!==undefined?'</span>':'')+'</td>';
               }
               if(c==='netsav'){
                 const nsTip=ftGlobals.discMode==='goal'&&r.discTooltip?r.discTooltip.replace(/"/g,'&quot;'):'';
@@ -9085,6 +9094,14 @@
 
       function ftClearOverride(age,field){
         if(ftOvMap[age]){delete ftOvMap[age][field];if(!Object.keys(ftOvMap[age]).length)delete ftOvMap[age];}
+        ftRecalc();
+      }
+
+      function ftAddHistoryYear() {
+        const curAge = ftGlobals.currentAge;
+        if(ftHistoryStartAge === null) ftHistoryStartAge = curAge;
+        ftHistoryStartAge--;
+        ftSaveScenario();
         ftRecalc();
       }
 
