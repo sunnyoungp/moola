@@ -8310,16 +8310,19 @@
           }
 
           const growth = liquidNW * roc;
+          let acqCost = 0;
+          for(const {p} of propScheds) if(p.purchaseAge===age) acqCost += Math.round(p.price*p.downPct/100 + p.price*0.03);
+
           const nwTip = 'Calculation:\nPrevious Balance: ' + ftFmt(liquidNW) +
             '\n + Return (' + (roc*100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
             '\n + Added Wealth: ' + ftFmt(netSavings) +
             (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
             (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
-            '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt));
+            (acqCost !== 0 ? '\n - Purchase down payment: ' + ftFmt(acqCost) : '') +
+            '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt - acqCost));
 
-          let newLiq=liquidNW*(1+roc)+netSavings+ot-extraPmt;
-          for(const {p} of propScheds) if(p.purchaseAge===age) newLiq-=Math.round(p.price*p.downPct/100+p.price*0.03);
-          liquidNW=Math.round(newLiq);
+          let newLiq = Math.round(liquidNW + growth + netSavings + ot - extraPmt - acqCost);
+          liquidNW = newLiq;
           const nw=liquidNW+Math.round(realEstateEquity);
           cumSav+=Math.max(0,netSavings);
           
