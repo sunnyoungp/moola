@@ -2793,56 +2793,49 @@
   <div id="app-screen" style="display:none;">
     <!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
     <nav id="sidebar">
-      <div class="sb-logo">
-        <div class="sb-mark">
-          <svg viewBox="0 0 14 14">
-            <path d="M2 10 L4.5 5 L7 7.5 L9.5 3.5 L12 6.5" />
-          </svg>
+      <div class="sb-logo" id="sb-logo" style="padding:16px 20px 14px; gap:0;">
+        <div id="ac-switcher-container" class="ac-switcher-wrapper" style="margin:0; width:calc(100% - 30px); flex:1;">
+          <button id="ac-trigger" class="ac-trigger" onclick="toggleAccountDropdown(event)" disabled style="border:none;background:transparent;padding:6px;box-shadow:none;">
+            <div class="ac-trigger-left" id="ac-trigger-label">
+              <span class="ac-trigger-label">Loading...</span>
+            </div>
+            <svg id="ac-chevron" class="ac-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div id="ac-dropdown" class="ac-dropdown">
+            <div class="ac-dropdown-header">
+              <span class="ac-dropdown-title">Your accounts</span>
+            </div>
+            <div id="ac-list" class="ac-list">
+               <!-- Injected by JS -->
+            </div>
+            <div class="ac-divider"></div>
+            
+            <div id="ac-create-section">
+              <button id="ac-create-btn" class="ac-create-btn" onclick="openCreateAccountForm()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Create Account
+              </button>
+              <form id="ac-create-form" class="ac-create-form" style="display: none;" onsubmit="handleCreateAccount(event)">
+                <input id="ac-new-name" type="text" placeholder="Account name..." autocomplete="off">
+                <div class="ac-form-actions">
+                  <button type="button" class="ac-btn-ghost" onclick="closeCreateAccountForm()">Cancel</button>
+                  <button id="ac-submit-btn" type="submit" class="ac-btn-primary" disabled>Create</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-        <div class="sb-wordmark">mool<em>a</em></div>
-        <button class="sb-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">
+        <button class="sb-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar" style="flex-shrink:0;">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <polyline points="10,4 6,8 10,12" />
           </svg>
         </button>
-      </div>
-
-      <div id="ac-switcher-container" class="ac-switcher-wrapper">
-        <button id="ac-trigger" class="ac-trigger" onclick="toggleAccountDropdown(event)" disabled>
-          <div class="ac-trigger-left" id="ac-trigger-label">
-            <span class="ac-trigger-label">Loading...</span>
-          </div>
-          <svg id="ac-chevron" class="ac-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-
-        <div id="ac-dropdown" class="ac-dropdown">
-          <div class="ac-dropdown-header">
-            <span class="ac-dropdown-title">Your accounts</span>
-          </div>
-          <div id="ac-list" class="ac-list">
-             <!-- Injected by JS -->
-          </div>
-          <div class="ac-divider"></div>
-          
-          <div id="ac-create-section">
-            <button id="ac-create-btn" class="ac-create-btn" onclick="openCreateAccountForm()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Create Account
-            </button>
-            <form id="ac-create-form" class="ac-create-form" style="display: none;" onsubmit="handleCreateAccount(event)">
-              <input id="ac-new-name" type="text" placeholder="Account name..." autocomplete="off">
-              <div class="ac-form-actions">
-                <button type="button" class="ac-btn-ghost" onclick="closeCreateAccountForm()">Cancel</button>
-                <button id="ac-submit-btn" type="submit" class="ac-btn-primary" disabled>Create</button>
-              </div>
-            </form>
-          </div>
-        </div>
       </div>
 
       <div class="sb-nav" id="sb-nav"></div>
@@ -4324,6 +4317,29 @@
         }
       }
 
+      // Mobile reparenting listener
+      const mobMQ = window.matchMedia('(max-width: 1023px)');
+      function handleMobSwitch(e) {
+        const sw = document.getElementById('ac-switcher-container');
+        if(!sw) return;
+        if(e.matches) {
+          const mNav = document.getElementById('mob-nav-bar');
+          if(mNav) {
+            sw.style.margin = '10px 16px';
+            sw.style.width = 'calc(100% - 32px)';
+            mNav.insertBefore(sw, mNav.firstChild);
+          }
+        } else {
+          const lgo = document.getElementById('sb-logo');
+          if(lgo) {
+            sw.style.margin = '0';
+            sw.style.width = 'calc(100% - 30px)';
+            lgo.insertBefore(sw, lgo.firstChild);
+          }
+        }
+      }
+      mobMQ.addEventListener('change', handleMobSwitch);
+
       function selectAccount(id, toggle = true) {
         currentAccountId = id;
         localStorage.setItem('currentAccountId', id);
@@ -4332,6 +4348,16 @@
         console.log(`[moola] Account switched to: ${id}`);
         window.dispatchEvent(new CustomEvent('accountChanged', { detail: { accountId: id } }));
       }
+      
+      window.addEventListener('accountChanged', (e) => {
+        currentAccountId = e.detail.accountId;
+        // Central rerender app block
+        if(appInitialized) {
+          renderOverview();
+          renderPortfolio();
+          renderAccounts();
+        }
+      });
 
       function openCreateAccountForm() {
         document.getElementById('ac-create-btn').style.display = 'none';
@@ -4842,8 +4868,17 @@
       function getAcctTypeName(typeId) {
         return S.accountTypes?.find(t => t.id === typeId)?.name || typeId;
       }
-      function totPort() { return S.funds.reduce((s, f) => s + getFundUSD(f), 0); }
-      function blendRet(off = 0) { const t = totPort(); if (!t) return 0.096; return S.funds.reduce((s, f) => s + (getFundUSD(f) / t) * (f.retPct + off) / 100, 0); }
+      function getFilteredState() {
+        if (!S) return { funds: [] };
+        if (!currentAccountId) return S;
+        return {
+          ...S,
+          funds: S.funds.filter(f => String(f.acct) === String(currentAccountId))
+        };
+      }
+
+      function totPort() { const state = getFilteredState(); return state.funds.reduce((s, f) => s + getFundUSD(f), 0); }
+      function blendRet(off = 0) { const t = totPort(); if (!t) return 0.096; const state = getFilteredState(); return state.funds.reduce((s, f) => s + (getFundUSD(f) / t) * (f.retPct + off) / 100, 0); }
       function nextId(arr) { return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1; }
       function fvCalc(pv, r, n, pmt) { if (!r || !n) return pv + pmt * n; return pv * Math.pow(1 + r, n) + pmt * ((Math.pow(1 + r, n) - 1) / r); }
       function chqFV(pv, r, mp, tm, hy) { const rm = r / 12; let b = pv; const act = Math.min(tm, hy * 12); for (let m = 0; m < act; m++)b = b * (1 + rm) + mp; return b * Math.pow(1 + rm, hy * 12 - act); }
@@ -4929,6 +4964,7 @@
       }
 
       function renderOverview() {
+        const state = getFilteredState();
         syncPrivacyUI();
         document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
         const snaps = S.snapshots;
@@ -4936,7 +4972,7 @@
         const gain = nwTotal() - (snaps[0]?.nw || nwTotal()) - tc;
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
-        if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${S.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
+        if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${state.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
         if (vis.history || vis.breakdown) {
           h += `<div class="g2 mb-2">`;
           if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s,si,arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`;
@@ -5117,6 +5153,7 @@
       function setTableGroup(mode) { S.tableGroupingMode = mode; ps(); renderAccounts(); }
 
       function renderAccounts() {
+        const state = getFilteredState();
         const t = nwTotal();
         document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
 
@@ -5125,37 +5162,37 @@
 
         // ── TABLE GROUPING ───────────────────────────────────────────
         let sections = [];
-        if (S.tableGroupingMode === 'name') {
-          sections = [{ name: 'All Accounts', accounts: S.accounts }];
-        } else if (S.tableGroupingMode === 'investment') {
-          const inv = S.accounts.filter(a => {
-            const type = S.accountTypes.find(t => t.id === a.type);
+        if (state.tableGroupingMode === 'name') {
+          sections = [{ name: 'All Accounts', accounts: state.accounts }];
+        } else if (state.tableGroupingMode === 'investment') {
+          const inv = state.accounts.filter(a => {
+            const type = state.accountTypes.find(t => t.id === a.type);
             return type?.isInvestment;
           });
-          const non = S.accounts.filter(a => !inv.includes(a));
+          const non = state.accounts.filter(a => !inv.includes(a));
           sections = [
             { name: 'Investments', accounts: inv },
             { name: 'Non-Investments', accounts: non }
           ];
-        } else if (S.tableGroupingMode === 'bucket') {
-          sections = (S.buckets || []).map(b => ({
+        } else if (state.tableGroupingMode === 'bucket') {
+          sections = (state.buckets || []).map(b => ({
             name: b.name,
-            accounts: S.accounts.filter(a => {
-              const type = S.accountTypes.find(t => t.id === a.type);
+            accounts: state.accounts.filter(a => {
+              const type = state.accountTypes.find(t => t.id === a.type);
               return type?.bucketId === b.id;
             })
           }));
-        } else if (S.tableGroupingMode === 'type') {
-          sections = (S.accountTypes || []).map(type => ({
+        } else if (state.tableGroupingMode === 'type') {
+          sections = (state.accountTypes || []).map(type => ({
             name: type.name,
-            accounts: S.accounts.filter(a => a.type === type.id)
+            accounts: state.accounts.filter(a => a.type === type.id)
           })).filter(s => s.accounts.length > 0);
         } else {
           // Default: Category
-          sections = (S.accountCategories || []).map(cat => ({
+          sections = (state.accountCategories || []).map(cat => ({
             name: cat.name,
-            accounts: S.accounts.filter(a => {
-              const type = S.accountTypes.find(t => t.id === a.type);
+            accounts: state.accounts.filter(a => {
+              const type = state.accountTypes.find(t => t.id === a.type);
               return type?.categoryId === cat.id;
             })
           }));
@@ -5164,14 +5201,14 @@
         const colors = COLORS();
         // Get chart data entries so we can match colors
         const chartGroups = {};
-        S.accounts.forEach(a => {
+        state.accounts.forEach(a => {
           let ck = 'Other';
-          const type = S.accountTypes.find(t => t.id === a.type);
-          if (S.chartGroupingMode === 'bucket') { const b = S.buckets.find(x => x.id === type?.bucketId); ck = b ? b.name : 'Unknown'; }
-          else if (S.chartGroupingMode === 'category') { const c = S.accountCategories.find(x => x.id === type?.categoryId); ck = c ? c.name : 'Unknown'; }
-          else if (S.chartGroupingMode === 'type') { ck = type ? type.name : 'Unknown'; }
-          else if (S.chartGroupingMode === 'name') { ck = a.name; }
-          else if (S.chartGroupingMode === 'investment') { ck = type?.isInvestment ? 'Investment' : 'Non-Investment'; }
+          const type = state.accountTypes.find(t => t.id === a.type);
+          if (state.chartGroupingMode === 'bucket') { const b = state.buckets.find(x => x.id === type?.bucketId); ck = b ? b.name : 'Unknown'; }
+          else if (state.chartGroupingMode === 'category') { const c = state.accountCategories.find(x => x.id === type?.categoryId); ck = c ? c.name : 'Unknown'; }
+          else if (state.chartGroupingMode === 'type') { ck = type ? type.name : 'Unknown'; }
+          else if (state.chartGroupingMode === 'name') { ck = a.name; }
+          else if (state.chartGroupingMode === 'investment') { ck = type?.isInvestment ? 'Investment' : 'Non-Investment'; }
           chartGroups[ck] = (chartGroups[ck] || 0) + getAcctUSD(a);
         });
         const de = Object.entries(chartGroups).map(([name,val])=>({name,val})).sort((a,b)=>b.val-a.val);
@@ -5199,9 +5236,9 @@
         }).join('');
 
         // Catch orphans
-        const knownTypeIds = (S.accountTypes || []).map(t => t.id);
-        const orphans = S.accounts.filter(a => !knownTypeIds.includes(a.type));
-        if (orphans.length && S.tableGroupingMode !== 'name') {
+        const knownTypeIds = (state.accountTypes || []).map(t => t.id);
+        const orphans = state.accounts.filter(a => !knownTypeIds.includes(a.type));
+        if (orphans.length && state.tableGroupingMode !== 'name') {
           wrap.innerHTML += `<div class="card mb-2">
             <div class="sec">Other (Unknown Type)</div>
             <div style="overflow-x:auto"><table class="tbl">${accRows(orphans, t)}</table></div>
