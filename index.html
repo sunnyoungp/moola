@@ -9028,12 +9028,7 @@
         retireTaxEnabled: false, numFormat: 'compact'
       };
       // Income streams (replaces single Job event)
-      let ftIncomeStreams = [
-        {
-          id: 'is0', name: 'Career', startAge: 26, endAge: null, ongoing: true,
-          annual: 150000, growth: 8, eligible401k: false, incomeType: 'salary', expanded: false
-        }
-      ];
+      let ftIncomeStreams = [];
       // Properties (replaces single Buy a Home event)
       let ftProperties = [];
       // Life events: partner, child, oneTime, healthcare only
@@ -9779,7 +9774,7 @@
           + '<div class="ft-ev-fr"><label>Annual amount (gross)</label><input type="number" value="' + s.annual + '" oninput="ftUpdateStream(\'' + s.id + '\',\'annual\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
           + '<div class="ft-ev-fr"><label>Growth rate / yr</label><input type="number" value="' + (s.growth || 0) + '" step="0.5" oninput="ftUpdateStream(\'' + s.id + '\',\'growth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
           + (() => {
-            const curAge = ftGlobals.currentAge;
+            const curAge = ftGlobals.projectionStartingAge;
             const totalGross = ftGetIncome(curAge) + ftGetPartnerIncome(curAge);
             const married = !!(ftLifeEvents.find(e => e.type === 'partner')?.age <= curAge);
             const taxable = Math.max(0, totalGross - ftGlobals.f401k);
@@ -10550,7 +10545,7 @@
         }
       }
       function ftAddYearBefore() {
-        const curMin = ftHistoryStartAge !== null ? ftHistoryStartAge : ftGlobals.currentAge;
+        const curMin = ftHistoryStartAge !== null ? ftHistoryStartAge : ftGlobals.projectionStartingAge;
         ftHistoryStartAge = curMin - 1;
         ftRecalc();
       }
