@@ -7809,7 +7809,7 @@
       let ftColOrder = ['age','nw','netsav','freeSpend','monthlySurplus','income','partner','living','housing','kids'];
       let ftColVis = { age:true, income:true, partner:false, living:true, housing:true, kids:true, netsav:true, nw:true, freeSpend:true, monthlySurplus:true };
       let ftColLabels = { age:'age', income:'gross income', partner:'partner', living:'living', housing:'housing', kids:'kids', netsav:'net savings', nw:'net worth', freeSpend:'discretionary budget / mo', monthlySurplus:'savings surplus / mo' };
-      let ftMinAge = null; // Overridden if user adds historical years
+      let ftHistoryStartAge = null; // Renamed from ftMinAge for persistence separation
       let ftDragSrc=null, ftRows=[], ftChart=null, ftNextId=100;
       function ftResetNextId() {
         // Scan all existing IDs across income streams, properties, life events, and expense phases
@@ -7859,6 +7859,7 @@
           lifeEvents: JSON.parse(JSON.stringify(ftLifeEvents)),
           expPhases: JSON.parse(JSON.stringify(ftExpPhases)),
           overrides: ov,
+          historyStartAge: ftHistoryStartAge,
           ft_section_states: JSON.parse(JSON.stringify(existingStates))
         };
       }
@@ -7909,6 +7910,7 @@
           ftNwTodayOv = _nwToday ?? null;
           ftNwEoyOv = _nwEoy ?? null;
         }
+        if(d.historyStartAge !== undefined) ftHistoryStartAge = d.historyStartAge;
       }
 
       function ftSaveScenario() {
@@ -8168,7 +8170,7 @@
       // ── Main projection ────────────────────────────────────────────
       function ftCalcRows() {
         const curAge = ftGlobals.currentAge;
-        const startAge = ftMinAge !== null ? Math.min(curAge, ftMinAge) : curAge;
+        const startAge = ftHistoryStartAge !== null ? Math.min(curAge, ftHistoryStartAge) : curAge;
         const roc = ftGlobals.roc/100;
         const childEvs = ftLifeEvents.filter(e=>e.type==='child');
         const healthEvs = ftLifeEvents.filter(e=>e.type==='healthcare');
@@ -9136,8 +9138,8 @@
         }
       }
       function ftAddYearBefore(){
-        const curMin = ftMinAge !== null ? ftMinAge : ftGlobals.currentAge;
-        ftMinAge = curMin - 1;
+        const curMin = ftHistoryStartAge !== null ? ftHistoryStartAge : ftGlobals.currentAge;
+        ftHistoryStartAge = curMin - 1;
         ftRecalc();
       }
       function ftAppendRow(){const l=ftRows[ftRows.length-1];if(!l)return;ftRows.push({...l,age:l.age+1,ms:[],msDots:[],isBuy:false,ot:0,freeSpend:0,discTooltip:''});ftRenderTable();ftRenderChart();}
