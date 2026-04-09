@@ -9160,9 +9160,15 @@
             if (ph.renting === undefined) ph.renting = true;
             if (ph.location === undefined) ph.location = '';
           });
-          // If the first phase is the default "Solo" phase at age 25, update it to the current projectionStartingAge
-          if (ftExpPhases.length > 0 && ftExpPhases[0].name === 'Solo' && ftExpPhases[0].startAge !== ftGlobals.projectionStartingAge) {
-            ftExpPhases[0].startAge = ftGlobals.projectionStartingAge;
+          // UPDATE ALL expense phases that were created at age 25 to use the current projectionStartingAge
+          // This handles cases where projection starting age has changed but expense phases were saved at the old age
+          if (ftGlobals.projectionStartingAge !== 25) {
+            ftExpPhases.forEach(ph => {
+              // If this phase starts at 25, update it to current projectionStartingAge
+              if (ph.startAge === 25 && ph.name === 'Solo') {
+                ph.startAge = ftGlobals.projectionStartingAge;
+              }
+            });
           }
         }
         if (d.overrides) {
