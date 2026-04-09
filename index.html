@@ -8172,19 +8172,20 @@
           else if(nextPh && ph.startAge===nextPh.startAge) conflictName=nextPh.name;
           overlapWarning='<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:8px">⚠ Overlaps with '+(conflictName||'another phase')+' — adjust the age range. The later-starting phase takes priority for overlapping ages.</div>';
         }
-        // Primary home ownership check — grey out rent fields
+        // Primary home ownership check — informational note only, rent fields always editable
         const homeRange = ftPrimaryHomeAgeRange();
         const phEndDisplay = ph.endAge===999 ? Infinity : ph.endAge;
-        const mortgageActive = homeRange && ph.startAge <= (ph.endAge===999?999:phEndDisplay) && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
-        let rentSection='';
-        if(mortgageActive){
-          rentSection='<div style="background:var(--s2);border-radius:var(--rs);padding:8px 10px;font-size:11px;color:var(--ink3);margin-bottom:6px">🏠 Mortgage active from age '+homeRange.start+' — rent overridden. Rent fields have no effect during this period.</div>'
-            +'<div class="ft-ev-fr" style="opacity:.4;pointer-events:none"><label>Renting</label><label style="display:flex;align-items:center;gap:5px"><input type="checkbox"'+(ph.renting?' checked':'')+' disabled> paying rent</label></div>'
-            +(ph.renting?'<div class="ft-ev-fr" style="opacity:.4;pointer-events:none"><label>Monthly rent</label><input type="number" value="'+(ph.monthlyRent||0)+'" disabled><span style="font-size:11px;color:var(--ink3)">/mo</span></div>':'');
-        } else {
-          rentSection='<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(ph.renting?' checked':'')+' onchange="ftUpdateExpPhase(\''+ph.id+'\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
-            +(ph.renting?'<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="'+(ph.monthlyRent||0)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>':'');
+        const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
+        let mortgageNote='';
+        if(mortgageOverlaps){
+          const noteText = ph.startAge < homeRange.start
+            ? 'Rent applies age '+ph.startAge+'–'+(homeRange.start-1)+' · mortgage overrides housing column from age '+homeRange.start
+            : 'Mortgage overrides housing column from age '+homeRange.start+' (rent has no effect this phase)';
+          mortgageNote='<div style="font-size:11px;color:var(--ink3);margin-top:-2px;margin-bottom:6px">'+noteText+'</div>';
         }
+        let rentSection='<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(ph.renting?' checked':'')+' onchange="ftUpdateExpPhase(\''+ph.id+'\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
+          +(ph.renting?'<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="'+(ph.monthlyRent||0)+'" oninput="ftUpdateExpPhase(\''+ph.id+'\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>':'')
+          +mortgageNote;
         return '<div class="ft-ph-card" id="ft-phc-'+ph.id+'" style="border-left:3px solid '+col+(hasOverlap?';border-top:2px solid #FFC107':'')+';padding:14px 16px;background:var(--surface);border-radius:var(--r);margin-bottom:6px">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
           +'<span style="font-size:12px;font-weight:600;color:var(--ink)">'+ph.name+'</span>'
