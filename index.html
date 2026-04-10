@@ -6887,13 +6887,7 @@
           const ovNw = ftOvMap[r.age]?.nw !== undefined;
           const nwTip = r.realEstateEquity > 0 ? 'liquid NW: ' + ftFmt(r.liquidNW) + ' · real estate equity: ' + ftFmt(r.realEstateEquity) + ' · total: ' + ftFmt(r.nw) : '';
 
-          // ── History row: clean white, only nw + income editable ──
-        const regularRows = ftRows.map((r, ri) => {
-          const hasMile = r.ms.length > 0;
-          const msDotsHtml = r.msDots.map(d => '<span class="ft-ms-dot" style="background:' + d.color + '" title="' + d.tip.replace(/"/g, '&quot;') + '"></span>').join('');
-          const ovInc = ftOvMap[r.age]?.income !== undefined, ovPart = ftOvMap[r.age]?.partner !== undefined;
-          const ovNw = ftOvMap[r.age]?.nw !== undefined;
-          const nwTip = r.realEstateEquity > 0 ? 'liquid NW: ' + ftFmt(r.liquidNW) + ' · real estate equity: ' + ftFmt(r.liquidNW) + ' · total: ' + ftFmt(r.nw) : '';
+          // Calculate and render row
 
           return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + (r.isHistory ? ' ft-history-row' : '') + '">'
             + vis.map(c => {
