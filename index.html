@@ -5931,44 +5931,85 @@
         return out;
       }
 
-      // ── Timeline (Option B: phase-segment bar) ──────────────────────
-      function ftRenderTimeline() {
-        const minAge = 25, maxAge = 100, span = maxAge - minAge;
-        const evColors = { partner: '#8b5cf6', child: '#16a34a', oneTime: '#0891b2', healthcare: '#e55a00' };
-        // Phase segments
-        const sortedPhases = ftExpPhases.slice().sort((a, b) => a.startAge - b.startAge);
-        const phaseSegs = sortedPhases.map((ph, i) => {
-          const s = Math.max(minAge, ph.startAge), e = Math.min(maxAge, ph.endAge === 999 ? maxAge : ph.endAge);
-          if (s >= maxAge) return '';
-          const l = (s - minAge) / span * 100, w = (e - s) / span * 100;
-          const col = FT_PHASE_PALETTE[i % FT_PHASE_PALETTE.length];
-          const isActive = ftActivePhaseId === ph.id;
-          const label = ph.name || 'Phase';
-          const tipLines = '<b>' + label + '</b><br>age ' + ph.startAge + '–' + (ph.endAge === 999 ? '∞' : ph.endAge) + '<br>$' + (ph.monthlyLiving || 0).toLocaleString() + '/mo living' + (ph.renting ? ' · $' + (ph.monthlyRent || 0).toLocaleString() + '/mo rent' : '');
-          return '<div class="ft-tl-seg' + (isActive ? ' active' : '') + '" style="left:' + l.toFixed(1) + '%;width:' + Math.max(0.5, w).toFixed(1) + '%;background:' + col + (isActive ? ';outline:2px solid ' + col + ';outline-offset:2px' : '') + '" onclick="ftClickPhase(\'' + ph.id + '\')" data-tip="' + tipLines.replace(/"/g, '&quot;') + '">'
-            + '<span class="ft-tl-seg-lbl">' + label + '</span>'
-            + '</div>';
+      // ── Unified life timeline ────────────────────────────────────────
+      function renderLifeTimeline(containerId, opts) {
+        const { phases, events, startAge, endAge,
+                onPhaseClick, onEventClick, compact } = opts;
+        const span = endAge - startAge;
+        const el = document.getElementById(containerId);
+        if(!el) return;
+
+        // Bar
+        const segs = phases.slice().sort((a,b)=>a.startAge-b.startAge)
+          .map((ph,i,arr) => {
+            const s = Math.max(startAge, ph.startAge);
+            const e = Math.min(endAge, ph.endAge===999?endAge:ph.endAge);
+            if(s >= endAge) return '';
+            const l = (s-startAge)/span*100;
+            const w = Math.max(0.5,(e-s)/span*100);
+            const col = CHART_COLORS[i % CHART_COLORS.length];
+            const isFirst = i===0, isLast = i===arr.length-1;
+            const br = isFirst&&isLast ? 'var(--rs)'
+              : isFirst ? 'var(--rs) 0 0 var(--rs)'
+              : isLast  ? '0 var(--rs) var(--rs) 0' : '0';
+            const lbl = w > 4 ? '<span class="ft-tl-seg-lbl">'+ph.name+'</span>' : '';
+            return '<div class="ft-tl-seg" style="position:absolute;left:'+l.toFixed(2)
+              +'%;width:'+w.toFixed(2)+'%;height:44px;background:'+col
+              +';border-radius:'+br+';cursor:pointer;overflow:hidden;margin-right:1.5px"'
+              +' onclick="('+onPhaseClick.toString()+')(\''+ph.id+'\')"'
+              +' data-tip="'+ph.name+' · age '+ph.startAge+'–'+(ph.endAge===999?'∞':ph.endAge)+'">'
+              +lbl+'</div>';
+          }).join('');
+
+        // Age axis labels every 5 years
+        const axisLabels = [];
+        for(let a=startAge; a<=endAge; a+=5) {
+          const pct = (a-startAge)/span*100;
+          axisLabels.push('<span style="position:absolute;left:'+pct.toFixed(2)
+            +'%;transform:translateX(-50%);font-size:10px;color:var(--ink3)">'+a+'</span>');
+        }
+
+        // Event dots
+        const EVENT_COLORS = {
+          income: CHART_COLORS[1], partner: CHART_COLORS[4],
+          property: CHART_COLORS[2], child: CHART_COLORS[7],
+          oneTime: CHART_COLORS[5], healthcare: CHART_COLORS[3]
+        };
+        const dots = events.map((ev,i) => {
+          const age = ev.type==='healthcare' ? ev.startAge : ev.age;
+          if(age < startAge || age > endAge) return '';
+          const pct = (age-startAge)/span*100;
+          const col = EVENT_COLORS[ev.type] || CHART_COLORS[0];
+          const yOffset = i%2===0 ? 54 : 64;
+          const label = (ev.label||ev.name||ev.type).slice(0,8)+' '+age;
+          return '<div style="position:absolute;left:'+pct.toFixed(2)
+            +'%;top:36px;width:9px;height:9px;border-radius:50%;background:'+col
+            +';border:2px solid var(--surface);transform:translateX(-50%);cursor:pointer"'
+            +' onclick="('+onEventClick.toString()+')(\''+ev.id+'\')" title="'+label+'"></div>'
+            +'<span style="position:absolute;left:'+pct.toFixed(2)+'%;top:'+yOffset
+            +'px;font-size:9px;color:var(--ink3);transform:translateX(-50%);white-space:nowrap">'
+            +label+'</span>';
         }).join('');
-        // Event dots — clicking opens the relevant settings panel tab
-        const allDots = [
-          ...ftLifeEvents.map(ev => ({ age: ev.type === 'healthcare' ? ev.startAge : ev.age, color: evColors[ev.type] || '#94a3b8', label: (ev.type === 'partner' ? 'Partner' : ev.type === 'child' ? 'Child' : ev.label || ev.type), tab: 'events' })),
-          ...ftProperties.map(p => ({ age: p.purchaseAge, color: '#d97706', label: p.name, tab: 'properties' })),
-          ...ftIncomeStreams.filter(s => !s.ongoing || s.startAge > minAge).map(s => ({ age: s.startAge, color: '#6366f1', label: s.name, tab: 'income' }))
-        ];
-        const dotHtml = allDots.map(d => {
-          const pct = (d.age - minAge) / span * 100;
-          if (pct < 0 || pct > 100) return '';
-          return '<div class="ft-tl-dot" style="left:' + pct.toFixed(1) + '%;background:' + d.color + ';cursor:pointer" onclick="ftOpenSettings(\'' + d.tab + '\')" title="' + d.label + ' · age ' + d.age + '"><div class="ft-tl-lbl">' + d.age + '</div></div>';
-        }).join('');
-        // Age axis ticks
-        const ticks = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(a => {
-          const pct = (a - minAge) / span * 100;
-          return '<div style="position:absolute;left:' + pct.toFixed(1) + '%;transform:translateX(-50%);font-size:9px;color:var(--ink4);top:4px">' + a + '</div>';
-        }).join('');
-        return '<div class="ft-tl-wrap" style="position:relative;width:100%;max-width:100%;overflow:hidden">'
-          + '<div class="ft-timeline" style="margin-bottom:32px"><div class="ft-tl-track" style="height:40px;min-height:40px">' + phaseSegs + '</div>' + dotHtml + '</div>'
-          + '<div style="position:relative;height:16px;margin-top:-20px">' + ticks + '</div>'
-          + '</div>';
+
+        // Phase chips (compact mode)
+        const chips = compact ? '<div class="ft-tl-chips-row">'
+          +phases.slice().sort((a,b)=>a.startAge-b.startAge).map((ph,i)=>{
+            const col = CHART_COLORS[i % CHART_COLORS.length];
+            const endLbl = ph.endAge===999?'∞':ph.endAge;
+            return '<div class="ft-tl-chip" style="--phase-color:'+col
+              +'" onclick="('+onPhaseClick.toString()+')(\''+ph.id+'\')">'
+              +'<span style="font:500 13px var(--sans)">'+ph.name+'</span>'
+              +'<span style="font-size:11px;color:var(--ink3)">age '+ph.startAge+'–'+endLbl+'</span>'
+              +'<span style="font:var(--ft-mono);font-family:var(--mono)">'
+              +ftFmt(ph.monthlyLiving||0)+'/mo</span>'
+              +(ph.renting?'<span class="tag tg">rent</span>':'')
+              +'</div>';
+          }).join('')+'</div>' : '';
+
+        el.innerHTML = '<div style="padding:16px">'
+          +'<div style="position:relative;height:44px;margin-bottom:8px">'+segs+dots+'</div>'
+          +'<div style="position:relative;height:16px;margin-bottom:24px">'+axisLabels.join('')+'</div>'
+          +chips+'</div>';
       }
 
       function ftClickPhase(id) {
@@ -6359,10 +6400,24 @@
           const origIdx = ftExpPhases.indexOf(ph);
           return ftRenderPhaseCard(ph, origIdx);
         }).join('');
+        const allEvents = [
+          ...ftLifeEvents,
+          ...ftProperties.map(p => ({ id: p.id, type: 'property', age: p.purchaseAge, name: p.name })),
+          ...ftIncomeStreams.map(s => ({ id: s.id, type: 'income', age: s.startAge, name: s.name }))
+        ];
+        setTimeout(() => renderLifeTimeline('ft-tl-inline', {
+          phases: ftExpPhases,
+          events: allEvents,
+          startAge: ftGlobals.projectionStartingAge,
+          endAge: 100,
+          onPhaseClick: function(id) { ftClickPhase(id); },
+          onEventClick: function(id) { ftOpenSettings('events'); },
+          compact: false
+        }), 0);
         return '<div class="ft-panel-hdr">Expense Phases</div>'
           + '<div style="background:var(--fll);border:1px solid var(--fl);border-radius:var(--rs);padding:8px 12px;font-size:11px;color:var(--f);margin-bottom:12px;line-height:1.5">ℹ Phases are for base lifestyle spend only (food, going out, travel, subscriptions). Kids, rent, and mortgage are tracked separately and never double-counted.</div>'
           + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Phases are sorted chronologically by start age. Living expenses inflate at ' + ftGlobals.expInflation + '%/yr.</div>'
-          + ftRenderTimeline()
+          + '<div id="ft-tl-inline"></div>'
           + '<div style="margin-top:14px">'
           + phaseCardsHtml
           + '</div>'
@@ -6730,30 +6785,21 @@
       function ftRenderTimelineCard() {
         const el = document.getElementById('ft-timeline-card');
         if (!el) return;
-        // Render the colored bar + dots (same as ftRenderTimeline but in a container that doesn't overflow)
-        el.innerHTML = '<div style="overflow:hidden">' + ftRenderTimeline() + '</div>'
-          + ftRenderPhaseChips();
-      }
-
-      function ftRenderPhaseChips() {
-        if (!ftExpPhases.length) return '';
-        const sortedPhases = ftExpPhases.slice().sort((a, b) => a.startAge - b.startAge);
-        return '<div class="ft-tl-chips-row">'
-          + sortedPhases.map((ph, i) => {
-            const origIdx = ftExpPhases.indexOf(ph);
-            const col = FT_PHASE_PALETTE[origIdx % FT_PHASE_PALETTE.length];
-            const endLbl = ph.endAge === 999 ? '∞' : ph.endAge;
-            const living = ftFmt(ph.monthlyLiving || 0);
-            const rentStatus = ph.renting ? ' · rent ' + ftFmt(ph.monthlyRent || 0) + '/mo' : ' · no rent';
-            const homeRange = ftPrimaryHomeAgeRange();
-            const mortgageNote = homeRange && ph.startAge < homeRange.payoff && (ph.endAge === 999 || ph.endAge >= homeRange.start)
-              ? ' · <span style="color:var(--gold)">mortgage from age ' + homeRange.start + '</span>' : '';
-            return '<div class="ft-tl-chip" style="border-left:3px solid ' + col + '" onclick="ftActivePhaseId=\'' + ph.id + '\';ftOpenSettings(\'expenses\')">'
-              + '<span class="ft-tl-chip-name">' + ph.name + '</span>'
-              + '<span class="ft-tl-chip-detail">age ' + ph.startAge + '–' + endLbl + ' · ' + living + '/mo living' + rentStatus + mortgageNote + '</span>'
-              + '</div>';
-          }).join('')
-          + '</div>';
+        el.innerHTML = '<div id="ft-tl-card-inner"></div>';
+        const allEvents = [
+          ...ftLifeEvents,
+          ...ftProperties.map(p => ({ id: p.id, type: 'property', age: p.purchaseAge, name: p.name })),
+          ...ftIncomeStreams.map(s => ({ id: s.id, type: 'income', age: s.startAge, name: s.name }))
+        ];
+        renderLifeTimeline('ft-tl-card-inner', {
+          phases: ftExpPhases,
+          events: allEvents,
+          startAge: ftGlobals.projectionStartingAge,
+          endAge: 100,
+          onPhaseClick: function(id) { ftActivePhaseId = id; ftOpenSettings('expenses'); },
+          onEventClick: function(id) { ftOpenSettings('events'); },
+          compact: true
+        });
       }
 
       function renderFuture() {
