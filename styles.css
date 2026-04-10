@@ -513,44 +513,52 @@
 
     .forensic-card {
       position: absolute;
-      bottom: calc(100% + 8px);
-      right: -10px;
-      left: auto;
+      top: calc(100% + 8px);
+      bottom: auto;
+      left: 0;
+      right: auto;
       transform: none;
-      width: 300px;
+      width: 330px;
       background: var(--surface);
       border: 1px solid var(--border-strong);
       border-radius: var(--rl);
-      padding: 20px;
-      box-shadow: var(--sh4);
-      z-index: 99999;
+      padding: 24px;
+      box-shadow: 0 8px 30px rgba(28,27,25,0.12);
+      z-index: 999999;
       display: none;
       text-align: left;
       font-family: var(--sans);
       color: var(--ink);
-      white-space: normal; /* Fixes the text overflowing horizontally */
-      pointer-events: auto; /* Allows mobile to interact if needed */
+      white-space: normal;
+      pointer-events: auto;
     }
 
     .forensic-card::after {
       content: '';
       position: absolute;
-      top: 100%;
-      right: 14px;
+      bottom: 100%;
+      top: auto;
+      left: 14px;
+      right: auto;
       border-width: 6px;
       border-style: solid;
-      border-color: var(--surface) transparent transparent transparent;
-      filter: drop-shadow(0 2px 2px rgba(28,27,25,0.06));
+      border-color: transparent transparent var(--surface) transparent;
     }
 
     .forensic-card::before {
       content: '';
       position: absolute;
-      top: 100%;
-      right: 13px;
+      bottom: 100%;
+      top: auto;
+      left: 13px;
+      right: auto;
       border-width: 7px;
       border-style: solid;
-      border-color: var(--border-strong) transparent transparent transparent;
+      border-color: transparent transparent var(--border-strong) transparent;
+    }
+
+    .forensic-trigger:hover {
+      z-index: 999999;
     }
 
     .forensic-trigger:hover .forensic-card,
@@ -558,6 +566,27 @@
     .forensic-trigger:focus-within .forensic-card {
       display: block;
       animation: pgIn .12s ease-out;
+    }
+
+    /* Absolute clipping escape hatch for mobile */
+    @media (max-width: 768px) {
+      .forensic-card {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 340px !important;
+        margin: 0 !important;
+        z-index: 9999999 !important;
+        box-shadow: 0 16px 40px rgba(28,27,25,0.16), 0 0 0 100vw rgba(28,27,25,0.12) !important;
+        padding: 20px !important;
+      }
+      
+      .forensic-card::after,
+      .forensic-card::before {
+        display: none !important;
+      }
     }
 
     .fc-header {
