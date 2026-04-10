@@ -5459,7 +5459,33 @@
       }
 
       let ftActivePhaseId = null;
-      const FT_PHASE_PALETTE = ['#4E61A8', '#6040A0', '#C0884A', '#9B3A58', '#1E7A7A', '#C0622A', '#2E6EA6', '#5060B8', '#8A6820', '#2E7A4A'];
+      const CHART_COLORS = [
+        '#3B82F6','#10B981','#F59E0B','#EF4444',
+        '#8B5CF6','#06B6D4','#F97316','#EC4899',
+        '#14B8A6','#6366F1','#84CC16','#F43F5E'
+      ];
+      const CHART_FILL_ALPHA = { light: '1A', dark: '26' };
+      function isDark() {
+        return document.documentElement.classList.contains('dark');
+      }
+      function progressColor(pct) {
+        if(pct >= 100) return 'success';
+        if(pct >= 60)  return 'warning';
+        return 'danger';
+      }
+      function infoTooltip(text) {
+        const safe = text.replace(/"/g,'&quot;');
+        return '<span class="info-icon" data-tip="'+safe+'">ⓘ</span>';
+      }
+      const dismissedBanners = new Set();
+      function renderBanner(id, type, message) {
+        if(dismissedBanners.has(id)) return '';
+        return '<div class="banner '+type+'" id="banner-'+id+'">'
+          +message
+          +'<button class="banner-close" onclick="dismissedBanners.add(\''
+          +id+'\');document.getElementById(\'banner-'+id+'\')?.remove()">✕</button></div>';
+      }
+      const FT_PHASE_PALETTE = CHART_COLORS;
       const FT_CITY_BENCHMARKS = { 'NYC': 3200, 'New York': 3200, 'San Francisco': 3800, 'SF': 3800, 'Los Angeles': 2800, 'LA': 2800, 'Seoul': 1400, 'London': 3000, 'Tokyo': 2200, 'Chicago': 2200, 'Austin': 2000, 'Seattle': 2800, 'Boston': 3000, 'Miami': 2600, 'Denver': 2200 };
 
       // ── Phase lookup ────────────────────────────────────────────────
