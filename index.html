@@ -6000,80 +6000,139 @@
         return out;
       }
 
-      // ── Unified life timeline ────────────────────────────────────────
+      // ── Unified life timeline — Stacked Gantt Engine ─────────────────
       function renderLifeTimeline(containerId, opts) {
         const { phases, events, startAge, endAge,
           onPhaseClick, onEventClick, compact } = opts;
         const span = endAge - startAge;
         const el = document.getElementById(containerId);
-        if (!el) return;
+        if (!el || span <= 0) return;
 
-        // Bar
-        const segs = phases.slice().sort((a, b) => a.startAge - b.startAge)
-          .map((ph, i, arr) => {
+        const LANE_H = 36;       // px height of each Gantt lane bar
+        const LANE_GAP = 5;      // px gap between lanes
+        const LABEL_ZONE_H = 64; // px above bars reserved for labels
+        const AXIS_H = 22;       // px below bars for age ticks
+
+        // ── 1. Slot-Assignment Collision Engine (greedy lowest-slot) ──
+        const sorted = phases.slice().sort((a, b) => a.startAge - b.startAge);
+        const slots = []; // slots[i] = array of non-overlapping phases in lane i
+        sorted.forEach(ph => {
+          const phS = Math.max(startAge, ph.startAge);
+          if (phS >= endAge) return;
+          let placed = false;
+          for (let si = 0; si < slots.length; si++) {
+            const last = slots[si][slots[si].length - 1];
+            const lastE = Math.min(endAge, last.endAge === 999 ? endAge : last.endAge);
+            if (lastE <= ph.startAge) { // back-to-back OK, not a conflict
+              slots[si].push(ph);
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) slots.push([ph]);
+        });
+        const nLanes = Math.max(1, slots.length);
+        const ganttH = nLanes * LANE_H + Math.max(0, nLanes - 1) * LANE_GAP;
+        const totalH = LABEL_ZONE_H + ganttH + AXIS_H;
+
+        // ── 2. Build Lane Backgrounds + Phase Bars ────────────────────
+        let html = '';
+        // Lane tints for visual delineation
+        for (let si = 0; si < nLanes; si++) {
+          const top = LABEL_ZONE_H + si * (LANE_H + LANE_GAP);
+          const tint = si % 2 === 1 ? 'rgba(28,27,25,0.022)' : 'rgba(28,27,25,0.006)';
+          html += '<div style="position:absolute;left:0;right:0;top:' + top + 'px;height:' + LANE_H + 'px;background:' + tint + ';border-radius:4px;z-index:0"></div>';
+        }
+        // Lane separator lines (between lanes, z-index:2)
+        for (let si = 1; si < nLanes; si++) {
+          const sepTop = LABEL_ZONE_H + si * (LANE_H + LANE_GAP) - Math.floor(LANE_GAP / 2);
+          html += '<div style="position:absolute;left:0;right:0;top:' + sepTop + 'px;height:1px;background:rgba(28,27,25,0.08);z-index:2"></div>';
+        }
+        // Phase bars (z-index:1, no gaps, correct edge border-radius)
+        slots.forEach((slotPhases, si) => {
+          const laneTop = LABEL_ZONE_H + si * (LANE_H + LANE_GAP);
+          slotPhases.forEach((ph, pi) => {
+            const phIdx = sorted.indexOf(ph);
+            const col = CHART_COLORS[phIdx % CHART_COLORS.length];
             const s = Math.max(startAge, ph.startAge);
             const e = Math.min(endAge, ph.endAge === 999 ? endAge : ph.endAge);
-            if (s >= endAge) return '';
             const l = (s - startAge) / span * 100;
-            const w = Math.max(0.5, (e - s) / span * 100);
-            const col = CHART_COLORS[i % CHART_COLORS.length];
-            const isFirst = i === 0, isLast = i === arr.length - 1;
-            const br = isFirst && isLast ? 'var(--rs)'
-              : isFirst ? 'var(--rs) 0 0 var(--rs)'
-                : isLast ? '0 var(--rs) var(--rs) 0' : '0';
-            const lbl = w > 4 ? '<span class="ft-tl-seg-lbl">' + ph.name + '</span>' : '';
-            return '<div class="ft-tl-seg" style="position:absolute;left:' + l.toFixed(2)
-              + '%;width:' + w.toFixed(2) + '%;height:44px;background:' + col
-              + ';border-radius:' + br + ';cursor:pointer;overflow:hidden;margin-right:1.5px"'
-              + ' onclick="(' + onPhaseClick.toString() + ')(\'' + ph.id + '\')"'
-              + ' data-tip="' + ph.name + ' · age ' + ph.startAge + '–' + (ph.endAge === 999 ? '∞' : ph.endAge) + '">'
-              + lbl + '</div>';
-          }).join('');
+            const w = Math.max(0.3, (e - s) / span * 100);
+            const isFirst = pi === 0, isLast = pi === slotPhases.length - 1;
+            let br = '0';
+            if (isFirst && isLast) br = '6px';
+            else if (isFirst) br = '6px 0 0 6px';
+            else if (isLast) br = '0 6px 6px 0';
+            const nameLabel = w > 6
+              ? '<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 14px);pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.25)">' + ph.name + '</span>'
+              : '';
+            html += '<div class="ft-tl-seg" style="position:absolute;left:' + l.toFixed(2) + '%;width:' + w.toFixed(2) + '%;top:' + laneTop + 'px;height:' + LANE_H + 'px;background:' + col + ';border-radius:' + br + ';z-index:1;cursor:pointer;overflow:hidden;transition:filter .12s" onclick="(' + onPhaseClick.toString() + ')(\'' + ph.id + '\')" title="' + ph.name + ' · age ' + ph.startAge + '\u2013' + (ph.endAge === 999 ? '\u221e' : ph.endAge) + '">' + nameLabel + '</div>';
+          });
+        });
 
-        // Age axis labels every 5 years
-        const axisLabels = [];
-        for (let a = startAge; a <= endAge; a += 5) {
-          const pct = (a - startAge) / span * 100;
-          axisLabels.push('<span style="position:absolute;left:' + pct.toFixed(2)
-            + '%;transform:translateX(-50%);font-size:10px;color:var(--ink3)">' + a + '</span>');
-        }
-
-        // Event dots
-        const EVENT_COLORS = {
-          income: CHART_COLORS[1], partner: CHART_COLORS[4],
-          property: CHART_COLORS[2], child: CHART_COLORS[7],
-          oneTime: CHART_COLORS[5], healthcare: CHART_COLORS[3]
+        // ── 3. Event Markers + Staggered Labels ───────────────────────
+        const EV_COLORS = {
+          income: '#4E61A8', partner: '#7C3AED',
+          property: '#D97706', child: '#059669',
+          oneTime: '#2563EB', healthcare: '#DC2626'
         };
-        const dots = events.map((ev, i) => {
-          const age = ev.type === 'healthcare' ? ev.startAge : ev.age;
-          if (age < startAge || age > endAge) return '';
-          const pct = (age - startAge) / span * 100;
-          const col = EVENT_COLORS[ev.type] || CHART_COLORS[0];
-          const label = (ev.label || ev.name || ev.type).slice(0, 8) + ' ' + age;
-          return '<div class="event-pin" style="left:' + pct.toFixed(2) + '%;background:' + col + '"'
-            + ' onclick="ftOpenEventForensic(this, \'' + ev.id + '\')"'
-            + '><span class="event-pin-lbl">' + label + '</span></div>';
-        }).join('');
+        const sortedEvs = events
+          .map(ev => ({ ...ev, _age: ev.type === 'healthcare' ? (ev.startAge || ev.age || 0) : (ev.age || 0) }))
+          .filter(ev => ev._age >= startAge && ev._age <= endAge)
+          .sort((a, b) => a._age - b._age);
+        const THRESH = 3.5; // % of span, threshold for label-collision toggling
+        let prevPct = -999, prevLabelSlot = 0;
+        sortedEvs.forEach(ev => {
+          const pct = (ev._age - startAge) / span * 100;
+          const col = EV_COLORS[ev.type] || '#94a3b8';
+          const rawLabel = (ev.label || ev.name || ev.type || '').slice(0, 13);
+          const tip = rawLabel + ' \u00b7 ' + ev._age;
+          // Auto-stagger: toggle slot when events are within threshold
+          let labelSlot = 0;
+          if (Math.abs(pct - prevPct) < THRESH) labelSlot = 1 - prevLabelSlot;
+          prevPct = pct; prevLabelSlot = labelSlot;
+          // Vertical line marker spanning from label zone into all Gantt lanes (z-index:3)
+          const lineTop = LABEL_ZONE_H - 6;
+          html += '<div style="position:absolute;left:calc(' + pct.toFixed(2) + '% - 0.75px);top:' + lineTop + 'px;width:1.5px;height:' + (ganttH + 6) + 'px;background:' + col + ';z-index:3;pointer-events:none;opacity:0.6"></div>';
+          // Label: dot + text above bars (two stagger heights, z-index:4)
+          const labelTopPx = labelSlot === 0 ? 36 : 12;
+          html += '<div style="position:absolute;left:' + pct.toFixed(2) + '%;top:' + labelTopPx + 'px;transform:translateX(-50%);z-index:4;cursor:pointer;text-align:center" onclick="ftOpenEventForensic(this,\'' + ev.id + '\')" title="' + tip + '">'
+            + '<div style="width:5px;height:5px;border-radius:50%;background:' + col + ';margin:0 auto 2px"></div>'
+            + '<span style="font-size:9px;font-weight:600;color:var(--ink2);white-space:nowrap;display:block;letter-spacing:-.1px">' + tip + '</span>'
+            + '</div>';
+        });
 
-        // Phase chips (compact mode)
-        const chips = compact ? '<div class="ft-tl-chips-row">'
-          + phases.slice().sort((a, b) => a.startAge - b.startAge).map((ph, i) => {
-            const col = CHART_COLORS[i % CHART_COLORS.length];
-            const endLbl = ph.endAge === 999 ? '∞' : ph.endAge;
-            return '<div class="ft-tl-chip" style="--phase-color:' + col
-              + '" onclick="(' + onPhaseClick.toString() + ')(\'' + ph.id + '\')">'
-              + '<span style="font:500 13px var(--sans)">' + ph.name + '</span>'
-              + '<span style="font-size:11px;color:var(--ink3)">age ' + ph.startAge + '–' + endLbl + '</span>'
-              + '<span style="font:var(--ft-mono);font-family:var(--mono)">'
-              + ftFmt(ph.monthlyLiving || 0) + '/mo</span>'
-              + (ph.renting ? '<span class="tag tg">rent</span>' : '')
-              + '</div>';
-          }).join('') + '</div>' : '';
+        // ── 4. Age Axis ─────────────────────────────────────────────────
+        const axisTop = LABEL_ZONE_H + ganttH + 5;
+        html += '<span style="position:absolute;left:0;top:' + axisTop + 'px;font-size:10px;color:var(--ink3)">' + startAge + '</span>';
+        for (let a = Math.ceil(startAge / 5) * 5; a < endAge; a += 5) {
+          const pct = (a - startAge) / span * 100;
+          if (pct < 1 || pct > 99) continue;
+          html += '<span style="position:absolute;left:' + pct.toFixed(2) + '%;transform:translateX(-50%);top:' + axisTop + 'px;font-size:10px;color:var(--ink3)">' + a + '</span>';
+        }
+        html += '<span style="position:absolute;right:0;top:' + axisTop + 'px;font-size:10px;color:var(--ink3)">' + endAge + '</span>';
 
-        el.innerHTML = '<div style="padding:16px">'
-          + '<div style="position:relative;height:44px;margin-bottom:8px">' + segs + dots + '</div>'
-          + '<div style="position:relative;height:16px;margin-bottom:24px">' + axisLabels.join('') + '</div>'
-          + chips + '</div>';
+        // ── 5. Phase Chips (compact mode) ──────────────────────────────
+        const chips = compact
+          ? '<div class="ft-tl-chips-row">'
+            + sorted.map((ph, i) => {
+              const col = CHART_COLORS[i % CHART_COLORS.length];
+              const endLbl = ph.endAge === 999 ? '\u221e' : ph.endAge;
+              return '<div class="ft-tl-chip" style="--phase-color:' + col
+                + '" onclick="ftClickPhase(\'' + ph.id + '\')">'
+                + '<span style="font:500 12px var(--sans)">' + ph.name + '</span>'
+                + '<span style="font-size:10px;color:var(--ink3)">age ' + ph.startAge + '\u2013' + endLbl + '</span>'
+                + '<span style="font-family:var(--mono);font-size:12px">' + ftFmt(ph.monthlyLiving || 0) + '/mo</span>'
+                + (ph.renting ? '<span class="tag tg" style="font-size:9px">rent</span>' : '')
+                + '</div>';
+            }).join('') + '</div>'
+          : '';
+
+        // ── 6. Final assembly ───────────────────────────────────────────
+        el.innerHTML = '<div style="position:relative;height:' + totalH + 'px;margin-bottom:4px;overflow:visible;padding:0 4px">'
+          + html
+          + '</div>'
+          + chips;
       }
 
       function ftClickPhase(id) {
@@ -6191,6 +6250,7 @@
       }
 
       // ── Property card ───────────────────────────────────────────────
+      // ── Property card ───────────────────────────────────────────────
       function ftRenderPropertyCard(p) {
         const cls = p.expanded ? 'expanded' : '';
         const downCash = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
@@ -6202,7 +6262,6 @@
         const rmBtn = '<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveProperty(\'' + p.id + '\')" title="Remove">✕</button>';
 
         // ── Readiness indicator ──────────────────────────────────────
-        // NW at the row just before purchase age (projected savings by then)
         const prevRow = ftRows.find(r => r.age === p.purchaseAge - 1) || (ftRows.length ? ftRows[0] : null);
         const nwAtBuy = prevRow ? prevRow.nw : ftGetTodayNW();
         const pct = Math.min(100, Math.max(0, Math.round(nwAtBuy / downCash * 100)));
@@ -6262,64 +6321,90 @@
           + '</div></div>';
       }
 
-      // ── Phase card (expanded from timeline click) ───────────────────
+      // ── Phase card: unified summary / edit component ───────────────
       function ftRenderPhaseCard(ph, idx) {
         const col = FT_PHASE_PALETTE[idx % FT_PHASE_PALETTE.length];
         const benchmark = FT_CITY_BENCHMARKS[ph.location?.trim()] || 0;
         const overlapIds = ftGetPhaseOverlaps();
         const hasOverlap = overlapIds.has(ph.id);
-        // Find which phase it overlaps with for the warning message
+        const isExpanded = ftActivePhaseId === ph.id;
+
+        // Overlap warning
         let overlapWarning = '';
         if (hasOverlap) {
-          const sorted = ftExpPhases.slice().sort((a, b) => a.startAge - b.startAge);
-          const myIdx = sorted.findIndex(p => p.id === ph.id);
-          const nextPh = sorted[myIdx + 1]; const prevPh = sorted[myIdx - 1];
+          const sor = ftExpPhases.slice().sort((a, b) => a.startAge - b.startAge);
+          const myIdx = sor.findIndex(p => p.id === ph.id);
+          const nextPh = sor[myIdx + 1]; const prevPh = sor[myIdx - 1];
           let conflictName = '';
           if (nextPh && ph.endAge >= nextPh.startAge) conflictName = nextPh.name;
           else if (prevPh && prevPh.endAge >= ph.startAge) conflictName = prevPh.name;
           else if (nextPh && ph.startAge === nextPh.startAge) conflictName = nextPh.name;
-          overlapWarning = '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:8px">⚠ Overlaps with ' + (conflictName || 'another phase') + ' — adjust the age range. The later-starting phase takes priority for overlapping ages.</div>';
+          overlapWarning = '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:12px">\u26a0 Overlaps with ' + (conflictName || 'another phase') + ' \u2014 adjust the age range. The later-starting phase takes priority.</div>';
         }
-        // Primary home ownership check — informational note only, rent fields always editable
+
+        // Mortgage note
         const homeRange = ftPrimaryHomeAgeRange();
         const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
         const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
         let mortgageNote = '';
         if (mortgageOverlaps) {
           const noteText = ph.startAge < homeRange.start
-            ? 'Rent applies age ' + ph.startAge + '–' + (homeRange.start - 1) + ' · mortgage overrides housing column from age ' + homeRange.start
-            : 'Mortgage overrides housing column from age ' + homeRange.start + ' (rent has no effect this phase)';
-          mortgageNote = '<div style="font-size:11px;color:var(--ink3);margin-top:-2px;margin-bottom:6px">' + noteText + '</div>';
+            ? 'Rent applies age ' + ph.startAge + '\u2013' + (homeRange.start - 1) + ' \u00b7 mortgage overrides housing from age ' + homeRange.start
+            : 'Mortgage overrides housing from age ' + homeRange.start + ' (rent has no effect this phase)';
+          mortgageNote = '<div style="font-size:10.5px;color:var(--ink3);padding:4px 0 6px;line-height:1.4">' + noteText + '</div>';
         }
-        let rentSection = '<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
-          + (ph.renting ? '<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>' : '')
-          + mortgageNote;
 
-        const isExpanded = ftActivePhaseId === ph.id;
+        // Left-border accent: overlap=amber, active/renting=blue, else phase color
+        const accentColor = hasOverlap ? '#FFC107' : (isExpanded || ph.renting) ? '#3B82F6' : col;
 
         if (isExpanded) {
-          return '<div class="card-era expanded" id="ft-phc-' + ph.id + '" style="border-top:3px solid ' + col + (hasOverlap ? ';border-top:3px solid #FFC107' : '') + '">'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-            + '<span style="font-size:12px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
-            + '<div><button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" title="Done" style="margin-right:8px;font-size:10px;font-weight:600">done</button>'
-            + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">✕</button></div>'
+          return '<div class="card-phase expanded" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + accentColor + ';position:relative">'
+            // Header
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+            +   '<div style="display:flex;align-items:center;gap:8px">'
+            +     '<span style="width:10px;height:10px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
+            +     '<span style="font-size:13px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
+            +   '</div>'
+            +   '<div style="display:flex;align-items:center;gap:6px">'
+            +     '<button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" style="font-size:11px;font-weight:600;color:var(--f);padding:3px 8px;border-radius:var(--rs);background:var(--fll)">done</button>'
+            +     '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">\u2715</button>'
+            +   '</div>'
             + '</div>'
             + overlapWarning
-            + '<div class="ft-ev-fr"><label>Phase name</label><input type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)"></div>'
-            + '<div class="ft-ev-fr"><label>Start age</label><input type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)" style="width:65px"><label style="margin-left:8px">End age</label><input type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\'?999:+this.value)" placeholder="∞" style="width:65px"></div>'
-            + '<div class="ft-ev-fr"><label>Monthly living cost</label><input type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (food, going out, travel)</span></div>'
-            + (benchmark ? '<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">median single-person spend in ' + (ph.location || '') + '&thinsp;~$' + benchmark.toLocaleString() + '/mo</div>' : '')
-            + rentSection
-            + '<div class="ft-ev-fr"><label>Location</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
+            // Core fields — 30/70 grid
+            + '<div class="ft-form-row"><label>Phase name</label><input type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)"></div>'
+            + '<div class="ft-form-row"><label>Age range</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)" style="width:62px"><span style="color:var(--ink3);font-size:12px">\u2013</span><input type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\' ? 999 : +this.value)" placeholder="\u221e" style="width:62px"></div></div>'
+            + '<div class="ft-form-row"><label>Living cost</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (food, travel, out)</span></div></div>'
+            + (benchmark ? '<div style="font-size:10.5px;color:var(--ink3);margin:-2px 0 8px calc(30% + 8px)">Median in ' + (ph.location || 'this city') + ' \u2248$' + benchmark.toLocaleString() + '/mo</div>' : '')
+            // Housing section
+            + '<div class="ft-form-section-hdr">Housing</div>'
+            + '<div class="ft-form-row cond"><label>Renting</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
+            + (ph.renting ? '<div class="ft-form-row cond"><label>Monthly rent</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div></div>' : '')
+            + mortgageNote
+            // Location section
+            + '<div class="ft-form-section-hdr">Location</div>'
+            + '<div class="ft-form-row"><label>City</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
             + '</div>';
         } else {
-          return '<div class="card-era" onclick="ftClickPhase(\'' + ph.id + '\')">'
-            + '<div class="card-era-color-bar" style="background:' + col + '"></div>'
-            + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink)">' + ph.name + '</div>'
-            + '<div style="font-size:11px;color:var(--ink3);margin-bottom:12px">age ' + ph.startAge + '–' + (ph.endAge === 999 ? '∞' : ph.endAge) + '</div>'
-            + '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink)">' + ftFmt(ph.monthlyLiving) + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-            + '<div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">living cost</div>'
-            + (ph.renting ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6">' + ftFmt(ph.monthlyRent) + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">rent</div></div>' : '')
+          // ── Closed / Summary mode ──────────────────────────────────────
+          return '<div class="card-phase' + (ph.renting ? ' renting' : '') + '" id="ft-phc-' + ph.id + '" onclick="ftClickPhase(\'' + ph.id + '\')" style="border-left:3px solid ' + col + ';position:relative;cursor:pointer">'
+            + '<div class="card-phase-summary">'
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+            +     '<div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">'
+            +       '<span style="width:9px;height:9px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
+            +       '<span style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
+            +     '</div>'
+            +     '<span style="font-size:10.5px;color:var(--ink3);white-space:nowrap;flex-shrink:0;margin-left:6px">age ' + ph.startAge + '\u2013' + (ph.endAge === 999 ? '\u221e' : ph.endAge) + '</span>'
+            +   '</div>'
+            +   '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+            +   '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink4);margin-top:3px">living cost</div>'
+            + (ph.renting
+                ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
+                +   '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+                +   '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#3B82F6;margin-top:2px">rent</div>'
+                + '</div>'
+                : '')
+            + '</div>'
             + '</div>';
         }
       }
@@ -6556,13 +6641,16 @@
           compact: false
         }), 0);
         return '<div class="ft-panel-hdr">Expense Phases</div>'
-          + '<div style="background:var(--fll);border:1px solid var(--fl);border-radius:var(--rs);padding:8px 12px;font-size:11px;color:var(--f);margin-bottom:12px;line-height:1.5">ℹ Phases are for base lifestyle spend only (food, going out, travel, subscriptions). Kids, rent, and mortgage are tracked separately and never double-counted.</div>'
-          + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Phases are sorted chronologically by start age. Living expenses inflate at ' + ftGlobals.expInflation + '%/yr.</div>'
-          + '<div id="ft-tl-inline"></div>'
+          + '<div style="display:flex;align-items:flex-start;gap:8px;background:var(--fll);border:1px solid var(--fl);border-radius:var(--rs);padding:9px 12px;font-size:11px;color:var(--f);margin-bottom:14px;line-height:1.5"><span style="flex-shrink:0">\u2139</span><span>Phases track base lifestyle spend only (food, going out, travel, subscriptions). Kids, rent, and mortgage are tracked separately and never double-counted.</span></div>'
+          + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:14px;line-height:1.5">Sorted by start age \u00b7 Living expenses inflate at ' + ftGlobals.expInflation + '%/yr \u00b7 Click any bar or card to edit</div>'
+          + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 16px 12px;margin-bottom:16px;box-shadow:var(--sh1)">'
+          +   '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Life Timeline</div>'
+          +   '<div id="ft-tl-inline"></div>'
+          + '</div>'
           + '<div class="expenses-grid">'
           + phaseCardsHtml
           + '</div>'
-          + '<button class="ft-ev-add-btn" onclick="ftAddExpPhase();ftRenderPanel()" style="margin-top:12px">+ add phase</button>';
+          + '<button class="ft-ev-add-btn" onclick="ftAddExpPhase();ftRenderPanel()" style="margin-top:14px">+ add phase</button>';
       }
 
       // ── Metrics ─────────────────────────────────────────────────────
