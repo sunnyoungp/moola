@@ -5890,7 +5890,7 @@
           if (ftGlobals.discMode === 'rate') {
             requiredSavings = netHH * ftGlobals.savingsRate / 100;
             discTooltip = 'Target savings based on ' + ftGlobals.savingsRate + '% rate';
-          } else if (isHistory && (liquidNW === null || liquidNW === undefined)) {
+          } else if (isHistory) {
             requiredSavings = 0;
             discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
@@ -5957,7 +5957,7 @@
             '\n - Fixed costs: ' + ftFmt(fixedCosts) +
             '\n = Added wealth: ' + ftFmt(netSavings) + '/yr';
 
-          k401Bal = k401Bal * (1 + roc) + contrib401k;
+          k401Bal = isHistory ? 0 : k401Bal * (1 + roc) + contrib401k;
           let realEstateEquity = 0;
           for (const { p } of propScheds) {
             if (age >= p.purchaseAge) {
@@ -5969,7 +5969,7 @@
 
           // NW: liquid compounds + actual surplus (netSavings)
           // For history rows, we don't compound. NW is only shown if it has an override.
-          const prevLiq = liquidNW || 0;
+          const prevLiq = isHistory ? 0 : (liquidNW || 0);
           const growth = prevLiq * roc;
           const nwTip = isHistory ? 'Historical year: manual Net Worth entry only.' : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
             '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
@@ -5992,10 +5992,10 @@
 
           let displayLiq = newLiq;
 
-          liquidNW = newLiq;
+          liquidNW = isHistory ? liquidNW : newLiq;
           const nw = displayLiq + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
-          cumSav += Math.max(0, netSavings);
+          cumSav = isHistory ? cumSav : cumSav + Math.max(0, netSavings);
 
           const ms = [];
           const pEv = ftLifeEvents.find(e => e.type === 'partner');
