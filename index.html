@@ -702,15 +702,23 @@
         <!-- Title row -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:40px;margin-bottom:14px">
           <div class="page-title">Future</div>
-          <button class="btn" id="ft-settings-btn" onclick="ftOpenSettings()">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="7" cy="7" r="2" />
-              <path
-                d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" />
-            </svg>
-            Settings
-          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn bsm" onclick="ftOpenSectionManager()" title="Configure layout">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
+                <rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="6.5" y1="6.5" x2="6.5" y2="14"/>
+              </svg>
+              Modify Layout
+            </button>
+            <button class="btn" id="ft-settings-btn" onclick="ftOpenSettings()">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="7" cy="7" r="2" />
+                <path
+                  d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" />
+              </svg>
+              Settings
+            </button>
+          </div>
         </div>
 
         <!-- Scenario pills -->
@@ -777,9 +785,7 @@
           <div class="ft-sec-hdr" onclick="ftToggleSection('table')">
             <span class="ft-sec-chevron" id="ftchv-table">▼</span>
             <span class="ft-sec-label">Projection Table</span>
-            <div style="display:flex;align-items:center;gap:8px;margin-left:auto" onclick="event.stopPropagation()">
-              <!-- column chips + buy ctrl moved here inline -->
-              <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center" id="ft-col-chips"></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-left:auto" onclick="event.stopPropagation()">
               <div id="ft-buy-ctrl" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink2)">
                 <span style="white-space:nowrap">Buy at age</span>
                 <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:64px"
@@ -787,6 +793,11 @@
                 <span id="ft-buy-out"
                   style="font-size:12px;font-weight:600;color:var(--ink);min-width:20px;font-family:var(--mono)">—</span>
               </div>
+              <button class="ft-mgr-btn" onclick="ftOpenColumnManager()" title="Manage columns">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11M5 2.5v11M11 2.5v11"/>
+                </svg>
+              </button>
             </div>
           </div>
           <div class="ft-sec-body" id="ftb-table">
@@ -1541,6 +1552,41 @@
         </div>
       </div>
     </div>
+
+    <!-- FUTURE LAYOUT MANAGER MODAL -->
+    <div class="mo-ov" id="m-ft-layout">
+      <div class="modal" style="width:400px;max-width:96vw">
+        <div class="modal-title">
+          <span>Configure Future Layout</span>
+          <button class="bgh btn bsm" onclick="closeModal('m-ft-layout')">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--ink3);margin-bottom:12px;line-height:1.5">
+          Drag sections to reorder them. Toggle the checkbox to hide/unhide.
+        </p>
+        <div id="fts-layout-list" class="ft-sort-list"></div>
+        <div class="modal-footer" style="margin-top:16px">
+          <button class="btn bp" onclick="closeModal('m-ft-layout');">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FUTURE COLUMN MANAGER MODAL -->
+    <div class="mo-ov" id="m-ft-columns">
+      <div class="modal" style="width:480px;max-width:96vw">
+        <div class="modal-title">
+          <span>Manage Projection Columns</span>
+          <button class="bgh btn bsm" onclick="closeModal('m-ft-columns')">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--ink3);margin-bottom:12px;line-height:1.5">
+          Rename data columns or toggle visibility. Drag the handles to reorder.
+        </p>
+        <div id="ft-col-mgr-list" class="ft-sort-list"></div>
+        <div class="modal-footer" style="margin-top:16px">
+          <button class="btn bp" onclick="closeModal('m-ft-columns')">Done</button>
+        </div>
+      </div>
+    </div>
+
     <!-- RENAME MODAL -->
     <div class="mo-ov" id="m-rename-tab">
       <div class="modal">
@@ -1917,6 +1963,9 @@
         if (!S.future) S.future = {};
         if (!S.future.secOrder) S.future.secOrder = ['metrics', 'savings', 'graph', 'timeline', 'table'];
         if (!S.future.secVis) S.future.secVis = { metrics: true, savings: true, graph: true, timeline: true, table: true };
+        if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
+        if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
+        if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
         if (!S.future_scenarios) S.future_scenarios = [];
 
         // Ensure accountCategories + accountTypes exist (for old saves)
@@ -5290,9 +5339,10 @@
       let ftNwTodayOv = null, ftNwEoyOv = null;
       let ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
       let ftActiveScenarioId = 'sc0';
-      let ftColOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
-      let ftColVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
-      let ftColLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
+      // Config will be synced from S.future in renderFuture()
+      let ftColOrder = [];
+      let ftColVis = {};
+      let ftColLabels = {};
       let ftHistoryStartAge = null; // Renamed from ftMinAge for persistence separation
       let ftDragSrc = null, ftRows = [], ftChart = null, ftNextId = 100;
       function ftResetNextId() {
@@ -6481,27 +6531,32 @@
         return { metrics: false, savings: false, graph: false, timeline: false, table: false };
       }
 
-      function ftApplySectionStates() {
-        const states = ftGetSectionStates();
-        ['metrics', 'savings', 'graph', 'timeline', 'table'].forEach(key => {
-          const sec = document.getElementById('fts-' + key);
-          const body = document.getElementById('ftb-' + key);
-          const chv = document.getElementById('ftchv-' + key);
-          if (!sec) return;
-          const collapsed = states[key] || false;
-          sec.classList.toggle('collapsed', collapsed);
-          if (body) body.classList.toggle('ft-sec-hidden', collapsed);
-        });
+
+      function ftToggleSection(id) {
+        const body = document.getElementById('ftb-' + id);
+        if (body) body.classList.toggle('ft-sec-hidden');
       }
 
-      function ftToggleSection(key) {
-        const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
-        if (!sc) return;
-        if (!sc.data) sc.data = ftGetScenarioData();
-        if (!sc.data.ft_section_states) sc.data.ft_section_states = {};
-        sc.data.ft_section_states[key] = !sc.data.ft_section_states[key];
-        ftPersistScenarios();
-        ftApplySectionStates();
+      function ftRenderFuture() {
+        const order = S.future.secOrder || ['metrics', 'savings', 'graph', 'timeline', 'table'];
+        const vis = S.future.secVis || {};
+        const container = document.getElementById('tab-future');
+        if (!container) return;
+
+        order.forEach(id => {
+          const sec = document.getElementById('fts-' + id);
+          if (sec) {
+            sec.style.display = vis[id] === false ? 'none' : 'block';
+            container.appendChild(sec);
+            if (vis[id] !== false) {
+              if (id === 'metrics') ftRenderMetrics();
+              if (id === 'savings') ftRenderReqSavings();
+              if (id === 'graph') ftRenderChart();
+              if (id === 'timeline') ftRenderTimelineCard();
+              if (id === 'table') ftRenderTable();
+            }
+          }
+        });
       }
 
       // ── Settings panel ──────────────────────────────────────────────
@@ -6724,15 +6779,82 @@
         });
       }
 
-      // ── Column chips ────────────────────────────────────────────────
+      // ── Future layout & columns managers ──────────────────────────
+      const FT_SEC_LABELS = {
+        metrics: 'Projections Summary',
+        savings: 'Savings Tracker',
+        graph: 'Net Worth Projection',
+        timeline: 'Life Timeline',
+        table: 'Projection Table'
+      };
+
+      let ftDragIdx = null;
+
+      function ftOpenSectionManager() {
+        const listEl = document.getElementById('fts-layout-list');
+        const order = S.future.secOrder;
+        const vis = S.future.secVis;
+        
+        const renderList = () => {
+          listEl.innerHTML = order.map((id, i) => `
+            <div class="ft-sort-item" draggable="true" ondragstart="ftDragIdx=${i}" ondragover="event.preventDefault()" ondrop="ftSectionDrop(event, ${i})">
+              <div class="ft-sort-handle">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 5h8v2H4V5zm0 4h8v2H4V9z"/></svg>
+              </div>
+              <div class="ft-sort-label">${FT_SEC_LABELS[id] || id}</div>
+              <input type="checkbox" class="ft-sort-check" ${vis[id] !== false ? 'checked' : ''} onchange="S.future.secVis['${id}']=this.checked;ps();ftRenderFuture()">
+            </div>
+          `).join('');
+        };
+
+        window.ftSectionDrop = (e, targetIdx) => {
+          e.preventDefault();
+          if (ftDragIdx === null || ftDragIdx === targetIdx) return;
+          const [moved] = order.splice(ftDragIdx, 1);
+          order.splice(targetIdx, 0, moved);
+          ftDragIdx = null;
+          ps(); ftRenderFuture(); renderList();
+        };
+
+        renderList();
+        openModal('m-ft-layout');
+      }
+
+      function ftOpenColumnManager() {
+        const listEl = document.getElementById('ft-col-mgr-list');
+        const order = S.future.colOrder;
+        const vis = S.future.colVis;
+        const labels = S.future.colLabels;
+
+        const renderList = () => {
+          listEl.innerHTML = order.map((key, i) => `
+            <div class="ft-sort-item" draggable="true" ondragstart="ftDragIdx=${i}" ondragover="event.preventDefault()" ondrop="ftColDrop(event, ${i})">
+              <div class="ft-sort-handle">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 5h8v2H4V5zm0 4h8v2H4V9z"/></svg>
+              </div>
+              <input type="checkbox" class="ft-sort-check" ${vis[key] ? 'checked' : ''} onchange="S.future.colVis['${key}']=this.checked; ftColVis['${key}']=this.checked; ps(); ftRecalc()">
+              <input type="text" class="ft-sort-input" value="${labels[key] || key}" oninput="S.future.colLabels['${key}']=this.value; ftColLabels['${key}']=this.value; ps(); ftRenderTable()" placeholder="Label">
+            </div>
+          `).join('');
+        };
+
+        window.ftColDrop = (e, targetIdx) => {
+          e.preventDefault();
+          if (ftDragIdx === null || ftDragIdx === targetIdx) return;
+          const [moved] = order.splice(ftDragIdx, 1);
+          order.splice(targetIdx, 0, moved);
+          ftDragIdx = null;
+          ftColOrder = [...order]; // Sync global
+          ps(); ftRecalc(); renderList();
+        };
+
+        renderList();
+        openModal('m-ft-columns');
+      }
+
       function ftRenderChips() {
-        const toggleable = ['income', 'partner', 'living', 'housing', 'kids', 'netsav', 'nw', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings'];
-        const el = document.getElementById('ft-col-chips');
-        if (!el) return;
-        el.innerHTML = toggleable.map(c => `<div class="ft-chip ${ftColVis[c] ? 'on' : ''}" style="display:inline-flex;align-items:center;gap:6px">
-          <span onclick="ftToggleCol('${c}')" ondblclick="ftStartRenameCol('${c}')" title="Hold to toggle · Double-click to rename" style="cursor:pointer">${ftColLabels[c]}</span>
-          <span onclick="ftColVis['${c}']=false;ftSaveScenario();ftRecalc();ftRenderChips()" style="opacity:0.6;cursor:pointer;font-size:10px" title="Hide column">✕</span>
-        </div>`).join('');
+        // Legacy chip logic removed as requested.
+        // Columns are now managed via ftOpenColumnManager().
       }
 
       // ── Required savings card ───────────────────────────────────────
@@ -7066,14 +7188,7 @@
       function ftRecalc() {
         if (!document.getElementById('ft-metrics')) return;
         ftRows = ftCalcRows();
-        ftRenderMetrics();
-        ftRenderHouseBar();
-        ftRenderChart();
-        ftRenderChips();
-        ftRenderReqSavings();
-        ftRenderTable();
-        ftRenderTimelineCard();
-        ftApplySectionStates();
+        ftRenderFuture();
         ftSaveScenario();
       }
 
@@ -7114,12 +7229,16 @@
         } else {
           ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
           ftActiveScenarioId = 'sc0';
-          if (S?.future) {
-            if (S.future.discMode !== undefined) ftGlobals.discMode = S.future.discMode;
-            if (S.future.savingsRate !== undefined) ftGlobals.savingsRate = S.future.savingsRate;
-            if (S.future.retireAge !== undefined) ftGlobals.retireAge = S.future.retireAge;
-            if (S.future.retireNW !== undefined) ftGlobals.retireNW = S.future.retireNW;
-          }
+        if (S?.future) {
+          if (S.future.discMode !== undefined) ftGlobals.discMode = S.future.discMode;
+          if (S.future.savingsRate !== undefined) ftGlobals.savingsRate = S.future.savingsRate;
+          if (S.future.retireAge !== undefined) ftGlobals.retireAge = S.future.retireAge;
+          if (S.future.retireNW !== undefined) ftGlobals.retireNW = S.future.retireNW;
+          // Sync column config
+          if (S.future.colOrder) ftColOrder = [...S.future.colOrder];
+          if (S.future.colVis) ftColVis = { ...S.future.colVis };
+          if (S.future.colLabels) ftColLabels = { ...S.future.colLabels };
+        }
         }
         // NOW create default expense phase with the correct projectionStartingAge (after loading from scenario)
         // Only create if no phases were loaded from scenario

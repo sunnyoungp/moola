@@ -4107,3 +4107,89 @@
       font-weight: 600;
       text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
+    /* ── Future tab configurators (sortable lists) ─────────────── */
+    .ft-sort-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .ft-sort-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rd);
+      cursor: default;
+      transition: border-color .1s, box-shadow .1s;
+    }
+    .ft-sort-item:hover {
+      border-color: var(--ink4);
+      box-shadow: var(--sh-sm);
+    }
+    .ft-sort-handle {
+      cursor: grab;
+      color: var(--ink4);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .ft-sort-handle:active {
+      cursor: grabbing;
+    }
+    .ft-sort-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ft-sort-check {
+      transform: scale(1.1);
+      cursor: pointer;
+    }
+    .ft-sort-input {
+      border: 1px solid var(--border);
+      border-radius: var(--rs);
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--s1);
+      flex: 2;
+      min-width: 80px;
+    }
+    .ft-sort-input:focus {
+      border-color: var(--f);
+      outline: none;
+      background: var(--surface);
+    }
+
+    /* Clean management buttons */
+    .ft-mgr-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--rs);
+      background: var(--s2);
+      border: 1px solid var(--border);
+      color: var(--ink3);
+      cursor: pointer;
+      transition: all .12s;
+    }
+    .ft-mgr-btn:hover {
+      background: var(--fll);
+      color: var(--f);
+      border-color: var(--f);
+    }
+    .ft-mgr-btn svg {
+      width: 14px;
+      height: 14px;
+    }
