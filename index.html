@@ -5998,12 +5998,14 @@
           cumSav = isHistory ? cumSav : cumSav + Math.max(0, netSavings);
 
           const ms = [];
+          const lifeEventTypes = [];
           const pEv = ftLifeEvents.find(e => e.type === 'partner');
-          if (pEv && age === pEv.age) ms.push('partner');
+          if (pEv && age === pEv.age) { ms.push('partner'); lifeEventTypes.push('partner'); }
           for (const { p } of propScheds) if (age === p.purchaseAge) ms.push(p.name);
-          childEvs.forEach((ce, i) => { if (age === ce.age) ms.push('child ' + (i + 1)); });
-          oneTimeEvs.filter(e => e.age === age).forEach(e => { if (e.label) ms.push(e.label); });
+          childEvs.forEach((ce, i) => { if (age === ce.age) { ms.push('child ' + (i + 1)); lifeEventTypes.push('child'); } });
+          oneTimeEvs.filter(e => e.age === age).forEach(e => { if (e.label) ms.push(e.label); lifeEventTypes.push('oneTime'); });
           for (const s of ftIncomeStreams) if (age === s.startAge) ms.push(s.name + ' starts');
+          if (age === ftGlobals.retireAge) { ms.push('retirement'); lifeEventTypes.push('retirement'); }
           const msDots = [];
           for (const { p } of propScheds) {
             if (age === p.purchaseAge) {
@@ -6024,7 +6026,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + requiredSavings + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isHighlight, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings) });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isHighlight, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes });
         }
         return out;
       }
@@ -6254,7 +6256,11 @@
       }
 
       // ── Event cards ─────────────────────────────────────────────────
-      const ftEvColors = { partner: '#8b5cf6', child: '#16a34a', oneTime: '#0891b2', healthcare: '#e55a00' };
+      const ftEvColors = { partner: '#8b5cf6', child: '#16a34a', oneTime: '#0891b2', healthcare: '#e55a00', retirement: '#f59e0b' };
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '148, 163, 184';
+      }
 
       // ── Income stream card ──────────────────────────────────────────
       function ftRenderStreamCard(s) {
@@ -6532,6 +6538,9 @@
         const container = document.getElementById('tab-future');
         if (!container) return;
 
+        // Save current scroll position
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
         order.forEach(id => {
           const sec = document.getElementById('fts-' + id);
           if (sec) {
@@ -6546,6 +6555,9 @@
             }
           }
         });
+
+        // Restore scroll position
+        window.scrollTo(0, scrollTop);
       }
 
       // ── Settings panel ──────────────────────────────────────────────
@@ -6907,9 +6919,18 @@
             r.isHistory ? 'ft-history-row' : ''
           ].filter(Boolean).join(' ');
 
+          // Determine life event background color
+          let lifeEventBg = '';
+          if (r.lifeEventTypes && r.lifeEventTypes.length > 0) {
+            const primaryEventType = r.lifeEventTypes[0]; // Use first event type, or could implement priority logic
+            const eventColor = ftEvColors[primaryEventType] || '#94a3b8';
+            // Create a very light shade of the color
+            lifeEventBg = `background: rgba(${hexToRgb(eventColor)}, 0.08);`;
+          }
+
           // Calculate and render row
 
-          return '<tr class="' + rowClasses + '">'
+          return '<tr class="' + rowClasses + '" style="' + lifeEventBg + '">'
             + vis.map(c => {
               if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '">'
                 + r.age
@@ -7290,9 +7311,23 @@
       function ftAddYearBefore() {
         const curMin = ftHistoryStartAge !== null ? ftHistoryStartAge : ftGlobals.projectionStartingAge;
         ftHistoryStartAge = curMin - 1;
+        // Save scroll position before recalc
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         ftRecalc();
+        // Restore scroll position after recalc
+        setTimeout(() => window.scrollTo(0, scrollTop), 0);
       }
-      function ftAppendRow() { const l = ftRows[ftRows.length - 1]; if (!l) return; ftRows.push({ ...l, age: l.age + 1, ms: [], msDots: [], isBuy: false, ot: 0, freeSpend: 0, discTooltip: '' }); ftRenderTable(); ftRenderChart(); }
+      function ftAppendRow() { 
+        const l = ftRows[ftRows.length - 1]; 
+        if (!l) return; 
+        ftRows.push({ ...l, age: l.age + 1, ms: [], msDots: [], isBuy: false, ot: 0, freeSpend: 0, discTooltip: '' }); 
+        // Save scroll position before rendering
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        ftRenderTable(); 
+        ftRenderChart();
+        // Restore scroll position after rendering
+        setTimeout(() => window.scrollTo(0, scrollTop), 0);
+      }
       function ftInsertAfter(ri) { const r = ftRows[ri]; const nx = ftRows[ri + 1]; const na = nx ? Math.ceil((r.age + nx.age) / 2) : r.age + 1; ftRows.splice(ri + 1, 0, { ...r, age: na, ms: [], msDots: [], isBuy: false, ot: 0 }); ftRenderTable(); }
       function ftDs(e, i) { ftDragSrc = i; e.dataTransfer.effectAllowed = 'move'; }
       function ftDov(e) { e.preventDefault(); }
