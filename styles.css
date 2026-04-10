@@ -3947,27 +3947,72 @@
 
     .card-phase {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--rl);
-      padding: 18px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--rd);
+      padding: 16px;
       margin-bottom: 12px;
-      box-shadow: 0 4px 12px rgba(28, 27, 25, 0.03);
-      display: flex;
-      flex-direction: column;
-      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+      transition: all .2s;
     }
     .card-phase:hover:not(.expanded) {
-      box-shadow: 0 8px 24px rgba(28, 27, 25, 0.06);
-      transform: translateY(-2px);
-      border-color: var(--border-strong);
+      border-color: var(--f);
+      box-shadow: var(--sh-m);
     }
     .card-phase.expanded {
-      background: #fafafa;
-      box-shadow: 0 8px 32px rgba(28, 27, 25, 0.08);
-      margin-top: 16px;
-      margin-bottom: 24px;
+      border-color: var(--f);
+      box-shadow: var(--sh-l);
     }
-    .card-phase.renting:not(.expanded) { background: #f0f7ff; }
+
+    /* Timeline Era Chips (Image 2 style) */
+    .ft-tl-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .ft-tl-chip {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--rs);
+      border-left: 3px solid var(--phase-color);
+      padding: 12px 16px;
+      min-width: 180px;
+      flex: 1 1 200px;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ft-tl-chip:hover {
+      border-color: var(--f);
+      box-shadow: var(--sh-m);
+      transform: translateY(-1px);
+    }
+
+    .ft-chip-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--ink4);
+      margin-top: 2px;
+    }
+
+    .ft-chip-badge-rent {
+      margin-top: 10px;
+      padding: 6px 8px;
+      background: rgba(59, 130, 246, 0.04);
+      border: 1px dashed #3B82F6;
+      border-radius: var(--rs);
+      font-size: 10px;
+      color: #2563EB;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
 
     .ft-form-row {
       display: grid;

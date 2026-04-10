@@ -6147,17 +6147,29 @@
         html += '<span style="position:absolute;right:0;top:' + axisTop + 'px;font-size:10px;color:var(--ink3)">' + endAge + '</span>';
 
         // ── 5. Phase Chips (compact mode) ──────────────────────────────
+        const homeRange = ftPrimaryHomeAgeRange();
         const chips = compact
           ? '<div class="ft-tl-chips-row">'
             + sorted.map((ph, i) => {
               const col = CHART_COLORS[i % CHART_COLORS.length];
               const endLbl = ph.endAge === 999 ? '\u221e' : ph.endAge;
+              const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
+              const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
+              const isTransition = ph.startAge < homeRange.start;
+              
+              const housingBadge = mortgageOverlaps && isTransition 
+                ? '<div class="ft-chip-badge-rent"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
+                : (ph.renting ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)"><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div></div>' : '');
+
               return '<div class="ft-tl-chip" style="--phase-color:' + col
                 + '" onclick="ftClickPhase(\'' + ph.id + '\')">'
-                + '<span style="font:500 12px var(--sans)">' + ph.name + '</span>'
-                + '<span style="font-size:10px;color:var(--ink3)">age ' + ph.startAge + '\u2013' + endLbl + '</span>'
-                + '<span style="font-family:var(--mono);font-size:12px">' + ftFmt(ph.monthlyLiving || 0) + '/mo</span>'
-                + (ph.renting ? '<span class="tag tg" style="font-size:9px">rent</span>' : '')
+                +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+                +     '<span style="font-size:12px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
+                +     '<span style="font-size:10px;color:var(--ink3);white-space:nowrap;margin-left:6px">age ' + ph.startAge + '\u2013' + endLbl + '</span>'
+                +   '</div>'
+                +   '<div style="font-family:var(--mono);font-size:19px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+                +   '<div class="ft-chip-label">living cost</div>'
+                +   housingBadge
                 + '</div>';
             }).join('') + '</div>'
           : '';
@@ -6393,8 +6405,8 @@
             : '<div style="margin-top:10px;padding:6px 8px;background:rgba(217,119,6,0.06);border:1px solid #D97706;border-radius:var(--rs);font-size:10px;color:#B45309;font-weight:700;display:flex;align-items:center;gap:4px"><span>\u2302</span> MORTGAGE ACTIVE</div>';
         }
 
-        // Left-border accent: overlap=amber, active/renting=blue, else phase color
-        const accentColor = hasOverlap ? '#FFC107' : (isExpanded || ph.renting) ? '#3B82F6' : col;
+        // Left-border accent: overlap=amber, else phase color
+        const accentColor = hasOverlap ? '#FFC107' : col;
 
         if (isExpanded) {
           return '<div class="card-phase expanded" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + accentColor + ';position:relative">'
@@ -6426,9 +6438,9 @@
             + '</div>';
         } else {
           // ── Closed / Summary mode ──────────────────────────────────────
-          return '<div class="card-phase' + (ph.renting ? ' renting' : '') + '" id="ft-phc-' + ph.id + '" onclick="ftClickPhase(\'' + ph.id + '\')" style="border-left:3px solid ' + col + ';position:relative;cursor:pointer">'
+          return '<div class="card-phase" id="ft-phc-' + ph.id + '" onclick="ftClickPhase(\'' + ph.id + '\')" style="border-left:3px solid ' + col + ';position:relative;cursor:pointer">'
             + '<div class="card-phase-summary">'
-            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
             +     '<div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">'
             +       '<span style="width:9px;height:9px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
             +       '<span style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
@@ -6436,12 +6448,12 @@
             +     '<span style="font-size:10.5px;color:var(--ink3);white-space:nowrap;flex-shrink:0;margin-left:6px">age ' + ph.startAge + '\u2013' + (ph.endAge === 999 ? '\u221e' : ph.endAge) + '</span>'
             +   '</div>'
             +   '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-            +   '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink4);margin-top:3px">living cost</div>'
+            +   '<div class="ft-chip-label">living cost</div>'
             + (ph.renting || mortgageOverlaps
                 ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
                 +   (mortgageOverlaps ? housingStatusBadge : (
-                      '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-                      + '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#3B82F6;margin-top:2px">renting</div>'
+                      '<div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+                      + '<div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div>'
                     ))
                 + '</div>'
                 : '')
