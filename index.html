@@ -793,7 +793,9 @@
             <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
               <button class="btn bsm" onclick="ftAppendRow()">+ add row (future)</button>
               <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
-              <button class="btn bsm" id="ft-reset-ov-btn" onclick="ftResetAllOverrides()" style="display:none;background:var(--rose-l);color:var(--rose);border-color:var(--rose)" title="Clear all cell overrides (income, net worth)">↺ reset overrides</button>
+              <button class="btn bsm" id="ft-reset-ov-btn" onclick="ftResetAllOverrides()"
+                style="display:none;background:var(--rose-l);color:var(--rose);border-color:var(--rose)"
+                title="Clear all cell overrides (income, net worth)">↺ reset overrides</button>
               <span style="font-size:10.5px;color:var(--ink3);margin-left:auto">click net worth or income to override ·
                 dbl-click to clear</span>
             </div>
@@ -1616,8 +1618,8 @@
         fcTimeout = setTimeout(() => {
           const card = el.querySelector('.forensic-card');
           if (card) {
-             card.style.display = 'none';
-             card.classList.remove('fc-flip-up');
+            card.style.display = 'none';
+            card.classList.remove('fc-flip-up');
           }
         }, 150);
       }
@@ -1625,50 +1627,50 @@
       function ftHandleHover(el) {
         clearTimeout(fcTimeout);
         document.querySelectorAll('.forensic-card').forEach(c => {
-           if (c.parentElement !== el) {
-              c.style.display = 'none';
-              c.classList.remove('fc-flip-up');
-           }
+          if (c.parentElement !== el) {
+            c.style.display = 'none';
+            c.classList.remove('fc-flip-up');
+          }
         });
-        
+
         const card = el.querySelector('.forensic-card');
         if (!card) return;
-        
+
         if (window.innerWidth <= 768) {
-           card.style.display = 'block';
-           return;
+          card.style.display = 'block';
+          return;
         }
-        
+
         card.style.visibility = 'hidden';
         card.style.display = 'block';
         card.style.position = 'fixed';
-        
+
         const cardH = card.offsetHeight || 280;
         const cardW = card.offsetWidth || 330;
         const rect = el.getBoundingClientRect();
-        
+
         let top = rect.bottom + 10;
         let left = rect.left;
-        
+
         card.classList.remove('fc-flip-up');
         // Flip up if bottom is clipped
         if (top + cardH > window.innerHeight - 20) {
-           top = rect.top - cardH - 10;
-           card.classList.add('fc-flip-up');
+          top = rect.top - cardH - 10;
+          card.classList.add('fc-flip-up');
         }
         // Shift left if right side is clipped
         if (left + cardW > window.innerWidth - 20) left = window.innerWidth - cardW - 20;
-        
+
         card.style.top = top + 'px';
         card.style.left = left + 'px';
         card.style.bottom = 'auto';
         card.style.right = 'auto';
         card.style.transform = 'none';
-        
+
         card.style.visibility = '';
-        
-        card.onmouseenter = function() { clearTimeout(fcTimeout); };
-        card.onmouseleave = function() { ftHandleLeave(el); };
+
+        card.onmouseenter = function () { clearTimeout(fcTimeout); };
+        card.onmouseleave = function () { ftHandleLeave(el); };
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -5520,30 +5522,30 @@
 
       let ftActivePhaseId = null;
       const CHART_COLORS = [
-        '#3B82F6','#10B981','#F59E0B','#EF4444',
-        '#8B5CF6','#06B6D4','#F97316','#EC4899',
-        '#14B8A6','#6366F1','#84CC16','#F43F5E'
+        '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+        '#8B5CF6', '#06B6D4', '#F97316', '#EC4899',
+        '#14B8A6', '#6366F1', '#84CC16', '#F43F5E'
       ];
       const CHART_FILL_ALPHA = { light: '1A', dark: '26' };
       function isDark() {
         return document.documentElement.classList.contains('dark');
       }
       function progressColor(pct) {
-        if(pct >= 100) return 'success';
-        if(pct >= 60)  return 'warning';
+        if (pct >= 100) return 'success';
+        if (pct >= 60) return 'warning';
         return 'danger';
       }
       function infoTooltip(text) {
-        const safe = text.replace(/"/g,'&quot;');
-        return '<span class="info-icon" data-tip="'+safe+'">ⓘ</span>';
+        const safe = text.replace(/"/g, '&quot;');
+        return '<span class="info-icon" data-tip="' + safe + '">ⓘ</span>';
       }
       const dismissedBanners = new Set();
       function renderBanner(id, type, message) {
-        if(dismissedBanners.has(id)) return '';
-        return '<div class="banner '+type+'" id="banner-'+id+'">'
-          +message
-          +'<button class="banner-close" onclick="dismissedBanners.add(\''
-          +id+'\');document.getElementById(\'banner-'+id+'\')?.remove()">✕</button></div>';
+        if (dismissedBanners.has(id)) return '';
+        return '<div class="banner ' + type + '" id="banner-' + id + '">'
+          + message
+          + '<button class="banner-close" onclick="dismissedBanners.add(\''
+          + id + '\');document.getElementById(\'banner-' + id + '\')?.remove()">✕</button></div>';
       }
       const FT_PHASE_PALETTE = CHART_COLORS;
       const FT_CITY_BENCHMARKS = { 'NYC': 3200, 'New York': 3200, 'San Francisco': 3800, 'SF': 3800, 'Los Angeles': 2800, 'LA': 2800, 'Seoul': 1400, 'London': 3000, 'Tokyo': 2200, 'Chicago': 2200, 'Austin': 2000, 'Seattle': 2800, 'Boston': 3000, 'Miami': 2600, 'Denver': 2200 };
@@ -5909,7 +5911,7 @@
           const maxAllowance = netHH - fixedCosts;
           const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
           const freeSpend = Math.max(0, Math.round(rawFreeSpend));
-          
+
           const availableCash = netHH - living - fixedCosts;
           const monthlySurplus = Math.round((availableCash - requiredSavings) / 12);
 
@@ -6001,39 +6003,39 @@
       // ── Unified life timeline ────────────────────────────────────────
       function renderLifeTimeline(containerId, opts) {
         const { phases, events, startAge, endAge,
-                onPhaseClick, onEventClick, compact } = opts;
+          onPhaseClick, onEventClick, compact } = opts;
         const span = endAge - startAge;
         const el = document.getElementById(containerId);
-        if(!el) return;
+        if (!el) return;
 
         // Bar
-        const segs = phases.slice().sort((a,b)=>a.startAge-b.startAge)
-          .map((ph,i,arr) => {
+        const segs = phases.slice().sort((a, b) => a.startAge - b.startAge)
+          .map((ph, i, arr) => {
             const s = Math.max(startAge, ph.startAge);
-            const e = Math.min(endAge, ph.endAge===999?endAge:ph.endAge);
-            if(s >= endAge) return '';
-            const l = (s-startAge)/span*100;
-            const w = Math.max(0.5,(e-s)/span*100);
+            const e = Math.min(endAge, ph.endAge === 999 ? endAge : ph.endAge);
+            if (s >= endAge) return '';
+            const l = (s - startAge) / span * 100;
+            const w = Math.max(0.5, (e - s) / span * 100);
             const col = CHART_COLORS[i % CHART_COLORS.length];
-            const isFirst = i===0, isLast = i===arr.length-1;
-            const br = isFirst&&isLast ? 'var(--rs)'
+            const isFirst = i === 0, isLast = i === arr.length - 1;
+            const br = isFirst && isLast ? 'var(--rs)'
               : isFirst ? 'var(--rs) 0 0 var(--rs)'
-              : isLast  ? '0 var(--rs) var(--rs) 0' : '0';
-            const lbl = w > 4 ? '<span class="ft-tl-seg-lbl">'+ph.name+'</span>' : '';
-            return '<div class="ft-tl-seg" style="position:absolute;left:'+l.toFixed(2)
-              +'%;width:'+w.toFixed(2)+'%;height:44px;background:'+col
-              +';border-radius:'+br+';cursor:pointer;overflow:hidden;margin-right:1.5px"'
-              +' onclick="('+onPhaseClick.toString()+')(\''+ph.id+'\')"'
-              +' data-tip="'+ph.name+' · age '+ph.startAge+'–'+(ph.endAge===999?'∞':ph.endAge)+'">'
-              +lbl+'</div>';
+                : isLast ? '0 var(--rs) var(--rs) 0' : '0';
+            const lbl = w > 4 ? '<span class="ft-tl-seg-lbl">' + ph.name + '</span>' : '';
+            return '<div class="ft-tl-seg" style="position:absolute;left:' + l.toFixed(2)
+              + '%;width:' + w.toFixed(2) + '%;height:44px;background:' + col
+              + ';border-radius:' + br + ';cursor:pointer;overflow:hidden;margin-right:1.5px"'
+              + ' onclick="(' + onPhaseClick.toString() + ')(\'' + ph.id + '\')"'
+              + ' data-tip="' + ph.name + ' · age ' + ph.startAge + '–' + (ph.endAge === 999 ? '∞' : ph.endAge) + '">'
+              + lbl + '</div>';
           }).join('');
 
         // Age axis labels every 5 years
         const axisLabels = [];
-        for(let a=startAge; a<=endAge; a+=5) {
-          const pct = (a-startAge)/span*100;
-          axisLabels.push('<span style="position:absolute;left:'+pct.toFixed(2)
-            +'%;transform:translateX(-50%);font-size:10px;color:var(--ink3)">'+a+'</span>');
+        for (let a = startAge; a <= endAge; a += 5) {
+          const pct = (a - startAge) / span * 100;
+          axisLabels.push('<span style="position:absolute;left:' + pct.toFixed(2)
+            + '%;transform:translateX(-50%);font-size:10px;color:var(--ink3)">' + a + '</span>');
         }
 
         // Event dots
@@ -6042,36 +6044,36 @@
           property: CHART_COLORS[2], child: CHART_COLORS[7],
           oneTime: CHART_COLORS[5], healthcare: CHART_COLORS[3]
         };
-        const dots = events.map((ev,i) => {
-          const age = ev.type==='healthcare' ? ev.startAge : ev.age;
-          if(age < startAge || age > endAge) return '';
-          const pct = (age-startAge)/span*100;
+        const dots = events.map((ev, i) => {
+          const age = ev.type === 'healthcare' ? ev.startAge : ev.age;
+          if (age < startAge || age > endAge) return '';
+          const pct = (age - startAge) / span * 100;
           const col = EVENT_COLORS[ev.type] || CHART_COLORS[0];
-          const label = (ev.label||ev.name||ev.type).slice(0,8)+' '+age;
-          return '<div class="event-pin" style="left:'+pct.toFixed(2)+'%;background:'+col+'"'
-            +' onclick="ftOpenEventForensic(this, \''+ev.id+'\')"'
-            +'><span class="event-pin-lbl">'+label+'</span></div>';
+          const label = (ev.label || ev.name || ev.type).slice(0, 8) + ' ' + age;
+          return '<div class="event-pin" style="left:' + pct.toFixed(2) + '%;background:' + col + '"'
+            + ' onclick="ftOpenEventForensic(this, \'' + ev.id + '\')"'
+            + '><span class="event-pin-lbl">' + label + '</span></div>';
         }).join('');
 
         // Phase chips (compact mode)
         const chips = compact ? '<div class="ft-tl-chips-row">'
-          +phases.slice().sort((a,b)=>a.startAge-b.startAge).map((ph,i)=>{
+          + phases.slice().sort((a, b) => a.startAge - b.startAge).map((ph, i) => {
             const col = CHART_COLORS[i % CHART_COLORS.length];
-            const endLbl = ph.endAge===999?'∞':ph.endAge;
-            return '<div class="ft-tl-chip" style="--phase-color:'+col
-              +'" onclick="('+onPhaseClick.toString()+')(\''+ph.id+'\')">'
-              +'<span style="font:500 13px var(--sans)">'+ph.name+'</span>'
-              +'<span style="font-size:11px;color:var(--ink3)">age '+ph.startAge+'–'+endLbl+'</span>'
-              +'<span style="font:var(--ft-mono);font-family:var(--mono)">'
-              +ftFmt(ph.monthlyLiving||0)+'/mo</span>'
-              +(ph.renting?'<span class="tag tg">rent</span>':'')
-              +'</div>';
-          }).join('')+'</div>' : '';
+            const endLbl = ph.endAge === 999 ? '∞' : ph.endAge;
+            return '<div class="ft-tl-chip" style="--phase-color:' + col
+              + '" onclick="(' + onPhaseClick.toString() + ')(\'' + ph.id + '\')">'
+              + '<span style="font:500 13px var(--sans)">' + ph.name + '</span>'
+              + '<span style="font-size:11px;color:var(--ink3)">age ' + ph.startAge + '–' + endLbl + '</span>'
+              + '<span style="font:var(--ft-mono);font-family:var(--mono)">'
+              + ftFmt(ph.monthlyLiving || 0) + '/mo</span>'
+              + (ph.renting ? '<span class="tag tg">rent</span>' : '')
+              + '</div>';
+          }).join('') + '</div>' : '';
 
         el.innerHTML = '<div style="padding:16px">'
-          +'<div style="position:relative;height:44px;margin-bottom:8px">'+segs+dots+'</div>'
-          +'<div style="position:relative;height:16px;margin-bottom:24px">'+axisLabels.join('')+'</div>'
-          +chips+'</div>';
+          + '<div style="position:relative;height:44px;margin-bottom:8px">' + segs + dots + '</div>'
+          + '<div style="position:relative;height:16px;margin-bottom:24px">' + axisLabels.join('') + '</div>'
+          + chips + '</div>';
       }
 
       function ftClickPhase(id) {
@@ -6081,7 +6083,7 @@
       }
 
       function ftOpenEventForensic(el, id) {
-        if(window.event) window.event.stopPropagation();
+        if (window.event) window.event.stopPropagation();
         const allEvents = [
           ...ftLifeEvents,
           ...ftProperties.map(p => ({ id: p.id, type: 'property', age: p.purchaseAge, name: p.name, eObj: p })),
@@ -6090,27 +6092,27 @@
         const ev = allEvents.find(e => e.id === id);
         if (!ev) return;
         const row = ftRows.find(r => r.age === ev.age) || ftRows[0];
-        
+
         let wrapper = document.getElementById('ft-pin-modal-wrapper');
         if (!wrapper) {
-           wrapper = document.createElement('div');
-           wrapper.id = 'ft-pin-modal-wrapper';
-           document.body.appendChild(wrapper);
+          wrapper = document.createElement('div');
+          wrapper.id = 'ft-pin-modal-wrapper';
+          document.body.appendChild(wrapper);
         }
-        
+
         let valHtml = '';
         if (ev.type === 'home' || ev.type === 'property') {
-           valHtml = `Adds <strong>$${ftFmt(ev.eObj?.purchasePrice||0)}</strong> asset.<br>Down payment reduces liquid net worth.<br>Ongoing mortgage affects monthly living limits.`;
+          valHtml = `Adds <strong>$${ftFmt(ev.eObj?.purchasePrice || 0)}</strong> asset.<br>Down payment reduces liquid net worth.<br>Ongoing mortgage affects monthly living limits.`;
         } else if (ev.type === 'child') {
-           valHtml = `Activates structured childcare cost stages starting at age ${ev.age}. Heavily restricts discretionary budget during preschool years.`;
+          valHtml = `Activates structured childcare cost stages starting at age ${ev.age}. Heavily restricts discretionary budget during preschool years.`;
         } else if (ev.type === 'partner') {
-           valHtml = `Adds <strong>+$${ftFmt(ev.eObj?.income||ev.income||0)}/yr</strong> to gross household income.<br>Increases max allowable spend and accelerates Timeline targets.`;
+          valHtml = `Adds <strong>+$${ftFmt(ev.eObj?.income || ev.income || 0)}/yr</strong> to gross household income.<br>Increases max allowable spend and accelerates Timeline targets.`;
         } else if (ev.type === 'oneTime' || ev.type === 'healthcare') {
-           valHtml = `Lump sum depletion of liquid NW. Limits cash availability for subsequent real estate goals.`;
+          valHtml = `Lump sum depletion of liquid NW. Limits cash availability for subsequent real estate goals.`;
         } else if (ev.type === 'income') {
-           valHtml = `Yields <strong>+$${ftFmt(ev.eObj?.annual||0)}/yr</strong> gross.<br>Affects cumulative savings rate.`;
+          valHtml = `Yields <strong>+$${ftFmt(ev.eObj?.annual || 0)}/yr</strong> gross.<br>Affects cumulative savings rate.`;
         }
-        
+
         const cardHtml = `
           <div id="ft-pin-modal-bg" style="position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999998; background:transparent" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''"></div>
           <div class="forensic-card" style="display:block; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:9999999; width:min(calc(100vw - 32px), 320px); box-shadow:0 16px 40px rgba(28,27,25,0.16), 0 0 0 100vw rgba(28,27,25,0.12); padding:20px; pointer-events:auto; bottom:auto; right:auto;">
@@ -6135,7 +6137,7 @@
             
             <div style="display:flex; justify-content:flex-end; gap:8px;">
               <button class="btn bghost" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''">Close</button>
-              <button class="btn bsm" style="background:var(--f); color:#fff" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''; ftOpenSettings('${ev.type==='income'?'income':ev.type==='property'?'properties':'events'}');">Edit Event</button>
+              <button class="btn bsm" style="background:var(--f); color:#fff" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''; ftOpenSettings('${ev.type === 'income' ? 'income' : ev.type === 'property' ? 'properties' : 'events'}');">Edit Event</button>
             </div>
           </div>
         `;
@@ -6292,9 +6294,9 @@
         let rentSection = '<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
           + (ph.renting ? '<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>' : '')
           + mortgageNote;
-          
+
         const isExpanded = ftActivePhaseId === ph.id;
-        
+
         if (isExpanded) {
           return '<div class="card-era expanded" id="ft-phc-' + ph.id + '" style="border-top:3px solid ' + col + (hasOverlap ? ';border-top:3px solid #FFC107' : '') + '">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
@@ -6311,13 +6313,13 @@
             + '<div class="ft-ev-fr"><label>Location</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
             + '</div>';
         } else {
-          return '<div class="card-era" onclick="ftClickPhase(\''+ph.id+'\')">'
-            + '<div class="card-era-color-bar" style="background:'+col+'"></div>'
-            + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink)">'+ph.name+'</div>'
-            + '<div style="font-size:11px;color:var(--ink3);margin-bottom:12px">age '+ph.startAge+'–'+(ph.endAge===999?'∞':ph.endAge)+'</div>'
-            + '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink)">'+ftFmt(ph.monthlyLiving)+'<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+          return '<div class="card-era" onclick="ftClickPhase(\'' + ph.id + '\')">'
+            + '<div class="card-era-color-bar" style="background:' + col + '"></div>'
+            + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink)">' + ph.name + '</div>'
+            + '<div style="font-size:11px;color:var(--ink3);margin-bottom:12px">age ' + ph.startAge + '–' + (ph.endAge === 999 ? '∞' : ph.endAge) + '</div>'
+            + '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink)">' + ftFmt(ph.monthlyLiving) + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
             + '<div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">living cost</div>'
-            + (ph.renting ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6">'+ftFmt(ph.monthlyRent)+'<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">rent</div></div>' : '')
+            + (ph.renting ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6">' + ftFmt(ph.monthlyRent) + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">rent</div></div>' : '')
             + '</div>';
         }
       }
@@ -6549,8 +6551,8 @@
           events: allEvents,
           startAge: ftGlobals.projectionStartingAge,
           endAge: 100,
-          onPhaseClick: function(id) { ftClickPhase(id); },
-          onEventClick: function(id) { ftOpenSettings('events'); },
+          onPhaseClick: function (id) { ftClickPhase(id); },
+          onEventClick: function (id) { ftOpenSettings('events'); },
           compact: false
         }), 0);
         return '<div class="ft-panel-hdr">Expense Phases</div>'
@@ -6715,19 +6717,19 @@
               if (c === 'freeSpend') {
                 const livingMo = Math.round(r.living / 12);
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-                
+
                 if (r.freeSpend < livingMo) {
                   const deficit = livingMo - r.freeSpend;
                   const housingMo = Math.round(r.housing / 12);
                   const reqSavMo = Math.round(r.requiredSavings / 12);
                   const incomeForPct = Math.max(1, (r.totalIncome || (r.income + r.partner)) / 12);
-                  
+
                   const drains = [
                     { name: 'Housing', val: housingMo, color: '#3B82F6' },
                     { name: 'Living', val: livingMo, color: '#10B981' },
                     { name: 'Required Savings', val: reqSavMo, color: '#F59E0B' }
-                  ].sort((a,b) => b.val - a.val);
-                  
+                  ].sort((a, b) => b.val - a.val);
+
                   const blameHtml = drains.map(d => `
                     <div class="fc-item">
                       <div class="fc-item-name">
@@ -6740,9 +6742,9 @@
                       </div>
                     </div>
                   `).join('');
-                  
+
                   const primaryDrain = drains[0].name;
-                  
+
                   const cardHtml = `
                     <div class="forensic-card">
                       <div class="fc-header">
@@ -6759,7 +6761,7 @@
                       </div>
                     </div>
                   `;
-                  
+
                   return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                 } else {
                   const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
@@ -6984,8 +6986,8 @@
           events: allEvents,
           startAge: ftGlobals.projectionStartingAge,
           endAge: 100,
-          onPhaseClick: function(id) { ftActivePhaseId = id; ftOpenSettings('expenses'); },
-          onEventClick: function(id) { ftOpenSettings('events'); },
+          onPhaseClick: function (id) { ftActivePhaseId = id; ftOpenSettings('expenses'); },
+          onEventClick: function (id) { ftOpenSettings('events'); },
           compact: true
         });
       }
