@@ -6581,10 +6581,59 @@
               if (c === 'income') return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'income\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'income\')" title="' + r.taxTip.replace(/"/g, '&quot;') + ' · click to override">' + (r.income ? ftFmt(r.income) : ftFmt(0)) + '</td>';
               if (c === 'partner') return '<td class="ft-editable' + (ovPart ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'partner\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'partner\')" title="click to override · dblclick to clear">' + ftFmt(r.partner) + '</td>';
               if (c === 'freeSpend') {
+                const livingMo = Math.round(r.living / 12);
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-                const color = r.freeSpend > (r.living / 12) ? '#16a34a' : (r.freeSpend < 0 ? '#dc2626' : 'var(--ink)');
-                return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + ' · current spending: ' + ftFmt(Math.round(r.living / 12)) + '/mo">'
-                  + (r.freeSpend < (r.living / 12) ? '⚠ ' : (r.freeSpend > 0 ? '+' : '')) + ftFmt(r.freeSpend) + '/mo</td>';
+                
+                if (r.freeSpend < livingMo) {
+                  const deficit = livingMo - r.freeSpend;
+                  const housingMo = Math.round(r.housing / 12);
+                  const reqSavMo = Math.round(r.requiredSavings / 12);
+                  const incomeForPct = Math.max(1, (r.totalIncome || (r.income + r.partner)) / 12);
+                  
+                  const drains = [
+                    { name: 'Housing', val: housingMo, color: '#3B82F6' },
+                    { name: 'Living', val: livingMo, color: '#10B981' },
+                    { name: 'Required Savings', val: reqSavMo, color: '#F59E0B' }
+                  ].sort((a,b) => b.val - a.val);
+                  
+                  const blameHtml = drains.map(d => `
+                    <div class="fc-item">
+                      <div class="fc-item-name">
+                        <span style="width:8px;height:8px;border-radius:2px;background:${d.color};display:inline-block"></span>
+                        ${d.name}
+                      </div>
+                      <div style="display:flex;align-items:center">
+                        <div class="fc-item-val">${ftFmt(d.val)}</div>
+                        <div class="fc-item-pct">${Math.round(d.val / incomeForPct * 100)}%</div>
+                      </div>
+                    </div>
+                  `).join('');
+                  
+                  const primaryDrain = drains[0].name;
+                  
+                  const cardHtml = `
+                    <div class="forensic-card">
+                      <div class="fc-header">
+                        <div>
+                          <div class="fc-title"><span>🚨</span> Diagnostic Alert</div>
+                          <div class="fc-deficit">-$${deficit.toLocaleString('en-US')}/mo</div>
+                        </div>
+                      </div>
+                      <div class="fc-section">Top Category Drains</div>
+                      <div class="fc-list">${blameHtml}</div>
+                      <div class="fc-command">
+                        <strong>Required Action</strong>
+                        Reduce ${primaryDrain} by $${deficit.toLocaleString('en-US')} OR increase income by $${deficit.toLocaleString('en-US')} to stop wealth decay.
+                      </div>
+                    </div>
+                  `;
+                  
+                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
+                } else {
+                  const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
+                  return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + ' · current spending: ' + ftFmt(livingMo) + '/mo">'
+                    + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</td>';
+                }
               }
               if (c === 'monthlySurplus') {
                 const color = r.monthlySurplus > 0 ? '#0ea5e9' : (r.monthlySurplus < 0 ? '#dc2626' : 'var(--ink)');

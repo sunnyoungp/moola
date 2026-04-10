@@ -502,6 +502,131 @@
       box-shadow: var(--sh2);
     }
 
+    /* ═══ FORENSIC CARD ═════════════════════════════════════════════════ */
+    .forensic-trigger {
+      position: relative;
+      display: inline-flex;
+      cursor: help;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .forensic-card {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      width: 330px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--rl);
+      padding: 24px;
+      box-shadow: var(--sh4);
+      z-index: 1000;
+      display: none;
+      text-align: left;
+      font-family: var(--sans);
+      color: var(--ink);
+      pointer-events: none;
+    }
+
+    .forensic-trigger:hover .forensic-card {
+      display: block;
+      animation: pgIn .12s ease-out;
+    }
+
+    .fc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .fc-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fc-deficit {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: #dc2626;
+      margin-top: 6px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .fc-section {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 12px;
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .fc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .fc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .fc-item-name {
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .fc-item-pct {
+      font-family: var(--mono);
+      color: var(--ink2);
+      font-weight: 500;
+    }
+    
+    .fc-item-val {
+      font-family: var(--mono);
+      color: var(--ink4);
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .fc-command {
+      margin-top: 24px;
+      padding: 14px 16px;
+      background: rgba(220, 38, 38, 0.05);
+      border-left: 3px solid #dc2626;
+      border-radius: var(--rx);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+
+    .fc-command strong {
+      color: #dc2626;
+      display: block;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
     /* Dark gradient card — for account/balance highlights */
     .card-ink {
       background: linear-gradient(145deg, #1C1B19 0%, #252235 100%);
