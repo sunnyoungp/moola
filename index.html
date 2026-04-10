@@ -1915,6 +1915,8 @@
         if (!S.chartGroupingMode) S.chartGroupingMode = 'bucket';
         if (!S.tableGroupingMode) S.tableGroupingMode = 'category';
         if (!S.future) S.future = {};
+        if (!S.future.secOrder) S.future.secOrder = ['metrics', 'savings', 'graph', 'timeline', 'table'];
+        if (!S.future.secVis) S.future.secVis = { metrics: true, savings: true, graph: true, timeline: true, table: true };
         if (!S.future_scenarios) S.future_scenarios = [];
 
         // Ensure accountCategories + accountTypes exist (for old saves)
@@ -6004,13 +6006,13 @@
       function renderLifeTimeline(containerId, opts) {
         const { phases, events, startAge, endAge,
           onPhaseClick, onEventClick, compact } = opts;
-        const span = endAge - startAge;
+        const span = endAge - startAge + 1; // plus 1 to include the full year of endAge
         const el = document.getElementById(containerId);
         if (!el || span <= 0) return;
 
         const LANE_H = 36;       // px height of each Gantt lane bar
         const LANE_GAP = 5;      // px gap between lanes
-        const LABEL_ZONE_H = 64; // px above bars reserved for labels
+        const LABEL_ZONE_H = 90; // px above bars reserved for labels (increased for 4-lane stacking)
         const AXIS_H = 22;       // px below bars for age ticks
 
         // ── 1. Slot-Assignment Collision Engine (greedy lowest-slot) ──
@@ -6018,12 +6020,12 @@
         const slots = []; // slots[i] = array of non-overlapping phases in lane i
         sorted.forEach(ph => {
           const phS = Math.max(startAge, ph.startAge);
-          if (phS >= endAge) return;
+          if (phS > endAge) return;
           let placed = false;
           for (let si = 0; si < slots.length; si++) {
             const last = slots[si][slots[si].length - 1];
-            const lastE = Math.min(endAge, last.endAge === 999 ? endAge : last.endAge);
-            if (lastE <= ph.startAge) { // back-to-back OK, not a conflict
+            const lastE = Math.min(endAge + 1, (last.endAge === 999 ? endAge : last.endAge) + 1);
+            if (lastE <= ph.startAge) { // back-to-back OK
               slots[si].push(ph);
               placed = true;
               break;
@@ -6057,7 +6059,7 @@
             const s = Math.max(startAge, ph.startAge);
             const e = Math.min(endAge, ph.endAge === 999 ? endAge : ph.endAge);
             const l = (s - startAge) / span * 100;
-            const w = Math.max(0.3, (e - s) / span * 100);
+            const w = (e - s + 1) / span * 100;
             const isFirst = pi === 0, isLast = pi === slotPhases.length - 1;
             let br = '0';
             if (isFirst && isLast) br = '6px';
@@ -6080,25 +6082,34 @@
           .map(ev => ({ ...ev, _age: ev.type === 'healthcare' ? (ev.startAge || ev.age || 0) : (ev.age || 0) }))
           .filter(ev => ev._age >= startAge && ev._age <= endAge)
           .sort((a, b) => a._age - b._age);
-        const THRESH = 3.5; // % of span, threshold for label-collision toggling
-        let prevPct = -999, prevLabelSlot = 0;
+        const labelLanes = [[], [], [], []];
         sortedEvs.forEach(ev => {
           const pct = (ev._age - startAge) / span * 100;
           const col = EV_COLORS[ev.type] || '#94a3b8';
           const rawLabel = (ev.label || ev.name || ev.type || '').slice(0, 13);
           const tip = rawLabel + ' \u00b7 ' + ev._age;
-          // Auto-stagger: toggle slot when events are within threshold
-          let labelSlot = 0;
-          if (Math.abs(pct - prevPct) < THRESH) labelSlot = 1 - prevLabelSlot;
-          prevPct = pct; prevLabelSlot = labelSlot;
-          // Vertical line marker spanning from label zone into all Gantt lanes (z-index:3)
+
+          // Multi-lane greedy lane assignment (up to 4 lanes)
+          let slot = 0;
+          for (let li = 0; li < 4; li++) {
+            const lane = labelLanes[li];
+            const last = lane[lane.length - 1];
+            if (!last || (pct - last.pct) > 10.5) { // ~10.5% width buffer per label
+              slot = li;
+              lane.push({ pct });
+              break;
+            }
+          }
+          // Vertical positioning (descending from top of label zone)
+          const labelTopPx = 70 - (slot * 18);
+
+          // Vertical line marker
           const lineTop = LABEL_ZONE_H - 6;
           html += '<div style="position:absolute;left:calc(' + pct.toFixed(2) + '% - 0.75px);top:' + lineTop + 'px;width:1.5px;height:' + (ganttH + 6) + 'px;background:' + col + ';z-index:3;pointer-events:none;opacity:0.6"></div>';
-          // Label: dot + text above bars (two stagger heights, z-index:4)
-          const labelTopPx = labelSlot === 0 ? 36 : 12;
+          // Label component
           html += '<div style="position:absolute;left:' + pct.toFixed(2) + '%;top:' + labelTopPx + 'px;transform:translateX(-50%);z-index:4;cursor:pointer;text-align:center" onclick="ftOpenEventForensic(this,\'' + ev.id + '\')" title="' + tip + '">'
             + '<div style="width:5px;height:5px;border-radius:50%;background:' + col + ';margin:0 auto 2px"></div>'
-            + '<span style="font-size:9px;font-weight:600;color:var(--ink2);white-space:nowrap;display:block;letter-spacing:-.1px">' + tip + '</span>'
+            + '<span style="font-size:9px;font-weight:600;color:var(--ink2);white-space:nowrap;display:block;letter-spacing:-.2px">' + tip + '</span>'
             + '</div>';
         });
 
@@ -6342,16 +6353,21 @@
           overlapWarning = '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:12px">\u26a0 Overlaps with ' + (conflictName || 'another phase') + ' \u2014 adjust the age range. The later-starting phase takes priority.</div>';
         }
 
-        // Mortgage note
+        // Mortgage transition logic
         const homeRange = ftPrimaryHomeAgeRange();
         const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
         const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
-        let mortgageNote = '';
+        let mortgageNote = '', housingStatusBadge = '';
         if (mortgageOverlaps) {
-          const noteText = ph.startAge < homeRange.start
+          const isTransition = ph.startAge < homeRange.start;
+          const noteText = isTransition
             ? 'Rent applies age ' + ph.startAge + '\u2013' + (homeRange.start - 1) + ' \u00b7 mortgage overrides housing from age ' + homeRange.start
-            : 'Mortgage overrides housing from age ' + homeRange.start + ' (rent has no effect this phase)';
-          mortgageNote = '<div style="font-size:10.5px;color:var(--ink3);padding:4px 0 6px;line-height:1.4">' + noteText + '</div>';
+            : 'Mortgage overrides housing from age ' + homeRange.start + ' (rent settings ignored)';
+          mortgageNote = '<div style="background:rgba(217,119,6,0.06);border-left:2px solid #D97706;padding:6px 10px;margin:8px 0;font-size:11px;color:#B45309;line-height:1.4"><strong>Housing Transition:</strong> ' + noteText + '</div>';
+          
+          housingStatusBadge = isTransition 
+            ? '<div style="margin-top:10px;padding:6px 8px;background:rgba(59,130,246,0.06);border:1px dashed #3B82F6;border-radius:var(--rs);font-size:10px;color:#2563EB;font-weight:700;display:flex;align-items:center;gap:4px"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
+            : '<div style="margin-top:10px;padding:6px 8px;background:rgba(217,119,6,0.06);border:1px solid #D97706;border-radius:var(--rs);font-size:10px;color:#B45309;font-weight:700;display:flex;align-items:center;gap:4px"><span>\u2302</span> MORTGAGE ACTIVE</div>';
         }
 
         // Left-border accent: overlap=amber, active/renting=blue, else phase color
@@ -6398,10 +6414,12 @@
             +   '</div>'
             +   '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
             +   '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink4);margin-top:3px">living cost</div>'
-            + (ph.renting
+            + (ph.renting || mortgageOverlaps
                 ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
-                +   '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-                +   '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#3B82F6;margin-top:2px">rent</div>'
+                +   (mortgageOverlaps ? housingStatusBadge : (
+                      '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+                      + '<div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#3B82F6;margin-top:2px">renting</div>'
+                    ))
                 + '</div>'
                 : '')
             + '</div>'

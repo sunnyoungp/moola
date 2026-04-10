@@ -3762,7 +3762,7 @@
       border: 1px solid var(--border);
       border-radius: var(--rl);
       margin-bottom: 10px;
-      overflow: hidden;
+      overflow: visible;
       box-shadow: var(--sh1);
     }
 
@@ -3800,7 +3800,7 @@
 
     .ft-sec-body {
       padding: 0 16px 14px;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .ft-sec-body.ft-sec-hidden {
