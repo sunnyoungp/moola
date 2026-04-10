@@ -6017,15 +6017,10 @@
           if(age < startAge || age > endAge) return '';
           const pct = (age-startAge)/span*100;
           const col = EVENT_COLORS[ev.type] || CHART_COLORS[0];
-          const yOffset = i%2===0 ? 54 : 64;
           const label = (ev.label||ev.name||ev.type).slice(0,8)+' '+age;
-          return '<div style="position:absolute;left:'+pct.toFixed(2)
-            +'%;top:36px;width:9px;height:9px;border-radius:50%;background:'+col
-            +';border:2px solid var(--surface);transform:translateX(-50%);cursor:pointer"'
-            +' onclick="('+onEventClick.toString()+')(\''+ev.id+'\')" title="'+label+'"></div>'
-            +'<span style="position:absolute;left:'+pct.toFixed(2)+'%;top:'+yOffset
-            +'px;font-size:9px;color:var(--ink3);transform:translateX(-50%);white-space:nowrap">'
-            +label+'</span>';
+          return '<div class="event-pin" style="left:'+pct.toFixed(2)+'%;background:'+col+'"'
+            +' onclick="ftOpenEventForensic(this, \''+ev.id+'\')"'
+            +'><span class="event-pin-lbl">'+label+'</span></div>';
         }).join('');
 
         // Phase chips (compact mode)
@@ -6053,6 +6048,67 @@
         ftActivePhaseId = ftActivePhaseId === id ? null : id;
         // Open settings panel to expenses tab
         ftOpenSettings('expenses');
+      }
+
+      function ftOpenEventForensic(el, id) {
+        if(window.event) window.event.stopPropagation();
+        const allEvents = [
+          ...ftLifeEvents,
+          ...ftProperties.map(p => ({ id: p.id, type: 'property', age: p.purchaseAge, name: p.name, eObj: p })),
+          ...ftIncomeStreams.map(s => ({ id: s.id, type: 'income', age: s.startAge, name: s.name, eObj: s }))
+        ];
+        const ev = allEvents.find(e => e.id === id);
+        if (!ev) return;
+        const row = ftRows.find(r => r.age === ev.age) || ftRows[0];
+        
+        let wrapper = document.getElementById('ft-pin-modal-wrapper');
+        if (!wrapper) {
+           wrapper = document.createElement('div');
+           wrapper.id = 'ft-pin-modal-wrapper';
+           document.body.appendChild(wrapper);
+        }
+        
+        let valHtml = '';
+        if (ev.type === 'home' || ev.type === 'property') {
+           valHtml = `Adds <strong>$${ftFmt(ev.eObj?.purchasePrice||0)}</strong> asset.<br>Down payment reduces liquid net worth.<br>Ongoing mortgage affects monthly living limits.`;
+        } else if (ev.type === 'child') {
+           valHtml = `Activates structured childcare cost stages starting at age ${ev.age}. Heavily restricts discretionary budget during preschool years.`;
+        } else if (ev.type === 'partner') {
+           valHtml = `Adds <strong>+$${ftFmt(ev.eObj?.income||ev.income||0)}/yr</strong> to gross household income.<br>Increases max allowable spend and accelerates Timeline targets.`;
+        } else if (ev.type === 'oneTime' || ev.type === 'healthcare') {
+           valHtml = `Lump sum depletion of liquid NW. Limits cash availability for subsequent real estate goals.`;
+        } else if (ev.type === 'income') {
+           valHtml = `Yields <strong>+$${ftFmt(ev.eObj?.annual||0)}/yr</strong> gross.<br>Affects cumulative savings rate.`;
+        }
+        
+        const cardHtml = `
+          <div class="forensic-card" style="display:block; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:9999999; width:min(calc(100vw - 32px), 320px); box-shadow:0 16px 40px rgba(28,27,25,0.16), 0 0 0 100vw rgba(28,27,25,0.12); padding:24px; pointer-events:auto; bottom:auto; right:auto;">
+            <div class="fc-header" style="margin-bottom:16px;">
+              <div>
+                <div class="fc-title"><span>📌</span> Event Milestone Summary</div>
+                <div class="fc-deficit" style="font-size:18px;margin-top:6px;color:var(--ink)">${ev.name || ev.type}</div>
+              </div>
+            </div>
+            <div class="fc-section" style="margin-bottom:8px">Impact at Age ${ev.age}</div>
+            <div style="font-size:13px; color:var(--ink2); line-height:1.5; margin-bottom:20px; background:var(--s1); padding:12px; border-radius:var(--rs);">${valHtml}</div>
+            
+            <div class="fc-section" style="margin-bottom:8px">Net Worth Snapshot</div>
+            <div class="fc-item" style="padding:0">
+              <span class="fc-item-name" style="color:var(--ink3); font-size:12px">Total NW:</span>
+              <span class="fc-item-val" style="font-weight:600; color:var(--ink)">${ftFmt(row.nw)}</span>
+            </div>
+            <div class="fc-item" style="padding:0; margin-bottom: 20px">
+              <span class="fc-item-name" style="color:var(--ink3); font-size:12px">Liquid NW:</span>
+              <span class="fc-item-val" style="font-weight:600; color:var(--teal)">${ftFmt(row.liquidNW)}</span>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+              <button class="btn bghost" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''">Close</button>
+              <button class="btn bsm" style="background:var(--f); color:#fff" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''; ftOpenSettings('${ev.type==='income'?'income':ev.type==='property'?'properties':'events'}');">Edit Event</button>
+            </div>
+          </div>
+        `;
+        wrapper.innerHTML = cardHtml;
       }
 
       // ── Event cards ─────────────────────────────────────────────────
@@ -6205,19 +6261,34 @@
         let rentSection = '<div class="ft-ev-fr"><label>Renting</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
           + (ph.renting ? '<div class="ft-ev-fr"><label>Monthly rent</label><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>' : '')
           + mortgageNote;
-        return '<div class="ft-ph-card" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + col + (hasOverlap ? ';border-top:2px solid #FFC107' : '') + ';padding:14px 16px;background:var(--surface);border-radius:var(--r);margin-bottom:6px">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-          + '<span style="font-size:12px;font-weight:600;color:var(--ink)">' + ph.name + '</span>'
-          + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">✕</button>'
-          + '</div>'
-          + overlapWarning
-          + '<div class="ft-ev-fr"><label>Phase name</label><input type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)"></div>'
-          + '<div class="ft-ev-fr"><label>Start age</label><input type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)" style="width:65px"><label style="margin-left:8px">End age</label><input type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\'?999:+this.value)" placeholder="∞" style="width:65px"></div>'
-          + '<div class="ft-ev-fr"><label>Monthly living cost</label><input type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (food, going out, travel, subscriptions)</span></div>'
-          + (benchmark ? '<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">median single-person spend in ' + (ph.location || '') + '&thinsp;~$' + benchmark.toLocaleString() + '/mo</div>' : '')
-          + rentSection
-          + '<div class="ft-ev-fr"><label>Location</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
-          + '</div>';
+          
+        const isExpanded = ftActivePhaseId === ph.id;
+        
+        if (isExpanded) {
+          return '<div class="card-era expanded" id="ft-phc-' + ph.id + '" style="border-top:3px solid ' + col + (hasOverlap ? ';border-top:3px solid #FFC107' : '') + '">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+            + '<span style="font-size:12px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
+            + '<div><button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" title="Done" style="margin-right:8px;font-size:10px;font-weight:600">done</button>'
+            + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">✕</button></div>'
+            + '</div>'
+            + overlapWarning
+            + '<div class="ft-ev-fr"><label>Phase name</label><input type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)"></div>'
+            + '<div class="ft-ev-fr"><label>Start age</label><input type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)" style="width:65px"><label style="margin-left:8px">End age</label><input type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\'?999:+this.value)" placeholder="∞" style="width:65px"></div>'
+            + '<div class="ft-ev-fr"><label>Monthly living cost</label><input type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (food, going out, travel)</span></div>'
+            + (benchmark ? '<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">median single-person spend in ' + (ph.location || '') + '&thinsp;~$' + benchmark.toLocaleString() + '/mo</div>' : '')
+            + rentSection
+            + '<div class="ft-ev-fr"><label>Location</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
+            + '</div>';
+        } else {
+          return '<div class="card-era" onclick="ftClickPhase(\''+ph.id+'\')">'
+            + '<div class="card-era-color-bar" style="background:'+col+'"></div>'
+            + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink)">'+ph.name+'</div>'
+            + '<div style="font-size:11px;color:var(--ink3);margin-bottom:12px">age '+ph.startAge+'–'+(ph.endAge===999?'∞':ph.endAge)+'</div>'
+            + '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink)">'+ftFmt(ph.monthlyLiving)+'<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+            + '<div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">living cost</div>'
+            + (ph.renting ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#3B82F6">'+ftFmt(ph.monthlyRent)+'<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink3);margin-top:2px">rent</div></div>' : '')
+            + '</div>';
+        }
       }
 
       function ftRenderEventCard(ev) {
@@ -6455,10 +6526,10 @@
           + '<div style="background:var(--fll);border:1px solid var(--fl);border-radius:var(--rs);padding:8px 12px;font-size:11px;color:var(--f);margin-bottom:12px;line-height:1.5">ℹ Phases are for base lifestyle spend only (food, going out, travel, subscriptions). Kids, rent, and mortgage are tracked separately and never double-counted.</div>'
           + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Phases are sorted chronologically by start age. Living expenses inflate at ' + ftGlobals.expInflation + '%/yr.</div>'
           + '<div id="ft-tl-inline"></div>'
-          + '<div style="margin-top:14px">'
+          + '<div class="expenses-grid">'
           + phaseCardsHtml
           + '</div>'
-          + '<button class="ft-ev-add-btn" onclick="ftAddExpPhase();ftRenderPanel()" style="margin-top:6px">+ add phase</button>';
+          + '<button class="ft-ev-add-btn" onclick="ftAddExpPhase();ftRenderPanel()" style="margin-top:12px">+ add phase</button>';
       }
 
       // ── Metrics ─────────────────────────────────────────────────────

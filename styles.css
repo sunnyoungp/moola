@@ -4058,3 +4058,77 @@
     .btn-ghost:hover { background:var(--s2); color:var(--ink); }
     .btn-sm { height:28px !important; padding:0 10px !important; font-size:12px !important; }
     .btn-destructive:hover { color:var(--rose) !important; border-color:var(--rose) !important; }
+
+    /* ── Unification: Dual-Layer Timeline & Grid Cards ── */
+    .expenses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .card-era {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rl);
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(28,27,25,0.03);
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .card-era:hover {
+      box-shadow: 0 8px 24px rgba(28,27,25,0.06);
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+    }
+    .card-era.expanded {
+      grid-column: 1 / -1;
+      cursor: default;
+      background: #fafafa;
+    }
+    .card-era-color-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      border-radius: var(--rl) var(--rl) 0 0;
+    }
+    
+    .event-pin {
+      position: absolute;
+      top: 22px; 
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.15s;
+    }
+    .event-pin:hover {
+      transform: translate(-50%, -50%) scale(1.25);
+      z-index: 11;
+    }
+    .event-pin-lbl {
+      position: absolute;
+      top: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink2);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .ft-tl-seg-lbl {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding-left: 10px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
