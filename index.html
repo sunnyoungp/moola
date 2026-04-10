@@ -5908,7 +5908,7 @@
           for (const { p } of propScheds) for (const ep of (p.extraPayments || [])) if (ep.age === age) extraPmt += ep.amount;
           // Required savings vs Actual surplus
           const netSavings = netHH - living - fixedCosts;
-          let requiredSavings = 0, discTooltip = '', noGoals = false, topGoalLabel = '';
+          let requiredSavings = 0, discTooltip = '', noGoals = false;
           if (ftGlobals.discMode === 'rate') {
             requiredSavings = netHH * ftGlobals.savingsRate / 100;
             discTooltip = 'Target savings based on ' + ftGlobals.savingsRate + '% rate';
@@ -6974,9 +6974,26 @@
                       <div class="fc-header">
                         <div>
                           <div class="fc-title"><span>🚨</span> Diagnostic Alert</div>
-                          <div class="fc-deficit">-$${deficit.toLocaleString('en-US')}/mo</div>
+                          <div class="fc-deficit">-$${deficit.toLocaleString('en-US')}/mo shortfall</div>
                         </div>
                       </div>
+
+                      <div class="fc-section" style="margin-bottom:8px">Visual Comparison</div>
+                      <div style="padding:0 12px 12px">
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:4px">
+                          <span>Actual Spending</span>
+                          <span style="color:var(--rose);font-weight:600">${ftFmt(livingMo)}/mo</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:8px">
+                          <span>Safe Spending Limit</span>
+                          <span style="color:var(--teal);font-weight:600">${ftFmt(r.freeSpend)}/mo</span>
+                        </div>
+                        <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;display:flex">
+                          <div style="width:${Math.min(100, (r.freeSpend / livingMo) * 100)}%;background:var(--teal)"></div>
+                          <div style="width:${Math.min(100, (deficit / livingMo) * 100)}%;background:var(--rose)"></div>
+                        </div>
+                      </div>
+
                       <div class="fc-section">Top Category Drains</div>
                       <div class="fc-list">${blameHtml}</div>
                       <div class="fc-command">
