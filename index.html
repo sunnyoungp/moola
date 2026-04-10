@@ -5979,6 +5979,7 @@
             '\n = NEW BALANCE: ' + ftFmt(Math.round(prevLiq + growth + netSavings + ot - extraPmt));
 
           let newLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
+          const nwOv = ftOvMap[age]?.nw;
 
           if (isHistory) {
             newLiq = (nwOv !== undefined) ? (nwOv - Math.round(realEstateEquity)) : null;
