@@ -1610,10 +1610,34 @@
 
 
     <script>
-      function ftPosFc(el) {
-        if (window.innerWidth <= 768) return; // Handled strictly by CSS on mobile
+      let fcTimeout = null;
+
+      function ftHandleLeave(el) {
+        fcTimeout = setTimeout(() => {
+          const card = el.querySelector('.forensic-card');
+          if (card) {
+             card.style.display = 'none';
+             card.classList.remove('fc-flip-up');
+          }
+        }, 150);
+      }
+
+      function ftHandleHover(el) {
+        clearTimeout(fcTimeout);
+        document.querySelectorAll('.forensic-card').forEach(c => {
+           if (c.parentElement !== el) {
+              c.style.display = 'none';
+              c.classList.remove('fc-flip-up');
+           }
+        });
+        
         const card = el.querySelector('.forensic-card');
         if (!card) return;
+        
+        if (window.innerWidth <= 768) {
+           card.style.display = 'block';
+           return;
+        }
         
         card.style.visibility = 'hidden';
         card.style.display = 'block';
@@ -1626,8 +1650,12 @@
         let top = rect.bottom + 10;
         let left = rect.left;
         
+        card.classList.remove('fc-flip-up');
         // Flip up if bottom is clipped
-        if (top + cardH > window.innerHeight - 20) top = rect.top - cardH - 10;
+        if (top + cardH > window.innerHeight - 20) {
+           top = rect.top - cardH - 10;
+           card.classList.add('fc-flip-up');
+        }
         // Shift left if right side is clipped
         if (left + cardW > window.innerWidth - 20) left = window.innerWidth - cardW - 20;
         
@@ -1638,7 +1666,9 @@
         card.style.transform = 'none';
         
         card.style.visibility = '';
-        card.style.display = '';
+        
+        card.onmouseenter = function() { clearTimeout(fcTimeout); };
+        card.onmouseleave = function() { ftHandleLeave(el); };
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -6082,7 +6112,8 @@
         }
         
         const cardHtml = `
-          <div class="forensic-card" style="display:block; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:9999999; width:min(calc(100vw - 32px), 320px); box-shadow:0 16px 40px rgba(28,27,25,0.16), 0 0 0 100vw rgba(28,27,25,0.12); padding:24px; pointer-events:auto; bottom:auto; right:auto;">
+          <div id="ft-pin-modal-bg" style="position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999998; background:transparent" onclick="document.getElementById('ft-pin-modal-wrapper').innerHTML=''"></div>
+          <div class="forensic-card" style="display:block; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:9999999; width:min(calc(100vw - 32px), 320px); box-shadow:0 16px 40px rgba(28,27,25,0.16), 0 0 0 100vw rgba(28,27,25,0.12); padding:20px; pointer-events:auto; bottom:auto; right:auto;">
             <div class="fc-header" style="margin-bottom:16px;">
               <div>
                 <div class="fc-title"><span>📌</span> Event Milestone Summary</div>
@@ -6729,7 +6760,7 @@
                     </div>
                   `;
                   
-                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftPosFc(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
+                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                 } else {
                   const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
                   return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + ' · current spending: ' + ftFmt(livingMo) + '/mo">'

@@ -522,8 +522,8 @@
       background: var(--surface);
       border: 1px solid var(--border-strong);
       border-radius: var(--rl);
-      padding: 24px;
-      box-shadow: 0 8px 30px rgba(28,27,25,0.12);
+      padding: 20px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.12);
       z-index: 999999;
       display: none;
       text-align: left;
@@ -556,16 +556,21 @@
       border-style: solid;
       border-color: transparent transparent var(--border-strong) transparent;
     }
+    
+    .forensic-card.fc-flip-up::after {
+      top: 100%;
+      bottom: auto;
+      border-color: var(--surface) transparent transparent transparent;
+    }
+    
+    .forensic-card.fc-flip-up::before {
+      top: 100%;
+      bottom: auto;
+      border-color: var(--border-strong) transparent transparent transparent;
+    }
 
     .forensic-trigger:hover {
       z-index: 999999;
-    }
-
-    .forensic-trigger:hover .forensic-card,
-    .forensic-trigger:focus .forensic-card,
-    .forensic-trigger:focus-within .forensic-card {
-      display: block;
-      animation: pgIn .12s ease-out;
     }
 
     /* Absolute clipping escape hatch for mobile */
