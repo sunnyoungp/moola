@@ -6892,7 +6892,7 @@
 
           return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + (r.isHistory ? ' ft-history-row' : '') + '">'
             + vis.map(c => {
-              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'var(--surface)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
+              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'rgba(24, 24, 27, 0.05)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
                 + r.age
                 + (r.isHistory ? ' <span style="font-size:9px;color:var(--ink4)">hist</span>' : '')
                 + (r.ms.length ? ' <span style="font-size:10px;color:var(--ink3)">' + r.ms.join(' · ') + '</span>' : '')
@@ -7090,12 +7090,17 @@
         const inp = td.querySelector('input');
         inp.focus(); inp.select();
         const commit = () => {
-          const v = parseFloat(inp.value);
-          if (!isNaN(v) && v !== curVal) {
-            if (!ftOvMap[age]) ftOvMap[age] = {};
-            ftOvMap[age][field] = Math.round(v);
-            ftRecalc();
-          } else ftRenderTable();
+          const raw = inp.value.trim();
+          if (raw === '') {
+            ftClearOverride(age, field);
+          } else {
+            const v = parseFloat(raw);
+            if (!isNaN(v) && v !== curVal) {
+              if (!ftOvMap[age]) ftOvMap[age] = {};
+              ftOvMap[age][field] = Math.round(v);
+              ftRecalc();
+            } else ftRenderTable();
+          }
         };
         inp.addEventListener('blur', commit);
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') ftRenderTable(); });
@@ -7106,8 +7111,25 @@
         ftRecalc();
       }
 
+      let ftResetPending = false, ftResetTimeout = null;
       function ftResetAllOverrides() {
-        if (!confirm('Clear all overrides (income and net worth for all years)?')) return;
+        const btn = document.getElementById('ft-reset-ov-btn');
+        if (!ftResetPending) {
+          ftResetPending = true;
+          if (btn) {
+            btn.innerHTML = '↺ Confirm Reset?';
+            btn.style.background = 'var(--rose)';
+            btn.style.color = 'white';
+          }
+          clearTimeout(ftResetTimeout);
+          ftResetTimeout = setTimeout(() => {
+            ftResetPending = false;
+            ftUpdateResetBtn();
+          }, 3000);
+          return;
+        }
+        ftResetPending = false;
+        clearTimeout(ftResetTimeout);
         ftOvMap = {};
         ftNwTodayOv = null;
         ftNwEoyOv = null;
@@ -7119,6 +7141,9 @@
         if (!btn) return;
         const hasOv = Object.keys(ftOvMap).length > 0 || ftNwTodayOv !== null || ftNwEoyOv !== null;
         btn.style.display = hasOv ? 'inline-flex' : 'none';
+        btn.innerHTML = '↺ reset overrides';
+        btn.style.background = 'var(--rose-l)';
+        btn.style.color = 'var(--rose)';
       }
 
       function ftDeleteRow(age) {

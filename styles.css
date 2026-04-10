@@ -1308,13 +1308,9 @@
       font-size: 13px
     }
 
-    .tbl tr:last-child td {
-      border-bottom: none
-    }
-
-    .tbl tr:hover td {
-      background: var(--s2);
-      transition: background .1s ease
+    .ft-history-row td {
+      background: rgba(24, 24, 27, 0.02) !important;
+      color: var(--ink3);
     }
 
     .tbl .mo {
