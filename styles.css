@@ -1308,11 +1308,6 @@
       font-size: 13px
     }
 
-    .ft-history-row td {
-      background: rgba(24, 24, 27, 0.02) !important;
-      color: var(--ink3);
-    }
-
     .tbl .mo {
       font-family: var(--mono);
       font-size: 12.5px
@@ -3138,6 +3133,11 @@
 
     #ft-tbl .ft-house-row td {
       background: rgba(138, 104, 32, .05) !important;
+    }
+
+    #ft-tbl tr.ft-history-row td {
+      background: rgba(24, 24, 27, 0.08) !important;
+      color: var(--ink3);
     }
 
     #ft-tbl .ft-house-row td:first-child {

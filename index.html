@@ -6892,7 +6892,7 @@
 
           return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + (r.isHistory ? ' ft-history-row' : '') + '">'
             + vis.map(c => {
-              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'rgba(24, 24, 27, 0.05)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
+              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'rgba(24, 24, 27, 0.08)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
                 + r.age
                 + (r.isHistory ? ' <span style="font-size:9px;color:var(--ink4)">hist</span>' : '')
                 + (r.ms.length ? ' <span style="font-size:10px;color:var(--ink3)">' + r.ms.join(' · ') + '</span>' : '')
