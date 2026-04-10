@@ -727,7 +727,6 @@
         <!-- Section 1: Metric cards -->
         <div class="ft-section" id="fts-metrics">
           <div class="ft-sec-hdr" onclick="ftToggleSection('metrics')">
-            <span class="ft-sec-chevron" id="ftchv-metrics">▼</span>
             <span class="ft-sec-label">Projections</span>
           </div>
           <div class="ft-sec-body" id="ftb-metrics">
@@ -738,7 +737,6 @@
         <!-- Section 2: Savings tracker -->
         <div class="ft-section" id="fts-savings">
           <div class="ft-sec-hdr" onclick="ftToggleSection('savings')">
-            <span class="ft-sec-chevron" id="ftchv-savings">▼</span>
             <span class="ft-sec-label">Savings Tracker</span>
           </div>
           <div class="ft-sec-body" id="ftb-savings">
@@ -749,7 +747,6 @@
         <!-- Section 3: Chart -->
         <div class="ft-section" id="fts-graph">
           <div class="ft-sec-hdr" onclick="ftToggleSection('graph')">
-            <span class="ft-sec-chevron" id="ftchv-graph">▼</span>
             <span class="ft-sec-label">Net Worth Projection</span>
             <span style="font-size:11px;color:var(--ink3);margin-left:auto;display:flex;gap:12px">
               <span style="display:flex;align-items:center;gap:5px"><span
@@ -770,7 +767,6 @@
         <!-- Section 4: Life timeline -->
         <div class="ft-section" id="fts-timeline">
           <div class="ft-sec-hdr" onclick="ftToggleSection('timeline')">
-            <span class="ft-sec-chevron" id="ftchv-timeline">▼</span>
             <span class="ft-sec-label">Life Timeline</span>
             <button class="btn bsm bgh" style="margin-left:auto;font-size:11px"
               onclick="event.stopPropagation();ftOpenSettings('expenses')">edit</button>
@@ -783,7 +779,6 @@
         <!-- Section 5: Table -->
         <div class="ft-section" id="fts-table">
           <div class="ft-sec-hdr" onclick="ftToggleSection('table')">
-            <span class="ft-sec-chevron" id="ftchv-table">▼</span>
             <span class="ft-sec-label">Projection Table</span>
             <div style="display:flex;align-items:center;gap:12px;margin-left:auto" onclick="event.stopPropagation()">
               <div id="ft-buy-ctrl" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink2)">
@@ -5339,10 +5334,9 @@
       let ftNwTodayOv = null, ftNwEoyOv = null;
       let ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
       let ftActiveScenarioId = 'sc0';
-      // Config will be synced from S.future in renderFuture()
-      let ftColOrder = [];
-      let ftColVis = {};
-      let ftColLabels = {};
+      let ftColOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
+      let ftColVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
+      let ftColLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
       let ftHistoryStartAge = null; // Renamed from ftMinAge for persistence separation
       let ftDragSrc = null, ftRows = [], ftChart = null, ftNextId = 100;
       function ftResetNextId() {
@@ -7002,7 +6996,9 @@
                 return '<td style="color:' + color + ';font-family:var(--mono);font-weight:600" title="Leftover after all expenses and goals">'
                   + (r.monthlySurplus >= 0 ? '+' : '') + ftFmt(r.monthlySurplus) + '/mo</td>';
               }
-              return '<td>' + ftFmt(r[c]) + '</td>';
+              // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
+              const val = r[c];
+              return '<td>' + (typeof val === 'number' ? ftFmt(val) : (val || '—')) + '</td>';
             }).join('')
             + `<td style="white-space:nowrap">
               <button onclick="ftInsertAfter(${ri})" style="font-size:11px;color:var(--ink3);background:none;border:none;cursor:pointer" title="insert row after">+</button>
@@ -7250,14 +7246,6 @@
         ftRenderScenarioBar(); ftRecalc();
       }
 
-      function ftToggleCol(c) { ftColVis[c] = !ftColVis[c]; ftRenderChips(); ftRenderTable(); }
-      function ftStartRenameCol(c) {
-        const name = prompt('Enter new label for "' + ftColLabels[c] + '":', ftColLabels[c]);
-        if (name !== null && name.trim()) {
-          ftColLabels[c] = name.trim();
-          ftRenderChips(); ftRenderTable();
-        }
-      }
       function ftAddYearBefore() {
         const curMin = ftHistoryStartAge !== null ? ftHistoryStartAge : ftGlobals.projectionStartingAge;
         ftHistoryStartAge = curMin - 1;
