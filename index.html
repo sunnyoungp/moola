@@ -1686,21 +1686,30 @@
         card.style.display = 'block';
         card.style.position = 'fixed';
 
-        const cardH = card.offsetHeight || 280;
-        const cardW = card.offsetWidth || 330;
+        const cardH = card.offsetHeight || 300;
+        const cardW = card.offsetWidth || 340;
         const rect = el.getBoundingClientRect();
+        const margin = 10;
 
-        let top = rect.bottom + 10;
+        let top = rect.bottom + 8;
         let left = rect.left;
-
         card.classList.remove('fc-flip-up');
-        // Flip up if bottom is clipped
-        if (top + cardH > window.innerHeight - 20) {
-          top = rect.top - cardH - 10;
+
+        // Check space
+        const spaceAbove = rect.top;
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        // If not enough space below AND more space above, flip up
+        if (spaceBelow < cardH + margin && spaceAbove > cardH + margin) {
+          top = rect.top - cardH - 8;
           card.classList.add('fc-flip-up');
         }
-        // Shift left if right side is clipped
-        if (left + cardW > window.innerWidth - 20) left = window.innerWidth - cardW - 20;
+
+        // Final safety pin to viewport
+        if (top < margin) top = margin;
+        if (top + cardH > window.innerHeight - margin) top = window.innerHeight - cardH - margin;
+        if (left < margin) left = margin;
+        if (left + cardW > window.innerWidth - margin) left = window.innerWidth - cardW - margin;
 
         card.style.top = top + 'px';
         card.style.left = left + 'px';
