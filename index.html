@@ -1610,6 +1610,36 @@
 
 
     <script>
+      function ftPosFc(el) {
+        if (window.innerWidth <= 768) return; // Handled strictly by CSS on mobile
+        const card = el.querySelector('.forensic-card');
+        if (!card) return;
+        
+        card.style.visibility = 'hidden';
+        card.style.display = 'block';
+        card.style.position = 'fixed';
+        
+        const cardH = card.offsetHeight || 280;
+        const cardW = card.offsetWidth || 330;
+        const rect = el.getBoundingClientRect();
+        
+        let top = rect.bottom + 10;
+        let left = rect.left;
+        
+        // Flip up if bottom is clipped
+        if (top + cardH > window.innerHeight - 20) top = rect.top - cardH - 10;
+        // Shift left if right side is clipped
+        if (left + cardW > window.innerWidth - 20) left = window.innerWidth - cardW - 20;
+        
+        card.style.top = top + 'px';
+        card.style.left = left + 'px';
+        card.style.bottom = 'auto';
+        card.style.right = 'auto';
+        card.style.transform = 'none';
+        
+        card.style.visibility = '';
+        card.style.display = '';
+      }
 
       // ══════════════════════════════════════════════════════════════
       // STATE
@@ -6628,7 +6658,7 @@
                     </div>
                   `;
                   
-                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
+                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftPosFc(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                 } else {
                   const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
                   return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + ' · current spending: ' + ftFmt(livingMo) + '/mo">'
