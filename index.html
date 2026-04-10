@@ -6019,12 +6019,9 @@
             else if (nw >= ftGlobals.retireNW) msDots.push({ color: '#d97706', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · Tight' });
             else msDots.push({ color: '#dc2626', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · Shortfall' });
           }
-          const isBuy = propScheds.some(({ p }) => p.purchaseAge === age);
-          const totalIncomeEvents = oneTimeEvs.filter(e => e.age === age && (e.amount || 0) > 0).reduce((s, e) => s + e.amount, 0);
-          const rowTotalIncome = income + partner + totalIncomeEvents;
-          const taxes = Math.round(taxableTotal * taxRate);
-          const rowTotalExpenses = taxes + fixedCosts + living;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: rowTotalExpenses, reqSavings: Math.round(requiredSavings) });
+          const isHistory = age < ftGlobals.projectionStartingAge;
+          const isHighlight = isBuy || ms.length > 0;
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isHighlight, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: rowTotalExpenses, reqSavings: Math.round(requiredSavings) });
         }
         return out;
       }
@@ -6877,7 +6874,7 @@
         const vis = ftColOrder.filter(c => ftColVis[c]);
         const thead = document.getElementById('ft-thead'), tbody = document.getElementById('ft-tbody');
         if (!thead || !tbody) return;
-        thead.innerHTML = '<tr>' + vis.map((c, i) => '<th draggable="true" ondragstart="ftDs(event,' + i + ')" ondragover="ftDov(event)" ondrop="ftDp(event,' + i + ')" style="' + (c === 'age' ? 'text-align:left;position:sticky;left:0;background:var(--surface);z-index:2' : '') + '">' + ftColLabels[c] + '</th>').join('') + '<th style="width:22px"></th></tr>';
+        thead.innerHTML = '<tr>' + vis.map((c, i) => '<th draggable="true" ondragstart="ftDs(event,' + i + ')" ondragover="ftDov(event)" ondrop="ftDp(event,' + i + ')" style="' + (c === 'age' ? 'text-align:left;position:sticky;left:0;background:var(--surface);z-index:11' : '') + '">' + ftColLabels[c] + '</th>').join('') + '<th style="width:22px"></th></tr>';
         const curAge = ftGlobals.projectionStartingAge;
         const todayNW = ftGetTodayNW();
         const todayOvd = ftNwTodayOv !== null, eoyOvd = ftNwEoyOv !== null;
@@ -6888,11 +6885,18 @@
           const ovNw = ftOvMap[r.age]?.nw !== undefined;
           const nwTip = r.realEstateEquity > 0 ? 'liquid NW: ' + ftFmt(r.liquidNW) + ' · real estate equity: ' + ftFmt(r.realEstateEquity) + ' · total: ' + ftFmt(r.nw) : '';
 
+          const rowClasses = [
+            r.isBuy ? 'ft-house-row' : '',
+            r.isHighlight ? 'ft-highlight-row' : '',
+            r.freeSpend < 0 ? 'ft-disc-neg-row' : '',
+            r.isHistory ? 'ft-history-row' : ''
+          ].filter(Boolean).join(' ');
+
           // Calculate and render row
 
-          return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + (r.isHistory ? ' ft-history-row' : '') + '">'
+          return '<tr class="' + rowClasses + '">'
             + vis.map(c => {
-              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'rgba(24, 24, 27, 0.08)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
+              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '">'
                 + r.age
                 + (r.isHistory ? ' <span style="font-size:9px;color:var(--ink4)">hist</span>' : '')
                 + (r.ms.length ? ' <span style="font-size:10px;color:var(--ink3)">' + r.ms.join(' · ') + '</span>' : '')
