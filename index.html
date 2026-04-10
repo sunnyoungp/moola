@@ -5397,12 +5397,6 @@
         };
       }
 
-      function ftSaveScenario() {
-        const sc = ftScenarios.find(s => s.id === ftActiveScenarioId);
-        if (sc) sc.data = ftGetScenarioData();
-        ftPersistScenarios();
-      }
-
       function ftLoadScenarioData(d) {
         if (!d) return;
         if (d.globals) Object.assign(ftGlobals, d.globals);
@@ -5803,34 +5797,9 @@
 
         for (let age = startAge; age <= endAge; age++) {
           const isHistory = age < curAge;
-
-          // ── History rows: manual input only, no calculations ──────
-          if (isHistory) {
-            const ovNw = ftOvMap[age]?.nw;
-            const ovInc = ftOvMap[age]?.income;
-            out.push({
-              age,
-              income: ovInc !== undefined ? ovInc : 0,
-              partner: 0, living: ftGetLiving(age),
-              housing: 0, kids: 0, healthcare: 0,
-              requiredSavings: 0, netSavings: 0,
-              freeSpend: 0, monthlySurplus: 0,
-              nw: ovNw !== undefined ? ovNw : null,
-              liquidNW: ovNw !== undefined ? ovNw : null,
-              realEstateEquity: 0, cumSav: 0,
-              ms: [], msDots: [], isBuy: false, ot: 0, k401Bal: 0,
-              taxTip: '', budgetTip: '', surplusTip: '', netSavTip: '', nwTip: '',
-              incomeTip: '', housingTip: '', discTooltip: '', noGoals: false,
-              isHistory: true,
-              totalIncome: ovInc !== undefined ? ovInc : 0,
-              totalExpenses: ftGetLiving(age),
-              reqSavings: 0
-            });
-            continue;
-          }
+          let topGoalLabel = '';
 
           const married = ftLifeEvents.some(e => e.type === 'partner' && age >= e.age);
-          let topGoalLabel = '';
           const partner = ftGetPartnerIncome(age);
           let income = 0, taxableGrossAcc = partner, fixedNetAcc = 0, contrib401k = 0;
           let incBreakdown = [];
@@ -5921,6 +5890,9 @@
           if (ftGlobals.discMode === 'rate') {
             requiredSavings = netHH * ftGlobals.savingsRate / 100;
             discTooltip = 'Target savings based on ' + ftGlobals.savingsRate + '% rate';
+          } else if (isHistory && (liquidNW === null || liquidNW === undefined)) {
+            requiredSavings = 0;
+            discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
             const pmts = [];
             if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
@@ -5996,28 +5968,28 @@
           }
 
           // NW: liquid compounds + actual surplus (netSavings)
-          const growth = liquidNW * roc;
-          const nwTip = 'Calculation:\nPrevious Balance: ' + ftFmt(liquidNW) +
+          // For history rows, we don't compound. NW is only shown if it has an override.
+          const prevLiq = liquidNW || 0;
+          const growth = prevLiq * roc;
+          const nwTip = isHistory ? 'Historical year: manual Net Worth entry only.' : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
             '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
             '\n + Added Wealth: ' + ftFmt(netSavings) +
             (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
             (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
-            '\n = NEW BALANCE: ' + ftFmt(Math.round(liquidNW + growth + netSavings + ot - extraPmt));
+            '\n = NEW BALANCE: ' + ftFmt(Math.round(prevLiq + growth + netSavings + ot - extraPmt));
 
-          let newLiq = Math.round(liquidNW + growth + netSavings + ot - extraPmt);
+          let newLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
 
-          // Apply NW override if it exists
-          const nwOv = ftOvMap[age]?.nw;
-          if (nwOv !== undefined) {
+          if (isHistory) {
+            newLiq = (nwOv !== undefined) ? (nwOv - Math.round(realEstateEquity)) : null;
+          } else if (age === curAge) {
+            // Anchor to actual today's NW
+            newLiq = (nwOv !== undefined) ? (nwOv - Math.round(realEstateEquity)) : (todayNW - Math.round(realEstateEquity));
+          } else if (nwOv !== undefined) {
             newLiq = nwOv - Math.round(realEstateEquity);
           }
 
-          // For the projection starting age row, display NW = todayNW (what you actually have today).
-          // But let liquidNW carry forward the computed value so future rows compound correctly.
           let displayLiq = newLiq;
-          if (age === curAge && nwOv === undefined) {
-            displayLiq = todayNW - Math.round(realEstateEquity);
-          }
 
           liquidNW = newLiq;
           const nw = displayLiq + Math.round(realEstateEquity);
@@ -6916,21 +6888,18 @@
           const nwTip = r.realEstateEquity > 0 ? 'liquid NW: ' + ftFmt(r.liquidNW) + ' · real estate equity: ' + ftFmt(r.realEstateEquity) + ' · total: ' + ftFmt(r.nw) : '';
 
           // ── History row: clean white, only nw + income editable ──
-          if (r.isHistory) {
-            return '<tr>'
-              + vis.map(c => {
-                if (c === 'age') return '<td style="position:sticky;left:0;background:var(--surface);z-index:1;color:var(--ink3)">' + r.age + ' <span style="font-size:9px;color:var(--ink4)">hist</span></td>';
-                if (c === 'nw') return '<td class="ft-editable' + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" title="Click to enter actual net worth">' + (r.nw !== null ? ftFmt(r.nw) : '<span style="color:var(--ink4)">—</span>') + '</td>';
-                if (c === 'income') return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'income\',' + r.age + ')" title="Click to enter actual income">' + (r.income ? ftFmt(r.income) : '<span style="color:var(--ink4)">—</span>') + '</td>';
-                return '<td style="color:var(--ink4)">—</td>';
-              }).join('')
-              + '<td><button onclick="ftDeleteRow(' + r.age + ')" style="font-size:11px;color:var(--ink4);background:none;border:none;cursor:pointer" title="remove">✕</button></td></tr>';
-          }
+        const regularRows = ftRows.map((r, ri) => {
+          const hasMile = r.ms.length > 0;
+          const msDotsHtml = r.msDots.map(d => '<span class="ft-ms-dot" style="background:' + d.color + '" title="' + d.tip.replace(/"/g, '&quot;') + '"></span>').join('');
+          const ovInc = ftOvMap[r.age]?.income !== undefined, ovPart = ftOvMap[r.age]?.partner !== undefined;
+          const ovNw = ftOvMap[r.age]?.nw !== undefined;
+          const nwTip = r.realEstateEquity > 0 ? 'liquid NW: ' + ftFmt(r.liquidNW) + ' · real estate equity: ' + ftFmt(r.liquidNW) + ' · total: ' + ftFmt(r.nw) : '';
 
-          return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + '">'
+          return '<tr class="' + (r.isBuy ? 'ft-house-row' : '') + (r.freeSpend < 0 ? ' ft-disc-neg-row' : '') + (r.isHistory ? ' ft-history-row' : '') + '">'
             + vis.map(c => {
-              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)') + ';z-index:1">'
+              if (c === 'age') return '<td class="' + (hasMile ? 'ft-ms-age' : '') + '" style="position:sticky;left:0;background:' + (r.isHistory ? 'var(--surface)' : (r.freeSpend < 0 ? 'rgba(220,38,38,.05)' : r.isBuy ? 'rgba(138,104,32,.05)' : 'var(--surface)')) + ';z-index:1">'
                 + r.age
+                + (r.isHistory ? ' <span style="font-size:9px;color:var(--ink4)">hist</span>' : '')
                 + (r.ms.length ? ' <span style="font-size:10px;color:var(--ink3)">' + r.ms.join(' · ') + '</span>' : '')
                 + (r.ot ? ' <span style="font-size:10px;color:var(--gold)">●</span>' : '')
                 + msDotsHtml
