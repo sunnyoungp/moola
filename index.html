@@ -6155,7 +6155,7 @@
               const endLbl = ph.endAge === 999 ? '\u221e' : ph.endAge;
               const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
               const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
-              const isTransition = ph.startAge < homeRange.start;
+              const isTransition = homeRange && ph.startAge < homeRange.start;
               
               const housingBadge = mortgageOverlaps && isTransition 
                 ? '<div class="ft-chip-badge-rent"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
