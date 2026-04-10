@@ -7,7 +7,7 @@ This document is the **Source of Truth** for the Moola project. It must be read 
 ### **The Age 25 Anchor (Strict)**
 - **Baseline**: Projections **MUST** be anchored to the user's Current Age (default: 25).
 - **Starting Net Worth**: The compounding logic begins exactly at Age 25 using the synced `nwTotal()` or manual override.
-- **Historical Years**: Any row *before* the current age is a manual-only scratchpad. Data entered there **must not** compound forward or affect the future wealth trajectory.
+- **Historical Years**: Rows *before* the current age calculate income/expenses dynamically if data exists (streams, phases). However, Net Worth in history is **isolated**: it does not compound forward and is null unless manually overridden.
 
 ### **Manual Overrides (Priority Map)**
 - **Net Worth Overrides**: If a user enters a manual Net Worth in the projection table, it becomes the **new "hard" baseline** for all subsequent years.
@@ -28,6 +28,10 @@ This document is the **Source of Truth** for the Moola project. It must be read 
 ### **Syntax Integrity**
 - Because the script block is large, a single misplaced brace `{}` or fragment like `.max()` will break the **entire app**.
 - **Constraint**: When using `replace_file_content`, always check 20 lines above and below the target to ensure you are not leaving fragmented function tails.
+- **Variable Scope Audit**: Before concluding a `replace_file_content` that modifies logic, **verify that all variables used in your replacement (especially those near the start/end of the chunk) are still declared in the surviving code.** ReferenceErrors (like `nwOv is not defined`) are the #1 cause of tab-specific crashes.
+- **Duplicate Declaration Check**: Before adding a new `const` or `let` inside a large function (e.g., `ftCalcRows`, `ftRenderTable`), you MUST grep the file for that variable name. Never redeclare an existing identifier in the same scope, as this triggers a fatal `SyntaxError` that breaks the entire app.
+- **DANGER: Nested Identifier Redeclarations**: Never copy-paste `const` or `let` declarations into a function or loop that already has that identifier declared just outside your replacement range. This will cause a `SyntaxError` (Identifier previously declared) and crash the entire app.
+- **Mandatory Final Audit**: Before pushing, run a `node --check` of the scripts or visually audit braces and variable scopes.
 
 ### **Mandatory Dependency Audit (CRITICAL)**
 > **This rule exists because the entire Future tab was broken by ignoring it.**
