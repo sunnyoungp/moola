@@ -5843,20 +5843,19 @@
             }
           }
 
-          const budgetCeiling = (netHH - fixedCosts);
-          const rawFreeSpend = Math.min(budgetCeiling, (netHH - fixedCosts - requiredSavings)) / 12;
+          const availableCash = netHH - living - fixedCosts;
+          const rawFreeSpend = (availableCash - requiredSavings) / 12;
           const freeSpend = Math.max(0, Math.round(rawFreeSpend));
-          const monthlySurplus = Math.round(rawFreeSpend - (living / 12));
+          const monthlySurplus = Math.round(rawFreeSpend);
 
-          const budgetTip = 'Calculation:\n' +
-            (netHH - fixedCosts - requiredSavings > netHH - fixedCosts ? '⚠ Capped by net monthly pay: ' + ftFmt(Math.round(netHH / 12)) + '\n' : '') +
-            'Net Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo' +
+          const budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo' +
             '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts / 12)) + '/mo' +
+            '\n - Living Costs: ' + ftFmt(Math.round(living / 12)) + '/mo' +
             '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo' +
             '\n = Budget: ' + ftFmt(freeSpend) + '/mo';
 
-          const surplusTip = 'Calculation:\nDiscretionary Budget: ' + ftFmt(freeSpend) + '/mo' +
-            '\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo' +
+          const surplusTip = 'Calculation:\nAvailable Cash: ' + ftFmt(Math.round(availableCash / 12)) + '/mo' +
+            '\n - Required Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo' +
             '\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
 
           const netSavTip = 'Calculation:\nNet Take-home: ' + ftFmt(netHH) + '/yr' +
