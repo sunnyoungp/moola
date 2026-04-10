@@ -5821,6 +5821,7 @@
           }
 
           const married = ftLifeEvents.some(e => e.type === 'partner' && age >= e.age);
+          let topGoalLabel = '';
           const partner = ftGetPartnerIncome(age);
           let income = 0, taxableGrossAcc = partner, fixedNetAcc = 0, contrib401k = 0;
           let incBreakdown = [];
@@ -6041,7 +6042,7 @@
           const rowTotalIncome = income + partner + totalIncomeEvents;
           const taxes = Math.round(taxableTotal * taxRate);
           const rowTotalExpenses = taxes + fixedCosts + living;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, totalIncome: Math.round(rowTotalIncome), totalExpenses: rowTotalExpenses, reqSavings: Math.round(requiredSavings) });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: rowTotalExpenses, reqSavings: Math.round(requiredSavings) });
         }
         return out;
       }
@@ -6949,7 +6950,7 @@
                   const drains = [
                     { name: 'Housing', val: housingMo, color: '#3B82F6' },
                     { name: 'Living', val: livingMo, color: '#10B981' },
-                    { name: 'Required Savings', val: reqSavMo, color: '#F59E0B' }
+                    { name: 'Required Savings' + (r.bindingGoal ? ` (${r.bindingGoal})` : ''), val: reqSavMo, color: '#F59E0B', isGoal: !!r.bindingGoal }
                   ].sort((a, b) => b.val - a.val);
 
                   const blameHtml = drains.map(d => `
@@ -6965,7 +6966,8 @@
                     </div>
                   `).join('');
 
-                  const primaryDrain = drains[0].name;
+                  const primaryDrain = drains[0];
+                  const actionSubject = primaryDrain.isGoal ? `Required Savings for "${r.bindingGoal}"` : primaryDrain.name;
 
                   const cardHtml = `
                     <div class="forensic-card">
@@ -6979,7 +6981,7 @@
                       <div class="fc-list">${blameHtml}</div>
                       <div class="fc-command">
                         <strong>Required Action</strong>
-                        Reduce ${primaryDrain} by $${deficit.toLocaleString('en-US')} OR increase income by $${deficit.toLocaleString('en-US')} to stop wealth decay.
+                        Reduce ${actionSubject} by $${deficit.toLocaleString('en-US')} OR increase income by $${deficit.toLocaleString('en-US')} to stop wealth decay.
                       </div>
                     </div>
                   `;
