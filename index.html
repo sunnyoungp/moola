@@ -2318,13 +2318,13 @@
       }
       function isInvestmentAcct(acct) {
         const state = getFilteredState();
-        const type = state.accountTypes.find(t => t.id === acct.type);
+        const type = state.accountTypes.find(t => String(t.id) === String(acct.type));
         return !!type?.isInvestment;
       }
       function totInv() { const state = getFilteredState(); return state.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function totCash() { const state = getFilteredState(); return state.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function getAcctTypeName(typeId) {
-        return S.accountTypes?.find(t => t.id === typeId)?.name || typeId;
+        return S.accountTypes?.find(t => String(t.id) === String(typeId))?.name || typeId;
       }
       function getFilteredState() {
         return S || { funds: [], accounts: [], goals: [], stressEvents: [] };
@@ -2631,22 +2631,22 @@
           sections = (state.buckets || []).map(b => ({
             name: b.name,
             accounts: state.accounts.filter(a => {
-              const type = state.accountTypes.find(t => t.id === a.type);
-              return type?.bucketId === b.id;
+              const type = state.accountTypes.find(t => String(t.id) === String(a.type));
+              return type && String(type.bucketId) === String(b.id);
             })
           }));
         } else if (state.tableGroupingMode === 'type') {
           sections = (state.accountTypes || []).map(type => ({
             name: type.name,
-            accounts: state.accounts.filter(a => a.type === type.id)
+            accounts: state.accounts.filter(a => String(a.type) === String(type.id))
           })).filter(s => s.accounts.length > 0);
         } else {
           // Default: Category
           sections = (state.accountCategories || []).map(cat => ({
             name: cat.name,
             accounts: state.accounts.filter(a => {
-              const type = state.accountTypes.find(t => t.id === a.type);
-              return type?.categoryId === cat.id;
+              const type = state.accountTypes.find(t => String(t.id) === String(a.type));
+              return type && String(type.categoryId) === String(cat.id);
             })
           }));
         }
@@ -2803,8 +2803,8 @@
             <td class="mo">${MT(fmt(getAcctUSD(a)), 'accounts')}</td>
             <td class="mo">${MT(pct((getAcctUSD(a) / t) * 100), 'accounts')}</td>
             <td style="text-align:right">
-              <button class="btn bsm bgh" onclick="openAcctModal('${a.id}')">Edit</button>
-              <button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct('${a.id}')">✕</button>
+              <button class="btn bsm bgh" data-aid="${a.id}" onclick="openAcctModal(this.dataset.aid)">Edit</button>
+              <button class="btn bsm bgh" style="color:var(--red)" data-aid="${a.id}" onclick="delAcct(this.dataset.aid)">✕</button>
             </td>
           </tr>`).join('')
           }</tbody>`;
@@ -2947,10 +2947,10 @@
         const el = document.getElementById('acct-types-cats-list');
         if (!el) return;
         el.innerHTML = (S.accountCategories || []).map(cat => {
-          const types = (S.accountTypes || []).filter(t => t.categoryId === cat.id);
+          const types = (S.accountTypes || []).filter(t => String(t.categoryId) === String(cat.id));
           const typeRows = types.map(type => {
             const pills = (S.buckets || []).map(b =>
-              `<button class="atc-pill ${b.id === type.bucketId ? 'active' : ''}" onclick="setAcctTypeBucket('${type.id}','${b.id}')">${escHtml(b.name)}</button>`
+              `<button class="atc-pill ${String(b.id) === String(type.bucketId) ? 'active' : ''}" data-tid="${type.id}" data-bid="${b.id}" onclick="setAcctTypeBucket(this.dataset.tid, this.dataset.bid)">${escHtml(b.name)}</button>`
             ).join('');
             return `<div class="atc-type-row"
               draggable="true"
@@ -2959,14 +2959,14 @@
               ondrop="atcTypeDrop(event,'${type.id}')"
               ondragend="atcTypeDragEnd(event)">
               <span class="atc-drag" title="Drag to reorder">${_atcGrip}</span>
-              <span class="atc-type-name" onclick="atcEditType(event,'${type.id}')">${escHtml(type.name)}</span>
+              <span class="atc-type-name" data-tid="${type.id}" onclick="atcEditType(event, this.dataset.tid)">${escHtml(type.name)}</span>
               <div class="atc-pills">${pills}</div>
               <label class="atc-toggle" title="Investment account type">
-                <input type="checkbox" ${type.isInvestment ? 'checked' : ''} onchange="setAcctTypeInvestment('${type.id}',this.checked)">
+                <input type="checkbox" ${type.isInvestment ? 'checked' : ''} data-tid="${type.id}" onchange="setAcctTypeInvestment(this.dataset.tid, this.checked)">
                 <span class="atc-toggle-track"></span>
                 <span class="atc-toggle-lbl">Inv</span>
               </label>
-              <button class="atc-type-del" onclick="delAcctType('${type.id}')" title="Delete type">✕</button>
+              <button class="atc-type-del" data-tid="${type.id}" onclick="delAcctType(this.dataset.tid)" title="Delete type">✕</button>
             </div>`;
           }).join('');
 
@@ -2978,13 +2978,13 @@
             ondragend="atcCatDragEnd(event)">
             <div class="atc-cat-hd">
               <span class="atc-drag" title="Drag to reorder">${_atcGrip}</span>
-              <span class="atc-cat-name" data-catid="${cat.id}" onclick="atcEditCat(event,'${cat.id}')">${escHtml(cat.name)}</span>
-              <button class="atc-cat-pencil" onclick="atcEditCat(event,'${cat.id}')" title="Rename">${_atcPencil}</button>
-              <button class="atc-cat-del" onclick="delAcctCategory('${cat.id}')">Delete</button>
+              <span class="atc-cat-name" data-catid="${cat.id}" onclick="atcEditCat(event, this.dataset.catid)">${escHtml(cat.name)}</span>
+              <button class="atc-cat-pencil" data-catid="${cat.id}" onclick="atcEditCat(event, this.dataset.catid)" title="Rename">${_atcPencil}</button>
+              <button class="atc-cat-del" data-catid="${cat.id}" onclick="delAcctCategory(this.dataset.catid)">Delete</button>
             </div>
             <div class="atc-types">
               ${typeRows}
-              <button class="btn bsm" style="margin-top:6px;align-self:flex-start" onclick="addAcctType('${cat.id}')">
+              <button class="btn bsm" style="margin-top:6px;align-self:flex-start" data-catid="${cat.id}" onclick="addAcctType(this.dataset.catid)">
                 <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
                 Add type
               </button>
