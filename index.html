@@ -6200,10 +6200,10 @@
             if (rSpendMode === '4pct') {
               const retireMonthlyMax = Math.max(0, Math.round((investableNW * 0.04) / 12));
               freeSpend = retireMonthlyMax;
-              monthlySurplus = retireMonthlyMax - Math.round(living / 12);
-              discTooltip = '4% Rule · investable NW ' + ftFmt(Math.round(investableNW)) + ' × 4% ÷ 12 = ' + ftFmt(retireMonthlyMax) + '/mo ceiling';
-              budgetTip = '4% Rule\nInvestable NW: ' + ftFmt(Math.round(investableNW)) + '\n× 4% annually: ' + ftFmt(Math.round(investableNW * 0.04)) + '/yr\n= Monthly ceiling: ' + ftFmt(retireMonthlyMax) + '/mo';
-              surplusTip = '4% ceiling: ' + ftFmt(retireMonthlyMax) + '/mo\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+              monthlySurplus = retireMonthlyMax;
+              discTooltip = '4% Rule · investable NW ' + ftFmt(Math.round(investableNW)) + ' × 4% ÷ 12 = ' + ftFmt(retireMonthlyMax) + '/mo';
+              budgetTip = '4% Rule\nInvestable NW: ' + ftFmt(Math.round(investableNW)) + '\n× 4% annually: ' + ftFmt(Math.round(investableNW * 0.04)) + '/yr\n= Monthly budget: ' + ftFmt(retireMonthlyMax) + '/mo\n(Living expenses shown separately)';
+              surplusTip = budgetTip;
             } else {
               const yearsLeft = (ftGlobals.maxAge || 100) - age;
               const projectedNWNoSpend = investableNW * Math.pow(1 + roc, yearsLeft);
@@ -6212,10 +6212,10 @@
                 ? (roc > 0 ? spendableWealth * roc / (Math.pow(1 + roc, yearsLeft) - 1) : spendableWealth / yearsLeft)
                 : spendableWealth;
               freeSpend = Math.max(0, Math.round(annualWithdrawal / 12));
-              monthlySurplus = freeSpend - Math.round(living / 12);
+              monthlySurplus = freeSpend;
               discTooltip = 'Inheritance Goal · leave ' + ftFmt(ftGlobals.inheritanceTarget || 0) + ' at age ' + (ftGlobals.maxAge || 100) + ' · projected NW (no spend): ' + ftFmt(Math.round(projectedNWNoSpend));
-              budgetTip = 'Inheritance Goal mode\nYears remaining: ' + yearsLeft + '\nProjected NW (no spend): ' + ftFmt(Math.round(projectedNWNoSpend)) + '\nTarget to leave: ' + ftFmt(ftGlobals.inheritanceTarget || 0) + '\nSpendable: ' + ftFmt(Math.round(spendableWealth)) + '\nAnnual withdrawal: ' + ftFmt(Math.round(annualWithdrawal));
-              surplusTip = 'Inheritance ceiling: ' + ftFmt(freeSpend) + '/mo\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+              budgetTip = 'Inheritance Goal mode\nYears remaining: ' + yearsLeft + '\nProjected NW (no spend): ' + ftFmt(Math.round(projectedNWNoSpend)) + '\nTarget to leave: ' + ftFmt(ftGlobals.inheritanceTarget || 0) + '\nSpendable: ' + ftFmt(Math.round(spendableWealth)) + '\nAnnual withdrawal: ' + ftFmt(Math.round(annualWithdrawal)) + '\nMonthly budget: ' + ftFmt(freeSpend) + '/mo\n(Living expenses shown separately)';
+              surplusTip = budgetTip;
             }
           } else {
             const maxAllowance = netHH - fixedCosts;
@@ -7253,10 +7253,9 @@
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 
                 if (r.isRetired) {
-                  // In retirement freeSpend IS the spending budget target — not a surplus over living.
-                  // Show the ceiling; amber if it would require cutting current living expenses.
-                  const color = r.freeSpend >= livingMo ? '#16a34a' : '#f59e0b';
-                  return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + '">'
+                  // In retirement freeSpend is the pure spending budget (4% or inheritance withdrawal).
+                  // Living expenses are shown independently in their own column.
+                  return '<td style="color:#16a34a;font-family:var(--mono)" title="' + tip + '">'
                     + ftFmt(r.freeSpend) + '/mo</td>';
                 }
 
