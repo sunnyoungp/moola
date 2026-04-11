@@ -704,8 +704,11 @@
           <div class="page-title">Future</div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="btn bsm" onclick="ftOpenSectionManager()" title="Configure layout">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
-                <rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="6.5" y1="6.5" x2="6.5" y2="14"/>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
+                <rect x="2" y="2" width="12" height="12" rx="1.5" />
+                <line x1="2" y1="6.5" x2="14" y2="6.5" />
+                <line x1="6.5" y1="6.5" x2="6.5" y2="14" />
               </svg>
               Modify Layout
             </button>
@@ -789,8 +792,9 @@
                   style="font-size:12px;font-weight:600;color:var(--ink);min-width:20px;font-family:var(--mono)">—</span>
               </div>
               <button class="ft-mgr-btn" onclick="ftOpenColumnManager()" title="Manage columns">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11M5 2.5v11M11 2.5v11"/>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11M5 2.5v11M11 2.5v11" />
                 </svg>
               </button>
             </div>
@@ -2540,9 +2544,9 @@
           const _reEq = totRealEstateEquity();
           const chartData = [
             { label: 'Cash & Savings', value: totByBucket('cash') + totByBucket('restricted'), color: _thc[0] },
-            { label: 'Investments',    value: totByBucket('investments'), color: _thc[1] },
-            { label: 'Retirement',     value: totByBucket('retirement'),  color: _thc[2] },
-            { label: 'Real Estate',    value: _reEq,                      color: '#8B5CF6' }
+            { label: 'Investments', value: totByBucket('investments'), color: _thc[1] },
+            { label: 'Retirement', value: totByBucket('retirement'), color: _thc[2] },
+            { label: 'Real Estate', value: _reEq, color: '#8B5CF6' }
           ].filter(x => x.value > 0);
           const total = chartData.reduce((s, x) => s + x.value, 0);
           const isDark = document.documentElement.classList.contains('dark');
@@ -5883,6 +5887,7 @@
       function ftGetPartnerIncome(age) {
         const pEv = ftLifeEvents.find(e => e.type === 'partner');
         if (!pEv || age < pEv.age) return 0;
+        if (pEv.retireAge !== undefined && age >= pEv.retireAge) return 0;
         const ov = ftOvMap[age]?.partner; if (ov !== undefined) return ov;
         const prevOvs = Object.entries(ftOvMap).map(([a, v]) => ({ a: +a, v })).filter(x => x.a >= pEv.age && x.a < age && x.v.partner !== undefined).sort((a, b) => b.a - a.a);
         if (prevOvs.length) return Math.round(prevOvs[0].v.partner * Math.pow(1 + pEv.incomeGrowth / 100, age - prevOvs[0].a));
@@ -5978,7 +5983,10 @@
           if (s.takeHomeOverride) fixedNet += s.takeHomeOverride * 12;
           else taxableGross += s.annual || 0;
         }
-        taxableGross += ftGetPartnerIncome(curAge);
+        const pEvEoy = ftLifeEvents.find(e => e.type === 'partner');
+        const partnerIncEoy = ftGetPartnerIncome(curAge);
+        if (pEvEoy?.partnerTakeHome && partnerIncEoy > 0) fixedNet += Math.round(pEvEoy.partnerTakeHome * 12);
+        else taxableGross += partnerIncEoy;
         const married = !!(ftLifeEvents.find(e => e.type === 'partner')?.age <= curAge);
         const contrib401k = ftHas401kEligible(curAge) ? ftGlobals.f401k : 0;
         const taxableTotal = Math.max(0, taxableGross - contrib401k);
@@ -6028,10 +6036,12 @@
 
           const married = ftLifeEvents.some(e => e.type === 'partner' && age >= e.age);
           const partner = ftGetPartnerIncome(age);
-          let income = 0, taxableGrossAcc = partner, fixedNetAcc = 0, contrib401k = 0;
+          const pEvCalc = ftLifeEvents.find(e => e.type === 'partner');
+          const partnerTakeHome = (pEvCalc?.partnerTakeHome && age >= (pEvCalc?.age ?? 0) && (!pEvCalc?.retireAge || age < pEvCalc.retireAge)) ? pEvCalc.partnerTakeHome : null;
+          let income = 0, taxableGrossAcc = partnerTakeHome ? 0 : partner, fixedNetAcc = partnerTakeHome ? Math.round(partnerTakeHome * 12) : 0, contrib401k = 0;
           let incBreakdown = [];
 
-          if (partner > 0) incBreakdown.push('Partner: ' + ftFmt(partner));
+          if (partner > 0) incBreakdown.push('Partner: ' + ftFmt(partnerTakeHome ? Math.round(partnerTakeHome * 12) : partner) + (partnerTakeHome ? ' (manual take-home)' : ''));
 
           const incomeOv = ftOvMap[age]?.income;
           const firstSalaryStream = ftIncomeStreams.find(s => s.incomeType === 'salary' || !s.incomeType);
@@ -6417,28 +6427,28 @@
         const homeRange = ftPrimaryHomeAgeRange();
         const chips = compact
           ? '<div class="ft-tl-chips-row">'
-            + sorted.map((ph, i) => {
-              const col = CHART_COLORS[i % CHART_COLORS.length];
-              const endLbl = ph.endAge === 999 ? '\u221e' : ph.endAge;
-              const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
-              const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
-              const isTransition = homeRange && ph.startAge < homeRange.start;
-              
-              const housingBadge = mortgageOverlaps && isTransition 
-                ? '<div class="ft-chip-badge-rent"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
-                : (ph.renting ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)"><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div></div>' : '');
+          + sorted.map((ph, i) => {
+            const col = CHART_COLORS[i % CHART_COLORS.length];
+            const endLbl = ph.endAge === 999 ? '\u221e' : ph.endAge;
+            const phEndDisplay = ph.endAge === 999 ? Infinity : ph.endAge;
+            const mortgageOverlaps = homeRange && phEndDisplay >= homeRange.start && ph.startAge < homeRange.payoff;
+            const isTransition = homeRange && ph.startAge < homeRange.start;
 
-              return '<div class="ft-tl-chip" style="--phase-color:' + col
-                + '" onclick="ftClickPhase(\'' + ph.id + '\')">'
-                +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-                +     '<span style="font-size:12px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
-                +     '<span style="font-size:10px;color:var(--ink3);white-space:nowrap;margin-left:6px">age ' + ph.startAge + '\u2013' + endLbl + '</span>'
-                +   '</div>'
-                +   '<div style="font-family:var(--mono);font-size:19px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-                +   '<div class="ft-chip-label">living cost</div>'
-                +   housingBadge
-                + '</div>';
-            }).join('') + '</div>'
+            const housingBadge = mortgageOverlaps && isTransition
+              ? '<div class="ft-chip-badge-rent"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
+              : (ph.renting ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)"><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div><div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div></div>' : '');
+
+            return '<div class="ft-tl-chip" style="--phase-color:' + col
+              + '" onclick="ftClickPhase(\'' + ph.id + '\')">'
+              + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+              + '<span style="font-size:12px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
+              + '<span style="font-size:10px;color:var(--ink3);white-space:nowrap;margin-left:6px">age ' + ph.startAge + '\u2013' + endLbl + '</span>'
+              + '</div>'
+              + '<div style="font-family:var(--mono);font-size:19px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+              + '<div class="ft-chip-label">living cost</div>'
+              + housingBadge
+              + '</div>';
+          }).join('') + '</div>'
           : '';
 
         // ── 6. Final assembly ───────────────────────────────────────────
@@ -6670,8 +6680,8 @@
             ? 'Rent applies age ' + ph.startAge + '\u2013' + (homeRange.start - 1) + ' \u00b7 mortgage overrides housing from age ' + homeRange.start
             : 'Mortgage overrides housing from age ' + homeRange.start + ' (rent settings ignored)';
           mortgageNote = '<div style="background:rgba(217,119,6,0.06);border-left:2px solid #D97706;padding:6px 10px;margin:8px 0;font-size:11px;color:#B45309;line-height:1.4"><strong>Housing Transition:</strong> ' + noteText + '</div>';
-          
-          housingStatusBadge = isTransition 
+
+          housingStatusBadge = isTransition
             ? '<div style="margin-top:10px;padding:6px 8px;background:rgba(59,130,246,0.06);border:1px dashed #3B82F6;border-radius:var(--rs);font-size:10px;color:#2563EB;font-weight:700;display:flex;align-items:center;gap:4px"><span>\u2191</span> RENT \u2192 OWN (age ' + homeRange.start + ')</div>'
             : '<div style="margin-top:10px;padding:6px 8px;background:rgba(217,119,6,0.06);border:1px solid #D97706;border-radius:var(--rs);font-size:10px;color:#B45309;font-weight:700;display:flex;align-items:center;gap:4px"><span>\u2302</span> MORTGAGE ACTIVE</div>';
         }
@@ -6683,14 +6693,14 @@
           return '<div class="card-phase expanded" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + accentColor + ';position:relative">'
             // Header
             + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-            +   '<div style="display:flex;align-items:center;gap:8px">'
-            +     '<span style="width:10px;height:10px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
-            +     '<span style="font-size:13px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
-            +   '</div>'
-            +   '<div style="display:flex;align-items:center;gap:6px">'
-            +     '<button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" style="font-size:11px;font-weight:600;color:var(--f);padding:3px 8px;border-radius:var(--rs);background:var(--fll)">done</button>'
-            +     '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">\u2715</button>'
-            +   '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<span style="width:10px;height:10px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
+            + '<span style="font-size:13px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:6px">'
+            + '<button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" style="font-size:11px;font-weight:600;color:var(--f);padding:3px 8px;border-radius:var(--rs);background:var(--fll)">done</button>'
+            + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">\u2715</button>'
+            + '</div>'
             + '</div>'
             + overlapWarning
             // Core fields — 30/70 grid
@@ -6711,23 +6721,23 @@
           // ── Closed / Summary mode ──────────────────────────────────────
           return '<div class="card-phase" id="ft-phc-' + ph.id + '" onclick="ftClickPhase(\'' + ph.id + '\')" style="border-left:3px solid ' + col + ';position:relative;cursor:pointer">'
             + '<div class="card-phase-summary">'
-            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-            +     '<div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">'
-            +       '<span style="width:9px;height:9px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
-            +       '<span style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
-            +     '</div>'
-            +     '<span style="font-size:10.5px;color:var(--ink3);white-space:nowrap;flex-shrink:0;margin-left:6px">age ' + ph.startAge + '\u2013' + (ph.endAge === 999 ? '\u221e' : ph.endAge) + '</span>'
-            +   '</div>'
-            +   '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-            +   '<div class="ft-chip-label">living cost</div>'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+            + '<div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">'
+            + '<span style="width:9px;height:9px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
+            + '<span style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ph.name + '</span>'
+            + '</div>'
+            + '<span style="font-size:10.5px;color:var(--ink3);white-space:nowrap;flex-shrink:0;margin-left:6px">age ' + ph.startAge + '\u2013' + (ph.endAge === 999 ? '\u221e' : ph.endAge) + '</span>'
+            + '</div>'
+            + '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ink);line-height:1">$' + (ph.monthlyLiving || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+            + '<div class="ft-chip-label">living cost</div>'
             + (ph.renting || mortgageOverlaps
-                ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
-                +   (mortgageOverlaps ? housingStatusBadge : (
-                      '<div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
-                      + '<div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div>'
-                    ))
-                + '</div>'
-                : '')
+              ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
+              + (mortgageOverlaps ? housingStatusBadge : (
+                '<div style="font-family:var(--mono);font-size:15px;font-weight:700;color:#3B82F6;line-height:1">$' + (ph.monthlyRent || 0).toLocaleString() + '<span style="font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink3)">/mo</span></div>'
+                + '<div class="ft-chip-label" style="color:#3B82F6;margin-top:2px">renting</div>'
+              ))
+              + '</div>'
+              : '')
             + '</div>'
             + '</div>';
         }
@@ -6742,6 +6752,7 @@
           body = '<div class="ft-ev-fr"><label>Age when partner joins</label><input type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
             + '<div class="ft-ev-fr"><label>Partner starting income</label><input type="number" value="' + ev.income + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'income\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
             + '<div class="ft-ev-fr"><label>Partner income growth / yr</label><input type="number" value="' + ev.incomeGrowth + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'incomeGrowth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
+            + '<div class="ft-ev-fr"><label>Retirement age</label><input type="number" value="' + (ev.retireAge !== undefined ? ev.retireAge : ftGlobals.retireAge) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'retireAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
             + '<div class="ft-ev-note">Added to household income from this age. Click any partner cell in the table to override a specific year.</div>';
         } else if (ev.type === 'child') {
           const totalCost = (ev.stages || []).reduce((s, st) => s + st.annual * (st.childAgeEnd - st.childAgeStart), 0);
@@ -7005,8 +7016,8 @@
           + '<div style="display:flex;align-items:flex-start;gap:8px;background:var(--fll);border:1px solid var(--fl);border-radius:var(--rs);padding:9px 12px;font-size:11px;color:var(--f);margin-bottom:14px;line-height:1.5"><span style="flex-shrink:0">\u2139</span><span>Phases track base lifestyle spend only (food, going out, travel, subscriptions). Kids, rent, and mortgage are tracked separately and never double-counted.</span></div>'
           + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:14px;line-height:1.5">Sorted by start age \u00b7 Living expenses inflate at ' + ftGlobals.expInflation + '%/yr \u00b7 Click any bar or card to edit</div>'
           + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 16px 12px;margin-bottom:16px;box-shadow:var(--sh1)">'
-          +   '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Life Timeline</div>'
-          +   '<div id="ft-tl-inline"></div>'
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Life Timeline</div>'
+          + '<div id="ft-tl-inline"></div>'
           + '</div>'
           + '<div class="expenses-grid">'
           + phaseCardsHtml
@@ -7082,7 +7093,7 @@
         const listEl = document.getElementById('fts-layout-list');
         const order = S.future.secOrder;
         const vis = S.future.secVis;
-        
+
         const renderList = () => {
           listEl.innerHTML = order.map((id, i) => `
             <div class="ft-sort-item" draggable="true" ondragstart="ftDragIdx=${i}" ondragover="event.preventDefault()" ondrop="ftSectionDrop(event, ${i})">
@@ -7572,7 +7583,7 @@
         if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
         if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
         if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
-        
+
         // Reset to defaults before loading
         ftIncomeStreams = [];
         ftProperties = [];
@@ -7615,13 +7626,13 @@
         // Restore scroll position after recalc
         setTimeout(() => window.scrollTo(0, scrollTop), 0);
       }
-      function ftAppendRow() { 
-        const l = ftRows[ftRows.length - 1]; 
-        if (!l) return; 
-        ftRows.push({ ...l, age: l.age + 1, ms: [], msDots: [], isBuy: false, ot: 0, freeSpend: 0, discTooltip: '' }); 
+      function ftAppendRow() {
+        const l = ftRows[ftRows.length - 1];
+        if (!l) return;
+        ftRows.push({ ...l, age: l.age + 1, ms: [], msDots: [], isBuy: false, ot: 0, freeSpend: 0, discTooltip: '' });
         // Save scroll position before rendering
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        ftRenderTable(); 
+        ftRenderTable();
         ftRenderChart();
         // Restore scroll position after rendering
         setTimeout(() => window.scrollTo(0, scrollTop), 0);
