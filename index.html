@@ -5913,8 +5913,8 @@
             discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
             const pmts = [];
-            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
-              const r = requiredSavingsForGoal(liquidNW, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
+            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0 && investableNW < ftGlobals.retireNW) {
+              const r = requiredSavingsForGoal(investableNW, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
               if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r });
             }
             for (const { p } of propScheds) {
@@ -5984,6 +5984,15 @@
               realEstateEquity += cv - ftCalcRemainingDebt(p, yo);
             }
           }
+          let investmentPropertyEquity = 0;
+          for (const { p } of propScheds) {
+            if (p.propType !== 'primary' && age >= p.purchaseAge) {
+              const yo = age - p.purchaseAge;
+              const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
+              investmentPropertyEquity += cv - ftCalcRemainingDebt(p, yo);
+            }
+          }
+          const investableNW = liquidNW + k401Bal + investmentPropertyEquity;
 
           // NW: liquid compounds + actual surplus (netSavings)
           // For history rows, we don't compound. NW is only shown if it has an override.
@@ -6035,9 +6044,9 @@
             }
           }
           if (age === ftGlobals.retireAge) {
-            if (nw >= ftGlobals.retireNW * 1.2) msDots.push({ color: '#16a34a', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · On track' });
-            else if (nw >= ftGlobals.retireNW) msDots.push({ color: '#d97706', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · Tight' });
-            else msDots.push({ color: '#dc2626', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(nw) + ' · Shortfall' });
+            if (investableNW >= ftGlobals.retireNW * 1.2) msDots.push({ color: '#16a34a', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · On track' });
+            else if (investableNW >= ftGlobals.retireNW) msDots.push({ color: '#d97706', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · Tight' });
+            else msDots.push({ color: '#dc2626', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · Shortfall' });
           }
 
           const isBuy = propScheds.some(({ p }) => age === p.purchaseAge);
