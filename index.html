@@ -7241,6 +7241,14 @@
                 const livingMo = Math.round(r.living / 12);
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 
+                if (r.isRetired) {
+                  // In retirement freeSpend IS the spending budget target — not a surplus over living.
+                  // Show the ceiling; amber if it would require cutting current living expenses.
+                  const color = r.freeSpend >= livingMo ? '#16a34a' : '#f59e0b';
+                  return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + '">'
+                    + ftFmt(r.freeSpend) + '/mo</td>';
+                }
+
                 if (r.freeSpend < livingMo) {
                   const deficit = livingMo - r.freeSpend;
                   const housingMo = Math.round(r.housing / 12);
