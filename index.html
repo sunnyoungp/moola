@@ -5902,6 +5902,25 @@
           let ot = oneTimeEvs.filter(e => e.age === age).reduce((s, e) => s + e.amount, 0);
           let extraPmt = 0;
           for (const { p } of propScheds) for (const ep of (p.extraPayments || [])) if (ep.age === age) extraPmt += ep.amount;
+          k401Bal = isHistory ? 0 : k401Bal * (1 + roc) + contrib401k;
+          let realEstateEquity = 0;
+          for (const { p } of propScheds) {
+            if (age >= p.purchaseAge) {
+              const yo = age - p.purchaseAge;
+              const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
+              realEstateEquity += cv - ftCalcRemainingDebt(p, yo);
+            }
+          }
+          let investmentPropertyEquity = 0;
+          for (const { p } of propScheds) {
+            if (p.propType !== 'primary' && age >= p.purchaseAge) {
+              const yo = age - p.purchaseAge;
+              const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
+              investmentPropertyEquity += cv - ftCalcRemainingDebt(p, yo);
+            }
+          }
+          const investableNW = liquidNW + k401Bal + investmentPropertyEquity;
+
           // Required savings vs Actual surplus
           const netSavings = netHH - living - fixedCosts;
           let requiredSavings = 0, discTooltip = '', noGoals = false;
@@ -5974,25 +5993,6 @@
             '\n - Adjusted Living: ' + ftFmt(living) +
             '\n - Fixed costs: ' + ftFmt(fixedCosts) +
             '\n = Added wealth: ' + ftFmt(netSavings) + '/yr';
-
-          k401Bal = isHistory ? 0 : k401Bal * (1 + roc) + contrib401k;
-          let realEstateEquity = 0;
-          for (const { p } of propScheds) {
-            if (age >= p.purchaseAge) {
-              const yo = age - p.purchaseAge;
-              const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
-              realEstateEquity += cv - ftCalcRemainingDebt(p, yo);
-            }
-          }
-          let investmentPropertyEquity = 0;
-          for (const { p } of propScheds) {
-            if (p.propType !== 'primary' && age >= p.purchaseAge) {
-              const yo = age - p.purchaseAge;
-              const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
-              investmentPropertyEquity += cv - ftCalcRemainingDebt(p, yo);
-            }
-          }
-          const investableNW = liquidNW + k401Bal + investmentPropertyEquity;
 
           // NW: liquid compounds + actual surplus (netSavings)
           // For history rows, we don't compound. NW is only shown if it has an override.
