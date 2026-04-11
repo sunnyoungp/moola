@@ -1404,7 +1404,10 @@
               oninput="handleBalInput(this)" onblur="formatBalInput(this)">
           </div>
         </div>
-        </select></div>
+        <div class="fr"><label>Currency</label><select class="inp" id="a-cur" onchange="handleAcctCurChange(this)">
+            <option value="USD">USD</option>
+            <option value="KRW">KRW</option>
+          </select></div>
         <div class="fr" id="a-sync-row" style="display:none;align-items:center;gap:8px">
           <input type="checkbox" id="a-sync" style="width:auto;margin:0">
           <label for="a-sync" style="margin-bottom:0">Sync balance with portfolio</label>
