@@ -3165,14 +3165,14 @@
       function getToggledAcctIds() {
         // Return IDs of investment accounts that are toggled ON
         return S.accounts
-          .filter(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false)
+          .filter(a => isInvestmentAcct(a) && !a.syncDisabled && S.portAcctToggles[a.id] !== false)
           .map(a => String(a.id));
       }
 
       function renderPortAcctToggles() {
         const wrap = document.getElementById('port-acct-toggles');
         if (!wrap) return;
-        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a) && !a.syncDisabled);
         if (invAccts.length === 0) { wrap.innerHTML = ''; return; }
 
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
