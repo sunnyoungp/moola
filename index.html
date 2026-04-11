@@ -1404,10 +1404,11 @@
               oninput="handleBalInput(this)" onblur="formatBalInput(this)">
           </div>
         </div>
-        <div class="fr"><label>Currency</label><select class="inp" id="a-cur" onchange="handleAcctCurChange(this)">
-            <option value="USD">USD</option>
-            <option value="KRW">KRW</option>
-          </select></div>
+        </select></div>
+        <div class="fr" id="a-sync-row" style="display:none;align-items:center;gap:8px">
+          <input type="checkbox" id="a-sync" style="width:auto;margin:0">
+          <label for="a-sync" style="margin-bottom:0">Sync balance with portfolio</label>
+        </div>
         <div class="modal-footer">
           <div style="flex:1;display:flex;gap:4px">
             <button class="btn bsm" id="m-acct-up" onclick="moveAcct(-1)">Up</button>
@@ -2006,8 +2007,6 @@
             }
           });
         }
-        // Clean categories of legacy isInvestment flag
-        if (S.accountCategories) S.accountCategories.forEach(c => delete c.isInvestment);
         if (!S.portAcctToggles) S.portAcctToggles = {};
 
         // Migrate legacy account types to new system
@@ -2368,12 +2367,12 @@
             if (key === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
             if (!acct) acct = S.accounts.find(a => a.type === key);
           }
-          if (acct) acctTotals.set(acct, (acctTotals.get(acct) || 0) + (f.value || 0));
+          if (acct && !acct.syncDisabled) acctTotals.set(acct, (acctTotals.get(acct) || 0) + (f.value || 0));
         });
 
         // Zero every investment account first — accounts with no linked funds go to $0
         S.accounts.forEach(a => {
-          if (isInvestmentAcct(a)) { a.balance = 0; delete a.manualOverride; }
+          if (isInvestmentAcct(a) && !a.syncDisabled) { a.balance = 0; delete a.manualOverride; }
         });
 
         // Apply accumulated totals
@@ -2801,8 +2800,8 @@
             <td class="mo">${MT(fmt(getAcctUSD(a)), 'accounts')}</td>
             <td class="mo">${MT(pct((getAcctUSD(a) / t) * 100), 'accounts')}</td>
             <td style="text-align:right">
-              <button class="btn bsm bgh" onclick="openAcctModal(${a.id})">Edit</button>
-              <button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct(${a.id})">✕</button>
+              <button class="btn bsm bgh" onclick="openAcctModal('${a.id}')">Edit</button>
+              <button class="btn bsm bgh" style="color:var(--red)" onclick="delAcct('${a.id}')">✕</button>
             </td>
           </tr>`).join('')
           }</tbody>`;
@@ -2824,6 +2823,16 @@
         const atype = S.accountTypes?.find(t => t.id === sel.value);
         const cat = atype ? S.accountCategories?.find(c => c.id === atype.categoryId) : null;
         hint.textContent = cat ? `Category: ${cat.name}` : '';
+        updateSyncToggleVisibility();
+      }
+
+      function updateSyncToggleVisibility() {
+        const sel = document.getElementById('a-type');
+        const row = document.getElementById('a-sync-row');
+        if (!sel || !row) return;
+        const atype = S.accountTypes?.find(t => String(t.id) === String(sel.value));
+        const isInv = atype ? atype.isInvestment : false;
+        row.style.display = isInv ? 'flex' : 'none';
       }
 
       function handleBalInput(el) {
@@ -2866,7 +2875,7 @@
       function openAcctModal(id) {
         S.editAcctId = id;
         if (id) {
-          const a = S.accounts.find(x => x.id === id);
+          const a = S.accounts.find(x => String(x.id) === String(id));
           document.getElementById('m-acct-title').textContent = 'Edit account';
           document.getElementById('a-name').value = a.name;
           const fmtBal = a.balance !== undefined ? a.balance.toLocaleString('en-US', { maximumFractionDigits: a.currency === 'KRW' ? 0 : 2 }) : '';
@@ -2874,6 +2883,7 @@
           document.getElementById('a-bal').dataset.cur = a.currency || 'USD';
           document.getElementById('a-cur').value = a.currency || 'USD';
           document.getElementById('a-sym').textContent = a.currency === 'KRW' ? '₩' : '$';
+          document.getElementById('a-sync').checked = !a.syncDisabled;
           populateAcctTypeSelect(a.type);
         } else {
           document.getElementById('m-acct-title').textContent = 'Add account';
@@ -2881,8 +2891,10 @@
           document.getElementById('a-bal').dataset.cur = 'USD';
           document.getElementById('a-cur').value = 'USD';
           document.getElementById('a-sym').textContent = '$';
+          document.getElementById('a-sync').checked = true;
           populateAcctTypeSelect(S.accountTypes?.[0]?.id || 'checking');
         }
+        updateSyncToggleVisibility();
         openModal('m-acct');
       }
 
@@ -2891,17 +2903,20 @@
         const type = document.getElementById('a-type').value;
         let bal = parseFloat(document.getElementById('a-bal').value.replace(/,/g, '')) || 0;
         const cur = document.getElementById('a-cur').value;
+        const syncDisabled = !document.getElementById('a-sync').checked;
 
         if (!name) return;
         if (S.editAcctId) {
-          const prev = S.accounts.find(x => x.id === S.editAcctId);
+          const prev = S.accounts.find(x => String(x.id) === String(S.editAcctId));
           const wasInvestment = isInvestmentAcct(prev);
-          Object.assign(prev, { name, type, balance: bal, currency: cur });
+          Object.assign(prev, { name, type, balance: bal, currency: cur, syncDisabled });
           // If this is an investment account, flag as manually overridden so the
           // user is warned that the next Portfolio sync will overwrite this value.
-          if (wasInvestment || isInvestmentAcct(prev)) prev.manualOverride = true;
+          // IF sync is disabled, we don't need the warning because it WON'T be overwritten.
+          if ((wasInvestment || isInvestmentAcct(prev)) && !syncDisabled) prev.manualOverride = true;
+          else delete prev.manualOverride;
         } else {
-          const newAcct = { id: nextId(S.accounts), name, type, balance: bal, currency: cur };
+          const newAcct = { id: nextId(S.accounts), name, type, balance: bal, currency: cur, syncDisabled };
           S.accounts.push(newAcct);
           // Default new investment accounts to ON in portfolio
           if (isInvestmentAcct(newAcct)) S.portAcctToggles[newAcct.id] = true;
@@ -2911,7 +2926,7 @@
 
       function delAcct(id) {
         if (!confirm('Delete account? Funds linked to this account will be unlinked.')) return;
-        S.accounts = S.accounts.filter(x => x.id !== id);
+        S.accounts = S.accounts.filter(x => String(x.id) !== String(id));
         delete S.portAcctToggles[id];
         ps(); renderAccounts();
       }
@@ -2996,7 +3011,7 @@
       function atcEditType(e, typeId) {
         const span = e.currentTarget;
         if (span.querySelector('input')) return;
-        const type = S.accountTypes?.find(t => t.id === typeId);
+        const type = S.accountTypes?.find(t => String(t.id) === String(typeId));
         if (!type) return;
         const current = type.name;
         span.textContent = '';
@@ -3023,8 +3038,8 @@
       function atcCatDrop(e, id) {
         e.preventDefault();
         if (!atcCatDragId || atcCatDragId === id) return;
-        const from = S.accountCategories.findIndex(c => c.id === atcCatDragId);
-        const to = S.accountCategories.findIndex(c => c.id === id);
+        const from = S.accountCategories.findIndex(c => String(c.id) === String(atcCatDragId));
+        const to = S.accountCategories.findIndex(c => String(c.id) === String(id));
         if (from < 0 || to < 0) return;
         const [m] = S.accountCategories.splice(from, 1);
         S.accountCategories.splice(to, 0, m);
@@ -3045,8 +3060,8 @@
       function atcTypeDrop(e, id) {
         e.preventDefault(); e.stopPropagation();
         if (!atcTypeDragId || atcTypeDragId === id) return;
-        const from = S.accountTypes.findIndex(t => t.id === atcTypeDragId);
-        const to = S.accountTypes.findIndex(t => t.id === id);
+        const from = S.accountTypes.findIndex(t => String(t.id) === String(atcTypeDragId));
+        const to = S.accountTypes.findIndex(t => String(t.id) === String(id));
         if (from < 0 || to < 0) return;
         const [m] = S.accountTypes.splice(from, 1);
         S.accountTypes.splice(to, 0, m);
@@ -3055,7 +3070,7 @@
       function atcTypeDragEnd(e) { atcTypeDragId = null; e.currentTarget.style.opacity = '1'; }
 
       function moveAcctCategory(id, dir) {
-        const idx = S.accountCategories.findIndex(c => c.id === id);
+        const idx = S.accountCategories.findIndex(c => String(c.id) === String(id));
         if (idx === -1) return;
         const nidx = idx + dir;
         if (nidx < 0 || nidx >= S.accountCategories.length) return;
@@ -3065,10 +3080,10 @@
       }
 
       function moveAcctType(id, dir) {
-        const type = S.accountTypes.find(t => t.id === id);
+        const type = S.accountTypes.find(t => String(t.id) === String(id));
         if (!type) return;
         const cid = type.categoryId;
-        const catTypes = S.accountTypes.filter(t => t.categoryId === cid);
+        const catTypes = S.accountTypes.filter(t => String(t.categoryId) === String(cid));
         const idxInGroup = catTypes.indexOf(type);
         const nidxInGroup = idxInGroup + dir;
         if (nidxInGroup < 0 || nidxInGroup >= catTypes.length) return;
@@ -3093,26 +3108,26 @@
       }
 
       function renameAcctCategory(id, name) {
-        const cat = S.accountCategories?.find(c => c.id === id);
+        const cat = S.accountCategories?.find(c => String(c.id) === String(id));
         if (cat && name.trim()) { cat.name = name.trim(); ps(); }
       }
 
       function setAcctTypeInvestment(id, val) {
-        const t = S.accountTypes?.find(x => x.id === id);
+        const t = S.accountTypes?.find(x => String(x.id) === String(id));
         if (t) { t.isInvestment = val; ps(); }
       }
       function setAcctTypeBucket(id, bucketId) {
-        const t = S.accountTypes?.find(x => x.id === id);
+        const t = S.accountTypes?.find(x => String(x.id) === String(id));
         if (t) { t.bucketId = bucketId; ps(); }
       }
 
       function delAcctCategory(id) {
-        const types = S.accountTypes?.filter(t => t.categoryId === id) || [];
+        const types = S.accountTypes?.filter(t => String(t.categoryId) === String(id)) || [];
         if (types.length > 0) {
           if (!confirm(`This category has ${types.length} type(s). Delete category and all its types?`)) return;
           types.forEach(t => delAcctTypeById(t.id, false));
         }
-        S.accountCategories = S.accountCategories.filter(c => c.id !== id);
+        S.accountCategories = S.accountCategories.filter(c => String(c.id) !== String(id));
         ps(); renderAcctTypesList();
       }
 
@@ -3125,18 +3140,18 @@
       }
 
       function renameAcctType(id, name) {
-        const t = S.accountTypes?.find(x => x.id === id);
+        const t = S.accountTypes?.find(x => String(x.id) === String(id));
         if (t && name.trim()) { t.name = name.trim(); ps(); }
       }
 
       function delAcctType(id) { delAcctTypeById(id, true); }
       function delAcctTypeById(id, withConfirm) {
-        const using = S.accounts.filter(a => a.type === id);
+        const using = S.accounts.filter(a => String(a.type) === String(id));
         if (using.length > 0) {
           if (withConfirm && !confirm(`${using.length} account(s) use this type. They will be set to "other". Continue?`)) return;
           using.forEach(a => a.type = 'other-cash');
         }
-        S.accountTypes = (S.accountTypes || []).filter(t => t.id !== id);
+        S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
         ps(); renderAcctTypesList();
       }
 
@@ -3158,7 +3173,7 @@
         if (invAccts.length === 0) { wrap.innerHTML = ''; return; }
 
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
-        const tagsHtml = selected.length ? selected.map(a => `<div class="ms-tag">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct(${a.id})">×</span></div>`).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
+        const tagsHtml = selected.length ? selected.map(a => `<div class="ms-tag">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
         wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <span class="lbl" style="margin-bottom:0">Show accounts:</span>
@@ -3173,7 +3188,7 @@
               <div class="ms-list" id="port-ms-list">
                 ${invAccts.map(a => {
           const on = S.portAcctToggles[a.id] !== false;
-          return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="togglePortAcct(${a.id})">
+          return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="togglePortAcct('${a.id}')">
                     <div class="chk"></div>
                     <span>${a.name}</span>
                   </div>`;
@@ -3317,7 +3332,7 @@
           const parentAcct = S.accounts.find(a => String(a.id) === String(f.acct));
           const acctLabel = parentAcct?.name || f.acct;
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal(${f.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund(${f.id})">✕</button></td></tr>`;
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
@@ -3358,7 +3373,7 @@
       function openFundModal(id) {
         S.editFundId = id;
         if (id) {
-          const f = S.funds.find(x => x.id === id);
+          const f = S.funds.find(x => String(x.id) === String(id));
           document.getElementById('m-fund-title').textContent = 'Edit fund';
           document.getElementById('f-tkr').value = f.ticker;
           document.getElementById('f-name').value = f.name;
@@ -3428,7 +3443,7 @@
         let value;
         const manualVal = parseFloat(document.getElementById('f-val').value.replace(/,/g, '')) || 0;
         if (shares) {
-          const existing = S.funds.find(x => x.id === S.editFundId);
+          const existing = S.funds.find(x => String(x.id) === String(S.editFundId));
           const knownPrice = existing?.lastPrice || null;
           // value is strictly stored in its parent account's native currency mathematically
           value = knownPrice ? Math.round(shares * knownPrice * 100) / 100 : manualVal;
@@ -3437,14 +3452,14 @@
         }
 
         if (S.editFundId) {
-          Object.assign(S.funds.find(x => x.id === S.editFundId), { ticker, name, acct, value, shares, targetPct, retPct });
+          Object.assign(S.funds.find(x => String(x.id) === String(S.editFundId)), { ticker, name, acct, value, shares, targetPct, retPct });
         } else {
           S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, shares, targetPct, retPct });
         }
         syncAccountsFromPortfolio();
         ps(); closeModal('m-fund'); renderPortfolio();
       }
-      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => x.id !== id); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }
+      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => String(x.id) !== String(id)); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }
 
       // ══════════════════════════════════════════════════════════════
       // REBALANCE
@@ -3697,8 +3712,8 @@
         document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections');
         dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
       }
-      function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet(${f.id},this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
-      function updRet(id, v) { const f = S.funds.find(x => x.id === id); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
+      function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
+      function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
       function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
       function addStress() { const n = prompt('Event name:'); if (!n) return; const a = parseFloat(prompt('Cost ($):') || '0'), y = parseInt(prompt('Year:') || NY); S.stressEvents.push({ name: n, amount: a, year: y }); ps(); renderStress(); updateProj(); }
       function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
@@ -3722,7 +3737,7 @@
           const tooltip = showLeftToGoal ? "The total remaining amount required to reach this goal's target." : "The monthly savings required to meet this goal's target given growth projections.";
 
           return `<div class="gc">
-            <div class="ga"><button class="btn bsm bgh" onclick="openGoalModal(${g.id})">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal(${g.id})">✕</button></div>
+            <div class="ga"><button class="btn bsm bgh" onclick="openGoalModal('${g.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delGoal('${g.id}')">✕</button></div>
             <div class="flex gsm mb-2"><span class="tag" style="background:${col}22;color:${col}">${GTAG[g.cat]}</span><span class="tag ${ok ? 'tg' : 'tr'}">${ok ? 'On track' : 'Needs attention'}</span></div>
             <div style="font-size:14px;font-weight:600;margin-bottom:2px">${g.name}</div>
             ${g.notes ? `<div style="font-size:10px;color:var(--ink3);margin-bottom:5px">${g.notes}</div>` : ''}
@@ -3747,7 +3762,7 @@
         hbtn.style.display = id ? 'inline-flex' : 'none';
 
         if (id) {
-          const g = S.goals.find(x => x.id === id);
+          const g = S.goals.find(x => String(x.id) === String(id));
           document.getElementById('m-goal-title').textContent = 'Edit goal';
           document.getElementById('g-name').value = g.name;
           document.getElementById('g-cat').value = g.cat;
@@ -3766,13 +3781,13 @@
       }
       function toggleGoalHidden() {
         if (!S.editGoalId) return;
-        const g = S.goals.find(x => x.id === S.editGoalId);
+        const g = S.goals.find(x => String(x.id) === String(S.editGoalId));
         if (g) g.hidden = !g.hidden;
         ps(); closeModal('m-goal'); renderGoals(); renderOverview();
       }
       function moveGoal(dir) {
         if (!S.editGoalId) return;
-        const idx = S.goals.findIndex(g => g.id === S.editGoalId);
+        const idx = S.goals.findIndex(g => String(g.id) === String(S.editGoalId));
         if (idx === -1) return;
         const newIdx = idx + dir;
         if (newIdx < 0 || newIdx >= S.goals.length) return;
@@ -3780,8 +3795,8 @@
         S.goals.splice(newIdx, 0, moved);
         ps(); renderGoals(); renderOverview();
       }
-      function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => x.id === S.editGoalId), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes, hidden: false }); ps(); closeModal('m-goal'); renderGoals(); renderOverview(); }
-      function delGoal(id) { if (!confirm('Remove?')) return; S.goals = S.goals.filter(x => x.id !== id); ps(); renderGoals(); renderOverview(); }
+      function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => String(x.id) === String(S.editGoalId)), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes, hidden: false }); ps(); closeModal('m-goal'); renderGoals(); renderOverview(); }
+      function delGoal(id) { if (!confirm('Remove?')) return; S.goals = S.goals.filter(x => String(x.id) !== String(id)); ps(); renderGoals(); renderOverview(); }
 
       // ══════════════════════════════════════════════════════════════
       // SPREADSHEET — overlay-textarea architecture
