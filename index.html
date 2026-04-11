@@ -315,8 +315,8 @@
       <div id="tab-accounts" class="tc">
         <div class="page-hdr">
           <div>
-            <div class="page-title">Accounts</div>
-            <div class="page-sub">All balances in one place</div>
+            <div class="page-title">Assets</div>
+            <div class="page-sub">All assets in one place</div>
           </div>
           <div class="page-actions">
             <button class="vis-toggle" id="tab-hide-accounts" onclick="toggleTab('accounts')">
@@ -1905,7 +1905,7 @@
         return {
           tabs: [
             { id: 'overview', name: 'Overview', icon: 'grid', archived: false },
-            { id: 'accounts', name: 'Accounts', icon: 'briefcase', archived: false },
+            { id: 'accounts', name: 'Assets', icon: 'briefcase', archived: false },
             { id: 'portfolio', name: 'Portfolio', icon: 'chart', archived: false },
             { id: 'rebalance', name: 'Rebalance', icon: 'scale', archived: false },
             { id: 'projections', name: 'Projections', icon: 'lineChart', archived: false },
@@ -1958,6 +1958,10 @@
 
       // ── Data migration: run on every load ────────────────────────
       function migrateData() {
+        // Rename Accounts → Assets tab for existing users
+        const acctTab = S.tabs?.find(t => t.id === 'accounts' && t.name === 'Accounts');
+        if (acctTab) acctTab.name = 'Assets';
+
         if (!S.buckets) {
           S.buckets = [
             { id: 'cash', name: 'Cash', order: 0 },
@@ -2307,10 +2311,80 @@
       function pct(v) { return (typeof v === 'number' ? v : parseFloat(v) || 0).toFixed(1) + '%'; }
 
       // ══════════════════════════════════════════════════════════════
+      // CUSTOM DIALOGS (replaces native confirm/prompt which browsers suppress)
+      function _moDlg(html, onReady) {
+        let dlg = document.getElementById('mo-custom-dlg');
+        if (!dlg) { dlg = document.createElement('div'); dlg.id = 'mo-custom-dlg'; document.body.appendChild(dlg); }
+        dlg.style.cssText = 'position:fixed;inset:0;z-index:9999990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25)';
+        dlg.innerHTML = `<div style="background:var(--bg-primary,#fff);border:1px solid var(--border-strong,#ddd);border-radius:12px;padding:24px 24px 20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.18);font-family:var(--sans,sans-serif)">${html}</div>`;
+        onReady(dlg);
+      }
+      function _moDlgClose() { const d = document.getElementById('mo-custom-dlg'); if (d) d.remove(); }
+      function moConfirm(msg, onYes, onNo) {
+        _moDlg(
+          `<p style="margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--ink,#222)">${msg}</p>
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button id="_moDlgNo" class="btn">Cancel</button>
+             <button id="_moDlgYes" class="btn" style="background:var(--rose,#e53e3e);color:#fff">OK</button>
+           </div>`,
+          dlg => {
+            dlg.querySelector('#_moDlgNo').onclick = () => { _moDlgClose(); if (onNo) onNo(); };
+            dlg.querySelector('#_moDlgYes').onclick = () => { _moDlgClose(); onYes(); };
+          }
+        );
+      }
+      function moPrompt(msg, onOk, defaultVal) {
+        _moDlg(
+          `<p style="margin:0 0 10px;font-size:14px;line-height:1.5;color:var(--ink,#222)">${msg}</p>
+           <input id="_moDlgInp" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong,#ccc);border-radius:8px;font:inherit;font-size:14px;margin-bottom:16px;outline:none;color:var(--ink,#222);background:var(--bg-primary,#fff)">
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button id="_moDlgNo" class="btn">Cancel</button>
+             <button id="_moDlgYes" class="btn bp">OK</button>
+           </div>`,
+          dlg => {
+            const inp = dlg.querySelector('#_moDlgInp');
+            if (defaultVal) inp.value = defaultVal;
+            const ok = () => { const v = inp.value.trim(); _moDlgClose(); if (v) onOk(v); };
+            dlg.querySelector('#_moDlgNo').onclick = _moDlgClose;
+            dlg.querySelector('#_moDlgYes').onclick = ok;
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') _moDlgClose(); });
+            setTimeout(() => inp.focus(), 0);
+          }
+        );
+      }
+
+      // ══════════════════════════════════════════════════════════════
       // HELPERS
       function getAcctUSD(a) { return a.currency === 'KRW' ? a.balance / getFX() : (a.balance || 0); }
       function getFundUSD(f) { const state = getFilteredState(); const a = state.accounts.find(x => String(x.id) === String(f.acct)); return a && a.currency === 'KRW' ? f.value / getFX() : (f.value || 0); }
-      function nwTotal() { const state = getFilteredState(); return state.accounts.reduce((s, a) => s + getAcctUSD(a), 0); }
+      function nwTotal() {
+        const state = getFilteredState();
+        const accountsTotal = state.accounts.reduce((s, a) => s + getAcctUSD(a), 0);
+        const reEquity = ftProperties.reduce((sum, p) => {
+          const yo = ftGlobals.projectionStartingAge - p.purchaseAge;
+          if (yo < 0) return sum;
+          const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
+          return sum + Math.max(0, cv - ftCalcRemainingDebt(p, yo));
+        }, 0);
+        return accountsTotal + reEquity;
+      }
+      function ftGetAcctBucket(acct) {
+        const state = getFilteredState();
+        const type = state.accountTypes?.find(t => String(t.id) === String(acct.type));
+        return type?.bucketId || null;
+      }
+      function ftGetLiquidNW() {
+        const state = getFilteredState();
+        return state.accounts
+          .filter(a => { const b = ftGetAcctBucket(a); return b === 'cash' || b === 'restricted' || b === 'investments'; })
+          .reduce((s, a) => s + getAcctUSD(a), 0);
+      }
+      function ftGetRetirementBal() {
+        const state = getFilteredState();
+        return state.accounts
+          .filter(a => ftGetAcctBucket(a) === 'retirement')
+          .reduce((s, a) => s + getAcctUSD(a), 0);
+      }
       function getAcctCategory(acct) {
         const state = getFilteredState();
         const atype = state.accountTypes?.find(t => t.id === acct.type);
@@ -2323,6 +2397,8 @@
       }
       function totInv() { const state = getFilteredState(); return state.accounts.filter(a => isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
       function totCash() { const state = getFilteredState(); return state.accounts.filter(a => !isInvestmentAcct(a)).reduce((s, a) => s + getAcctUSD(a), 0); }
+      function totByBucket(bucketId) { const state = getFilteredState(); return state.accounts.filter(a => ftGetAcctBucket(a) === bucketId).reduce((s, a) => s + getAcctUSD(a), 0); }
+      function totRealEstateEquity() { return ftProperties.reduce((sum, p) => { const yo = ftGlobals.projectionStartingAge - p.purchaseAge; if (yo < 0) return sum; const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo); return sum + Math.max(0, cv - ftCalcRemainingDebt(p, yo)); }, 0); }
       function getAcctTypeName(typeId) {
         return S.accountTypes?.find(t => String(t.id) === String(typeId))?.name || typeId;
       }
@@ -2342,6 +2418,8 @@
       // ══════════════════════════════════════════════════════════════
       // NAV
       function showTab(id, el) {
+        const _pinW = document.getElementById('ft-pin-modal-wrapper');
+        if (_pinW) _pinW.innerHTML = '';
         document.querySelectorAll('.tc').forEach(t => t.classList.remove('on'));
         document.querySelectorAll('.nt').forEach(t => t.classList.remove('on'));
         document.getElementById('tab-' + id).classList.add('on');
@@ -2425,7 +2503,19 @@
         const gain = nwTotal() - (snaps[0]?.nw || nwTotal()) - tc;
         document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
         const vis = S.widgetVis; let h = '';
-        if (vis.metrics) h += `<div class="g4 mb-2"><div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(totInv()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totInv() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Cash & savings</div><div class="mnum">${MD(fmt(totCash()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((totCash() / nwTotal()) * 100)} of NW</div></div><div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${state.funds.length} funds</div></div><div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div></div>`;
+        if (vis.metrics) {
+          const _nw = nwTotal(); const _cash = totByBucket('cash') + totByBucket('restricted'); const _inv = totByBucket('investments'); const _ret = totByBucket('retirement'); const _re = totRealEstateEquity();
+          h += `<div class="g4 mb-2">
+            <div class="csm"><div class="lbl">Cash &amp; Savings</div><div class="mnum">${MD(fmt(_cash))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _cash / _nw : 0) * 100)} of NW</div></div>
+            <div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(_inv))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _inv / _nw : 0) * 100)} of NW</div></div>
+            <div class="csm"><div class="lbl">Retirement</div><div class="mnum">${MD(fmt(_ret))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _ret / _nw : 0) * 100)} of NW</div></div>
+            <div class="csm"><div class="lbl">Real Estate</div><div class="mnum">${MD(fmt(_re))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _re / _nw : 0) * 100)} of NW</div></div>
+          </div>
+          <div class="g2 mb-2">
+            <div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${state.funds.length} funds</div></div>
+            <div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div>
+          </div>`;
+        }
         if (vis.history || vis.breakdown) {
           h += `<div class="g2 mb-2">`;
           if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s, si, arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`;
@@ -2446,13 +2536,14 @@
         document.getElementById('ov-widgets').innerHTML = h;
         if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
         if (vis.breakdown) {
-          const tc = getThemeColors();
-          const allAccts = S.accounts.filter(a => getAcctUSD(a) > 0);
-          const chartData = allAccts.map((a, i) => ({
-            label: a.name,
-            value: getAcctUSD(a),
-            color: tc[i % tc.length]
-          })).filter(x => x.value > 0);
+          const _thc = getThemeColors();
+          const _reEq = totRealEstateEquity();
+          const chartData = [
+            { label: 'Cash & Savings', value: totByBucket('cash') + totByBucket('restricted'), color: _thc[0] },
+            { label: 'Investments',    value: totByBucket('investments'), color: _thc[1] },
+            { label: 'Retirement',     value: totByBucket('retirement'),  color: _thc[2] },
+            { label: 'Real Estate',    value: _reEq,                      color: '#8B5CF6' }
+          ].filter(x => x.value > 0);
           const total = chartData.reduce((s, x) => s + x.value, 0);
           const isDark = document.documentElement.classList.contains('dark');
 
@@ -2589,12 +2680,13 @@
 
       function delSnapFromModal() {
         if (editSnapIdx === null) return;
-        if (!confirm('Delete this snapshot?')) return;
-        S.snapshots.splice(editSnapIdx, 1);
-        ps();
-        closeModal('m-snap');
-        renderOverview();
-        if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
+        moConfirm('Delete this snapshot?', () => {
+          S.snapshots.splice(editSnapIdx, 1);
+          ps();
+          closeModal('m-snap');
+          renderOverview();
+          if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
+        });
       }
 
       function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--fm)' : 'var(--border-strong)'};background:${v ? 'var(--fll)' : 'var(--surface)'};color:${v ? 'var(--f)' : 'var(--ink3)'};font-size:11px;font-weight:500;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
@@ -2606,6 +2698,14 @@
       function setTableGroup(mode) { S.tableGroupingMode = mode; ps(); renderAccounts(); }
 
       function renderAccounts() {
+        // Eagerly load Future scenario data so ftProperties is available
+        // even if the Future tab has never been rendered in this session.
+        if (ftProperties.length === 0 && S?.future_scenarios?.length) {
+          const activeScId = S.future_active_scenario || S.future_scenarios[0]?.id;
+          const sc = S.future_scenarios.find(s => s.id === activeScId);
+          if (sc?.data) ftLoadScenarioData(sc.data);
+        }
+
         const state = getFilteredState();
         const t = nwTotal();
         document.getElementById('acc-total').innerHTML = MT(fmt(t), 'accounts');
@@ -2698,6 +2798,9 @@
           </div>`;
         }
 
+        // ── REAL ESTATE section: always shown after financial accounts ──
+        wrap.innerHTML += renderRealEstateSection(t);
+
         updateAllocationChart(t);
       }
 
@@ -2729,6 +2832,10 @@
           groups[key] = (groups[key] || 0) + getAcctUSD(a);
         });
 
+        // Add Real Estate equity as its own slice
+        const _reSlice = totRealEstateEquity();
+        if (_reSlice > 0) groups['Real Estate'] = (_reSlice);
+
         // Convert to array and handle <2% "Other"
         let dataEntries = Object.entries(groups)
           .map(([name, val]) => ({ name, val }))
@@ -2748,7 +2855,8 @@
 
         const labels = dataEntries.map(e => e.name);
         const values = dataEntries.map(e => e.val);
-        const colors = COLORS();
+        const _palette = COLORS();
+        const colors = dataEntries.map((e, i) => e.name === 'Real Estate' ? '#8B5CF6' : _palette[i % _palette.length]);
         const leg = document.getElementById('acc-chart-legend');
 
         if (!accChart) {
@@ -2808,6 +2916,82 @@
             </td>
           </tr>`).join('')
           }</tbody>`;
+      }
+
+      function renderRealEstateSection(totalNW) {
+        if (!ftProperties || ftProperties.length === 0) return '';
+        const curAge = ftGlobals.projectionStartingAge;
+
+        const ownedProps = ftProperties.map(p => {
+          const yo = curAge - p.purchaseAge;
+          if (yo < 0) return null; // not yet purchased at current age
+          const appraised = Math.round(p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo));
+          const debt = ftCalcRemainingDebt(p, yo);
+          const equity = Math.max(0, appraised - debt);
+          return { p, yo, appraised, debt, equity };
+        }).filter(Boolean);
+
+        if (ownedProps.length === 0) return '';
+
+        const sectionTotal = ownedProps.reduce((s, r) => s + r.equity, 0);
+        const pctNW = totalNW > 0 ? ((sectionTotal / totalNW) * 100).toFixed(1) : '0.0';
+
+        const rows = ownedProps.map(({ p, appraised, debt, equity }) => {
+          const isInv = p.propType !== 'primary';
+          const badge = isInv ? 'Investment' : 'Primary';
+          const badgeColor = isInv ? 'var(--teal,#0891b2)' : 'var(--f,#6366f1)';
+          const pct = totalNW > 0 ? ((equity / totalNW) * 100).toFixed(1) : '0.0';
+          return `<tr>
+            <td style="font-weight:500">${escHtml(p.name)}</td>
+            <td><span class="tag tb" style="background:${badgeColor}20;color:${badgeColor};border-color:${badgeColor}40">${badge}</span></td>
+            <td style="font-family:var(--mono)">${fmt(appraised)}</td>
+            <td style="font-family:var(--mono)">${fmt(debt)}</td>
+            <td class="mo" style="font-weight:600;font-family:var(--mono)">${MT(fmt(equity), 'accounts')}</td>
+            <td class="mo" style="font-family:var(--mono);color:var(--ink3)">${MT(pct + '%', 'accounts')}</td>
+            <td style="text-align:right"><button class="btn bsm bgh" data-pid="${p.id}" onclick="openPropertyEditorFromAssets(this.dataset.pid)">Edit</button></td>
+          </tr>`;
+        }).join('');
+
+        return `<div class="card mb-2" style="padding:16px 20px">
+          <div class="sec" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:10px;height:10px;border-radius:2px;background:#10b981"></div>
+              <span>Real Estate</span>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:var(--ink)">${MT(fmt(sectionTotal), 'accounts')}</span>
+          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+            <table class="tbl">
+              <thead class="tbl-fixed"><tr>
+                <th class="w-25">Property</th>
+                <th class="w-15">Type</th>
+                <th class="w-15">Appraised Value</th>
+                <th class="w-15">Remaining Debt</th>
+                <th class="w-15">Equity</th>
+                <th class="w-10">% NW</th>
+                <th class="w-10"></th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div style="font-size:10.5px;color:var(--ink3);margin-top:10px">Read-only · sourced from Future → Properties settings · equity = appraised value − remaining mortgage</div>
+        </div>`;
+      }
+
+      function openPropertyEditorFromAssets(pid) {
+        // Navigate to Future tab — renderFuture() will reload ftProperties from saved scenario
+        showTab('future', document.querySelector('.nt[data-tab="future"]'));
+        // After renderFuture completes synchronously, open settings on Properties tab
+        setTimeout(() => {
+          const p = ftProperties.find(x => x.id === pid);
+          if (p) p.expanded = true;
+          ftOpenSettings('properties');
+          // Scroll the specific card into view after the panel renders
+          setTimeout(() => {
+            const card = document.getElementById('ft-pc-' + pid);
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 60);
+        }, 0);
       }
 
       function populateAcctTypeSelect(selectedType) {
@@ -2928,10 +3112,11 @@
       }
 
       function delAcct(id) {
-        if (!confirm('Delete account? Funds linked to this account will be unlinked.')) return;
-        S.accounts = S.accounts.filter(x => String(x.id) !== String(id));
-        delete S.portAcctToggles[id];
-        ps(); renderAccounts();
+        moConfirm('Delete account? Funds linked to this account will be unlinked.', () => {
+          S.accounts = S.accounts.filter(x => String(x.id) !== String(id));
+          delete S.portAcctToggles[id];
+          ps(); renderAccounts();
+        });
       }
 
       // ── Account Types Manager ──────────────────────────────────────
@@ -3102,12 +3287,12 @@
       }
 
       function addAcctCategory() {
-        const name = prompt('Category name:');
-        if (!name) return;
-        const isInv = confirm('Is this an Investment category? (OK = Investment, Cancel = Cash/Savings)');
-        const id = 'cat_' + Date.now();
-        S.accountCategories.push({ id, name, isInvestment: isInv });
-        ps(); renderAcctTypesList();
+        moPrompt('Category name:', name => {
+          moConfirm('Is this an Investment category?',
+            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: true }); ps(); renderAcctTypesList(); },
+            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: false }); ps(); renderAcctTypesList(); }
+          );
+        });
       }
 
       function renameAcctCategory(id, name) {
@@ -3121,25 +3306,29 @@
       }
       function setAcctTypeBucket(id, bucketId) {
         const t = S.accountTypes?.find(x => String(x.id) === String(id));
-        if (t) { t.bucketId = bucketId; ps(); }
+        if (t) { t.bucketId = bucketId; ps(); renderAcctTypesList(); }
       }
 
       function delAcctCategory(id) {
         const types = S.accountTypes?.filter(t => String(t.categoryId) === String(id)) || [];
-        if (types.length > 0) {
-          if (!confirm(`This category has ${types.length} type(s). Delete category and all its types?`)) return;
+        const doDelete = () => {
           types.forEach(t => delAcctTypeById(t.id, false));
+          S.accountCategories = S.accountCategories.filter(c => String(c.id) !== String(id));
+          ps(); renderAcctTypesList();
+        };
+        if (types.length > 0) {
+          moConfirm(`This category has ${types.length} type(s). Delete category and all its types?`, doDelete);
+        } else {
+          doDelete();
         }
-        S.accountCategories = S.accountCategories.filter(c => String(c.id) !== String(id));
-        ps(); renderAcctTypesList();
       }
 
       function addAcctType(categoryId) {
-        const name = prompt('Type name (e.g. "Mirae Asset", "IRP"):');
-        if (!name) return;
-        const id = 'type_' + Date.now();
-        S.accountTypes.push({ id, name: name.trim(), categoryId });
-        ps(); renderAcctTypesList();
+        moPrompt('Type name (e.g. "Mirae Asset", "IRP"):', name => {
+          const id = 'type_' + Date.now();
+          S.accountTypes.push({ id, name: name.trim(), categoryId });
+          ps(); renderAcctTypesList();
+        });
       }
 
       function renameAcctType(id, name) {
@@ -3150,12 +3339,18 @@
       function delAcctType(id) { delAcctTypeById(id, true); }
       function delAcctTypeById(id, withConfirm) {
         const using = S.accounts.filter(a => String(a.type) === String(id));
-        if (using.length > 0) {
-          if (withConfirm && !confirm(`${using.length} account(s) use this type. They will be set to "other". Continue?`)) return;
+        const doDelete = () => {
           using.forEach(a => a.type = 'other-cash');
+          S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
+          ps(); renderAcctTypesList();
+        };
+        if (using.length > 0 && withConfirm) {
+          moConfirm(`${using.length} account(s) use this type. They will be set to "other". Continue?`, doDelete);
+        } else {
+          if (using.length > 0) using.forEach(a => a.type = 'other-cash');
+          S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
+          ps(); renderAcctTypesList();
         }
-        S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
-        ps(); renderAcctTypesList();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -3441,7 +3636,7 @@
         const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0;
         const retPct = parseFloat(document.getElementById('f-ret').value) || 10;
         if (!ticker) return;
-        if (rawAcct === '' || rawAcct == null) { alert('Please add an investment account first (Accounts tab → Add account).'); return; }
+        if (rawAcct === '' || rawAcct == null) { alert('Please add an investment account first (Assets tab → Add account).'); return; }
 
         let value;
         const manualVal = parseFloat(document.getElementById('f-val').value.replace(/,/g, '')) || 0;
@@ -3462,7 +3657,7 @@
         syncAccountsFromPortfolio();
         ps(); closeModal('m-fund'); renderPortfolio();
       }
-      function delFund(id) { if (!confirm('Remove?')) return; S.funds = S.funds.filter(x => String(x.id) !== String(id)); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }
+      function delFund(id) { moConfirm('Remove this fund?', () => { S.funds = S.funds.filter(x => String(x.id) !== String(id)); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }); }
 
       // ══════════════════════════════════════════════════════════════
       // REBALANCE
@@ -3718,7 +3913,16 @@
       function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
       function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
       function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
-      function addStress() { const n = prompt('Event name:'); if (!n) return; const a = parseFloat(prompt('Cost ($):') || '0'), y = parseInt(prompt('Year:') || NY); S.stressEvents.push({ name: n, amount: a, year: y }); ps(); renderStress(); updateProj(); }
+      function addStress() {
+        moPrompt('Event name:', n => {
+          moPrompt('Cost ($):', a => {
+            moPrompt('Year:', y => {
+              S.stressEvents.push({ name: n, amount: parseFloat(a) || 0, year: parseInt(y) || NY });
+              ps(); renderStress(); updateProj();
+            }, String(NY));
+          }, '0');
+        });
+      }
       function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
 
       // ══════════════════════════════════════════════════════════════
@@ -3799,7 +4003,7 @@
         ps(); renderGoals(); renderOverview();
       }
       function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => String(x.id) === String(S.editGoalId)), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes, hidden: false }); ps(); closeModal('m-goal'); renderGoals(); renderOverview(); }
-      function delGoal(id) { if (!confirm('Remove?')) return; S.goals = S.goals.filter(x => String(x.id) !== String(id)); ps(); renderGoals(); renderOverview(); }
+      function delGoal(id) { moConfirm('Remove this goal?', () => { S.goals = S.goals.filter(x => String(x.id) !== String(id)); ps(); renderGoals(); renderOverview(); }); }
 
       // ══════════════════════════════════════════════════════════════
       // SPREADSHEET — overlay-textarea architecture
@@ -4239,7 +4443,7 @@
         S.ssData = D().map(row => { const nr = [...row]; const [mv] = nr.splice(from, 1); nr.splice(to, 0, mv); return nr; });
         ssDragCol = null; ps(); buildSS();
       }
-      function ssRenameCol(ci) { const n = prompt('Rename column:', C()[ci]); if (n) { C()[ci] = n; ps(); buildSS(); } }
+      function ssRenameCol(ci) { moPrompt('Rename column:', n => { C()[ci] = n; ps(); buildSS(); }, C()[ci]); }
 
       // ── row/col management ────────────────────────────────────────
       function ssAddRow() { D().push(new Array(NC()).fill('')); ps(); buildSS(); }
@@ -4251,14 +4455,15 @@
         ps(); buildSS();
       }
       function ssAddCol() {
-        const name = prompt('Column name:', 'New col'); if (!name) return;
-        C().push(name); S.ssData = D().map(r => [...r, '']); ps(); buildSS();
+        moPrompt('Column name:', name => { C().push(name); S.ssData = D().map(r => [...r, '']); ps(); buildSS(); }, 'New col');
       }
       function ssDelCol() {
-        if (NC() <= 1) return; if (!confirm('Delete last column?')) return;
-        C().pop(); S.ssData = D().map(r => { const nr = [...r]; nr.pop(); return nr; });
-        if (ssC >= NC()) ssC = NC() - 1; ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
-        ps(); buildSS();
+        if (NC() <= 1) return;
+        moConfirm('Delete last column?', () => {
+          C().pop(); S.ssData = D().map(r => { const nr = [...r]; nr.pop(); return nr; });
+          if (ssC >= NC()) ssC = NC() - 1; ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
+          ps(); buildSS();
+        });
       }
       function ssRecalc() { ps(); buildSS(); renderLifeCharts(); }
 
@@ -4725,9 +4930,10 @@
 
 
       function delSnap(i) {
-        if (!confirm('Delete snapshot?')) return;
-        S.snapshots.splice(i, 1);
-        ps(); renderSettings(); renderOverview();
+        moConfirm('Delete snapshot?', () => {
+          S.snapshots.splice(i, 1);
+          ps(); renderSettings(); renderOverview();
+        });
       }
 
       function snapDragStart(e, i) {
@@ -5342,7 +5548,8 @@
         projectionStartingAge: 25, expInflation: 2.5, maxAge: 100,
         ssEnabled: false, ssBenefit: 2500, ssClaimAge: 67,
         rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15,
-        retireTaxEnabled: false, numFormat: 'compact'
+        retireTaxEnabled: false, numFormat: 'compact',
+        retireSpendMode: '4pct', inheritanceTarget: 0
       };
       // Income streams (replaces single Job event)
       let ftIncomeStreams = [];
@@ -5512,13 +5719,14 @@
 
       function ftDeleteScenario(id) {
         if (ftScenarios.length <= 1) return;
-        if (!confirm('Delete this scenario?')) return;
-        ftScenarios = ftScenarios.filter(s => s.id !== id);
-        if (ftActiveScenarioId === id) {
-          ftActiveScenarioId = ftScenarios[0].id;
-          if (ftScenarios[0].data) { ftLoadScenarioData(ftScenarios[0].data); ftResetNextId(); }
-        }
-        ftRenderScenarioBar(); ftRenderPanel(); ftRecalc(); ftPersistScenarios();
+        moConfirm('Delete this scenario?', () => {
+          ftScenarios = ftScenarios.filter(s => s.id !== id);
+          if (ftActiveScenarioId === id) {
+            ftActiveScenarioId = ftScenarios[0].id;
+            if (ftScenarios[0].data) { ftLoadScenarioData(ftScenarios[0].data); ftResetNextId(); }
+          }
+          ftRenderScenarioBar(); ftRenderPanel(); ftRecalc(); ftPersistScenarios();
+        });
       }
 
       function ftRenameScenario(id, name) {
@@ -5808,8 +6016,9 @@
         const propScheds = ftProperties.map(p => ({ p, mort: ftCalcPropMortgage(p), sched: ftCalcPropSchedule(p) }));
 
         const todayNW = ftGetTodayNW();
-        let liquidNW = todayNW; // will be re-anchored after projectionStartingAge row
-        let k401Bal = 0;
+        const liquidSeed = ftNwTodayOv !== null ? ftNwTodayOv : ftGetLiquidNW();
+        let liquidNW = liquidSeed; // liquid accounts only — re-anchored at projectionStartingAge
+        let retirementBal = ftGetRetirementBal();
         let cumSav = 0;
         let out = [];
 
@@ -5902,7 +6111,8 @@
           let ot = oneTimeEvs.filter(e => e.age === age).reduce((s, e) => s + e.amount, 0);
           let extraPmt = 0;
           for (const { p } of propScheds) for (const ep of (p.extraPayments || [])) if (ep.age === age) extraPmt += ep.amount;
-          k401Bal = isHistory ? 0 : k401Bal * (1 + roc) + contrib401k;
+          const retBase = isHistory ? 0 : (age === curAge ? ftGetRetirementBal() : retirementBal);
+          retirementBal = isHistory ? 0 : retBase * (1 + roc) + contrib401k;
           let realEstateEquity = 0;
           for (const { p } of propScheds) {
             if (age >= p.purchaseAge) {
@@ -5919,7 +6129,7 @@
               investmentPropertyEquity += cv - ftCalcRemainingDebt(p, yo);
             }
           }
-          const investableNW = liquidNW + k401Bal + investmentPropertyEquity;
+          const investableNW = liquidNW + retirementBal + investmentPropertyEquity;
 
           // Required savings vs Actual surplus
           const netSavings = netHH - living - fixedCosts;
@@ -5973,21 +6183,44 @@
             }
           }
 
-          const maxAllowance = netHH - fixedCosts;
-          const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
-          const freeSpend = Math.max(0, Math.round(rawFreeSpend));
-
-          const availableCash = netHH - living - fixedCosts;
-          const monthlySurplus = Math.round((availableCash - requiredSavings) / 12);
-
-          const budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo' +
-            '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts / 12)) + '/mo' +
-            '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo' +
-            '\n = Max Allowance: ' + ftFmt(freeSpend) + '/mo';
-
-          const surplusTip = 'Calculation:\nMax Allowance: ' + ftFmt(Math.round(rawFreeSpend)) + '/mo' +
-            '\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo' +
-            '\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+          let freeSpend, monthlySurplus, budgetTip, surplusTip;
+          const isRetired = !isHistory && age > ftGlobals.retireAge;
+          if (isRetired) {
+            const rSpendMode = ftGlobals.retireSpendMode || '4pct';
+            if (rSpendMode === '4pct') {
+              const retireMonthlyMax = Math.max(0, Math.round((investableNW * 0.04) / 12));
+              freeSpend = retireMonthlyMax;
+              monthlySurplus = retireMonthlyMax - Math.round(living / 12);
+              discTooltip = '4% Rule · investable NW ' + ftFmt(Math.round(investableNW)) + ' × 4% ÷ 12 = ' + ftFmt(retireMonthlyMax) + '/mo ceiling';
+              budgetTip = '4% Rule\nInvestable NW: ' + ftFmt(Math.round(investableNW)) + '\n× 4% annually: ' + ftFmt(Math.round(investableNW * 0.04)) + '/yr\n= Monthly ceiling: ' + ftFmt(retireMonthlyMax) + '/mo';
+              surplusTip = '4% ceiling: ' + ftFmt(retireMonthlyMax) + '/mo\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+            } else {
+              const yearsLeft = (ftGlobals.maxAge || 100) - age;
+              const projectedNWNoSpend = investableNW * Math.pow(1 + roc, yearsLeft);
+              const spendableWealth = Math.max(0, projectedNWNoSpend - (ftGlobals.inheritanceTarget || 0));
+              const annualWithdrawal = yearsLeft > 0
+                ? (roc > 0 ? spendableWealth * roc / (Math.pow(1 + roc, yearsLeft) - 1) : spendableWealth / yearsLeft)
+                : spendableWealth;
+              freeSpend = Math.max(0, Math.round(annualWithdrawal / 12));
+              monthlySurplus = freeSpend - Math.round(living / 12);
+              discTooltip = 'Inheritance Goal · leave ' + ftFmt(ftGlobals.inheritanceTarget || 0) + ' at age ' + (ftGlobals.maxAge || 100) + ' · projected NW (no spend): ' + ftFmt(Math.round(projectedNWNoSpend));
+              budgetTip = 'Inheritance Goal mode\nYears remaining: ' + yearsLeft + '\nProjected NW (no spend): ' + ftFmt(Math.round(projectedNWNoSpend)) + '\nTarget to leave: ' + ftFmt(ftGlobals.inheritanceTarget || 0) + '\nSpendable: ' + ftFmt(Math.round(spendableWealth)) + '\nAnnual withdrawal: ' + ftFmt(Math.round(annualWithdrawal));
+              surplusTip = 'Inheritance ceiling: ' + ftFmt(freeSpend) + '/mo\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+            }
+          } else {
+            const maxAllowance = netHH - fixedCosts;
+            const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
+            freeSpend = Math.max(0, Math.round(rawFreeSpend));
+            const availableCash = netHH - living - fixedCosts;
+            monthlySurplus = Math.round((availableCash - requiredSavings) / 12);
+            budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo'
+              + '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts / 12)) + '/mo'
+              + '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo'
+              + '\n = Max Allowance: ' + ftFmt(freeSpend) + '/mo';
+            surplusTip = 'Calculation:\nMax Allowance: ' + ftFmt(Math.round(rawFreeSpend)) + '/mo'
+              + '\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo'
+              + '\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
+          }
 
           const netSavTip = 'Calculation:\nNet Take-home: ' + ftFmt(netHH) + '/yr' +
             '\n - Adjusted Living: ' + ftFmt(living) +
@@ -6009,18 +6242,18 @@
           const nwOv = ftOvMap[age]?.nw;
 
           if (isHistory) {
-            newLiq = (nwOv !== undefined) ? (nwOv - Math.round(realEstateEquity)) : null;
+            newLiq = (nwOv !== undefined) ? nwOv : null;
           } else if (age === curAge) {
-            // Anchor to actual today's NW
-            newLiq = (nwOv !== undefined) ? (nwOv - Math.round(realEstateEquity)) : (todayNW - Math.round(realEstateEquity));
+            // Anchor to liquid accounts only
+            newLiq = (nwOv !== undefined) ? nwOv : liquidSeed;
           } else if (nwOv !== undefined) {
-            newLiq = nwOv - Math.round(realEstateEquity);
+            newLiq = nwOv;
           }
 
           let displayLiq = newLiq;
 
           liquidNW = isHistory ? liquidNW : newLiq;
-          const nw = displayLiq + Math.round(realEstateEquity);
+          const nw = (displayLiq || 0) + Math.round(retirementBal) + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
           cumSav = isHistory ? cumSav : cumSav + Math.max(0, netSavings);
 
@@ -6044,6 +6277,7 @@
             }
           }
           if (age === ftGlobals.retireAge) {
+            console.log('[ftCalcRows] retireAge=' + age, { liquidNW, retirementBal, investmentPropertyEquity, investableNW, nw });
             if (investableNW >= ftGlobals.retireNW * 1.2) msDots.push({ color: '#16a34a', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · On track' });
             else if (investableNW >= ftGlobals.retireNW) msDots.push({ color: '#d97706', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · Tight' });
             else msDots.push({ color: '#dc2626', tip: 'Need ' + ftFmt(ftGlobals.retireNW) + ' · Projected ' + ftFmt(investableNW) + ' · Shortfall' });
@@ -6053,7 +6287,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + requiredSavings + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isHighlight, ot: ot + extraPmt, k401Bal: Math.round(k401Bal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes });
         }
         return out;
       }
@@ -6648,15 +6882,27 @@
         const taxCtrl = ftGlobals.taxMode === 'auto'
           ? '<span class="ft-tax-auto">auto ~' + autoTaxPct + '%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'flat\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Override</button>'
           : '<input class="ft-gl-inp" type="number" value="' + ftGlobals.taxFlat + '" oninput="ftGlobals.taxFlat=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"> <span class="ft-gl-unit">%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'auto\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Auto</button>';
-        // Retirement conflict check for goal mode settings
+
+        // Retirement conflict check
         const goalLastChildExpAge = ftLifeEvents.filter(e => e.type === 'child')
           .flatMap(ce => (ce.stages || []).map(st => ce.age + st.childAgeEnd))
           .reduce((m, v) => Math.max(m, v), 0);
-        const goalRetireConflict = ftGlobals.discMode === 'goal' && ftGlobals.retireAge > 0 && goalLastChildExpAge > ftGlobals.retireAge
+        const goalRetireConflict = ftGlobals.retireAge > 0 && goalLastChildExpAge > ftGlobals.retireAge
           ? '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:6px">⚠ Retirement age ' + ftGlobals.retireAge + ' is before last child expense at age ' + goalLastChildExpAge + ' — extend retirement age or shorten child cost stages.</div>' : '';
+
+        // Budget mode sub-controls (savings rate input OR goal-based note)
         const discControls = ftGlobals.discMode === 'rate'
           ? '<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.savingsRate + '" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
-          : '<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireAge + '" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div><div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireNW + '" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">$</span></div><div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:4px;font-family:var(--mono)">4% withdrawal — ' + ftFmt(ftGlobals.retireNW) + ' supports ~' + ftFmt(Math.round(ftGlobals.retireNW * 0.04)) + '/yr in retirement spending</div>' + goalRetireConflict + '<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
+          : '<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
+
+        // Retirement spending mode
+        const spendMode = ftGlobals.retireSpendMode || '4pct';
+        const inheritCtrl = spendMode === 'inheritance'
+          ? '<div class="ft-gl-row" style="margin-top:6px"><label class="ft-gl-lbl">Inheritance target</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.inheritanceTarget || 0) + '" oninput="ftGlobals.inheritanceTarget=+this.value;ftSaveScenario();ftRecalc()" style="width:90px"><span class="ft-gl-unit">$</span></div>'
+          : '';
+        const spendModeCtrl = '<div class="ft-gl-row" style="align-items:flex-start;margin-top:8px"><label class="ft-gl-lbl">Retirement spending</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (spendMode === '4pct' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'4pct\';ftSaveScenario();ftRenderPanel();ftRecalc()" style="font-size:11px">4% Rule</button><button class="ft-chip ' + (spendMode === 'inheritance' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'inheritance\';ftSaveScenario();ftRenderPanel();ftRecalc()" style="font-size:11px">Inheritance Goal</button></div></div>'
+          + inheritCtrl;
+
         const rothBal = ftGlobals.rothBalanceOv !== null ? ftGlobals.rothBalanceOv : (S?.accounts?.find(a => a.type === 'brokerage-roth')?.balance || 0);
         const retTax = ftGlobals.retireTaxEnabled ? '<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
           + '<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="' + rothBal + '" oninput="ftGlobals.rothBalanceOv=+this.value;ftSaveScenario();ftRecalc()" style="width:110px">' + (ftGlobals.rothBalanceOv === null ? '<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv=' + rothBal + ';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>' : '<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>') + '</div>'
@@ -6671,25 +6917,39 @@
           ? '<span style="font-family:var(--mono);font-size:12px">' + ftFmt(ftNwTodayOv) + '</span> <button class="btn bsm" onclick="ftClearNwOv(\'today\');ftRenderPanel()" style="font-size:10px;padding:2px 6px;margin-left:4px">reset</button>'
           : '<span style="font-size:10px;color:var(--teal);font-family:var(--mono)">' + ftFmt(todayNW) + ' (synced)</span> <button class="btn bsm" onclick="ftStartEditNwOv(\'today\')" style="font-size:10px;padding:2px 6px;margin-left:4px">override</button>';
 
+        // Section header helper
+        const SH = label => '<div style="margin:18px 0 10px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">' + label + '</span><div style="flex:1;height:1px;background:var(--border)"></div></div>';
+
         return '<div class="ft-panel-hdr">Global Settings</div>'
+          // ── GENERAL ────────────────────────────────────────────────────
+          + SH('General')
           + '<div class="ft-gl-row"><label class="ft-gl-lbl">Projection starting age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.projectionStartingAge + '" oninput="ftGlobals.projectionStartingAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
           + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Starting NW</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + nwCtrl + '</div></div>'
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr<br><span style="font-size:10px;color:var(--ink3)">(401k-eligible streams only)</span></label><input class="ft-gl-inp" type="number" value="' + ftGlobals.f401k + '" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div>'
+          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.numFormat !== 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip ' + (ftGlobals.numFormat === 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
+          // ── RETURNS & TAXES ─────────────────────────────────────────────
+          + SH('Returns &amp; Taxes')
           + '<div class="ft-gl-row"><label class="ft-gl-lbl">Real portfolio return<br><span style="font-size:10px;color:var(--ink3)">inflation-adjusted</span></label><input class="ft-gl-inp" type="number" value="' + ftGlobals.roc + '" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           + '<div class="ft-gl-row"><label class="ft-gl-lbl">Expense inflation / yr</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.expInflation + '" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
           + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Tax rate</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + taxCtrl + '</div></div>'
           + (ftGlobals.taxMode === 'auto' ? '<div class="ft-gl-row" style="margin-top:4px"><label class="ft-gl-lbl" style="font-size:11px">State</label><input class="ft-gl-inp" type="text" value="' + (ftGlobals.state || 'CA') + '" oninput="ftGlobals.state=this.value.toUpperCase();ftSaveScenario();ftRecalc()" style="width:70px"></div><div id="ft-tax-detail-note" style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal marginal + ' + (ftGlobals.state || 'CA') + ' state (' + ((STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default) * 100).toFixed(1) + '%) · 401k-eligible streams reduce taxable income</div>' : '')
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.numFormat !== 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip ' + (ftGlobals.numFormat === 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
-          + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          + '<div class="ft-panel-hdr" style="margin-bottom:8px">Discretionary Budgeting</div>'
-          + '<div class="ft-gl-row" style="align-items:flex-start;margin-bottom:10px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.discMode === 'rate' ? 'on' : '') + '" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip ' + (ftGlobals.discMode === 'goal' ? 'on' : '') + '" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
+          // ── RETIREMENT ──────────────────────────────────────────────────
+          + SH('Retirement')
+          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireAge + '" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
+          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireNW + '" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()" style="width:90px"><span class="ft-gl-unit">$</span></div>'
+          + '<div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:6px;font-family:var(--mono)">4% withdrawal — ' + ftFmt(ftGlobals.retireNW) + ' supports ~' + ftFmt(Math.round(ftGlobals.retireNW * 0.04)) + '/yr in retirement spending</div>'
+          + goalRetireConflict
+          + '<div class="ft-gl-row" style="align-items:flex-start;margin-top:4px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.discMode === 'rate' ? 'on' : '') + '" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip ' + (ftGlobals.discMode === 'goal' ? 'on' : '') + '" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
           + discControls
-          + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.ssEnabled ? ' checked' : '') + ' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
+          + spendModeCtrl
+          + '<div style="height:1px;background:var(--border);margin:12px 0 8px"></div>'
+          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.ssEnabled ? ' checked' : '') + ' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
           + ssCtrl
-          + '<div style="height:1px;background:var(--border);margin:12px 0"></div>'
-          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Retirement Tax Estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.retireTaxEnabled ? ' checked' : '') + ' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
-          + retTax;
+          + '<div style="height:1px;background:var(--border);margin:12px 0 8px"></div>'
+          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl">Retirement tax estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.retireTaxEnabled ? ' checked' : '') + ' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
+          + retTax
+          // ── CONTRIBUTIONS ───────────────────────────────────────────────
+          + SH('Contributions')
+          + '<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr<br><span style="font-size:10px;color:var(--ink3)">(401k-eligible streams only)</span></label><input class="ft-gl-inp" type="number" value="' + ftGlobals.f401k + '" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div>';
       }
 
       // ── Income tab ─────────────────────────────────────────────────
@@ -6766,7 +7026,7 @@
         let spendableHtml = '';
         if (ftGlobals.retireTaxEnabled && rRet) {
           const rothBal = ftGlobals.rothBalanceOv !== null ? ftGlobals.rothBalanceOv : (S?.accounts?.find(a => a.type === 'brokerage-roth')?.balance || 0);
-          const k401 = rRet.k401Bal || 0;
+          const k401 = rRet.retirementBal || 0;
           const totalNW = rRet.nw;
           const taxable = Math.max(0, totalNW - rothBal - k401);
           const spendable = Math.round(rothBal + k401 * (1 - ftGlobals.k401TaxRate / 100) + taxable * (1 - ftGlobals.capGainsRate / 100));
@@ -7052,7 +7312,10 @@
               }
               if (c === 'monthlySurplus') {
                 const color = r.monthlySurplus > 0 ? '#0ea5e9' : (r.monthlySurplus < 0 ? '#dc2626' : 'var(--ink)');
-                return '<td style="color:' + color + ';font-family:var(--mono);font-weight:600" title="Leftover after all expenses and goals">'
+                const surpTip = r.isRetired
+                  ? (r.discTooltip || 'Retirement spending surplus').replace(/"/g, '&quot;')
+                  : 'Leftover after all expenses and goals';
+                return '<td style="color:' + color + ';font-family:var(--mono);font-weight:600" title="' + surpTip + '">'
                   + (r.monthlySurplus >= 0 ? '+' : '') + ftFmt(r.monthlySurplus) + '/mo</td>';
               }
               // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
