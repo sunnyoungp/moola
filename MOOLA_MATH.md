@@ -2,7 +2,7 @@
 
 > Canonical equations for every column in the Moola projection table.
 > Detailed enough to fact-check any cell without reading source code.
-> Last updated: 2026-04-15 (reflects all fixes through session 65057b12)
+> Last updated: 2026-04-15 (reflects all fixes through commit f512a96)
 
 ---
 
@@ -173,12 +173,20 @@ requiredSavings = shortfall × RoC / ((1 + RoC)^yearsRemaining − 1)   [if RoC 
 
 > **Retirement base fix:** Previously used `investableNW = liquidNW + retirementBal + investmentPropertyEquity`. Investment property equity grows at ~4% appreciation, not portfolio RoC, so projecting it at RoC understated required savings. Now excluded.
 
-### Downstream Shortfall Warning
-After binding goal is selected, all later goals are forward-projected assuming current `requiredSavings` rate. If any later goal falls short:
+### Downstream Shortfall Warning ✦ Fixed (post-fix)
+After the binding goal is selected, all downstream goals are checked to see if the binding goal's required savings rate is sufficient to fund them too.
+
+For each downstream goal `d`:
 ```
-projected = currentBase × (1 + RoC)^yrs + requiredSavings × ((1 + RoC)^yrs − 1) / RoC
+annualGap = d.req − requiredSavings   [where d.req was computed by requiredSavingsForGoal]
+
+If annualGap > 0:
+  ⚠ warn: "[goal] needs $d.req/yr · gap vs. binding goal: +$annualGap/yr"
 ```
-A ⚠ warning is appended to the `discTooltip` and surfaces in the Required Savings hover card.
+
+`d.req` is already the correctly compounded annuity savings needed for that goal — computed identically to `requiredSavings` in the main loop. The warning simply surfaces the per-year savings gap: how many additional dollars per year would be needed to simultaneously fund both the binding and downstream goal.
+
+> **Previously bugged:** The old code projected forward using `requiredSavings` as a flat constant contribution for the FULL horizon to the downstream goal (e.g. 35 years to retirement). This produced a fabricated lump-sum shortfall figure that was wildly pessimistic because it ignored that actual net savings grows dramatically as income rises. The result was spurious warnings like "$600k short of $3M at age 60" when the table showed NW reaching $9.5M.
 
 ### Rate Mode
 If `discMode = 'rate'`: `requiredSavings = netHH × savingsRate%`
