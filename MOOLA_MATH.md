@@ -236,13 +236,29 @@ Remaining principal is amortized using the standard mortgage formula, accounting
 nw = liquidNW + retirementBal + realEstateEquity
 ```
 
-### Investable NW (used for retirement 4% rule only)
-```
-investableNW = liquidNW + retirementBal + investmentPropertyEquity
-```
-Excludes primary home equity (illiquid). Includes investment properties because their equity can be liquidated. Used **only** for the 4% rule withdrawal calculation in retirement — not for goal savings calculations.
+### Usable NW / Investable NW (Rule of Accessibility)
+The projection engine operates on a strict rule of accessibility:
+- **Liquid NW:** taxable/accessible accounts (brokerage, savings, cash) — fully accessible.
+- **Investment Property Equity:** properties not lived in — fully accessible via sale.
+- **Retirement Accounts:** tax-advantaged (401k/IRA) — **locked** before `retireAge`, fully accessible at or after `retireAge`.
+- **Primary Home Equity:** living residence — **never** counted as usable wealth.
 
----
+```
+If age < retireAge:
+  investableNW = liquidNW + investmentPropertyEquity
+
+If age >= retireAge:
+  investableNW = liquidNW + investmentPropertyEquity + retirementBal
+```
+Used for "On track" checks in the UI and for the 4% rule withdrawal calculation in retirement.
+
+### Retirement Goal Projection
+When projecting future Net Worth to determine if a Retirement Goal is "fully funded" by compounding alone:
+```
+projectedNW = (liquidNW + retirementBal)_{curAge} × (1 + RoC)^(retireAge - curAge)
+            + futureInvestmentPropertyEquity_{retireAge}
+```
+Investment properties are rigorously projected to the retirement age via their individual appreciation rates and mortgage amortization schedules, not the portfolio RoC.
 
 ## 9. Retirement Spending (Post-Retirement)
 
