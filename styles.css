@@ -536,7 +536,8 @@ textarea {
   left: 0;
   right: auto;
   transform: none;
-  width: 330px;
+  width: 350px;
+  min-width: 350px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--rl);
@@ -620,55 +621,63 @@ textarea {
 }
 
 .fc-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
 }
 
 .fc-deficit {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
   font-family: var(--mono);
-  color: #dc2626;
+  color: var(--ink);
   margin-top: 6px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .fc-section {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: .08em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .09em;
   text-transform: uppercase;
-  color: var(--ink3);
-  margin-bottom: 12px;
-  margin-top: 24px;
+  color: var(--ink4);
+  margin-bottom: 10px;
+  margin-top: 20px;
   border-top: 1px solid var(--border);
-  padding-top: 16px;
+  padding-top: 14px;
 }
 
 .fc-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .fc-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 12.5px;
+  min-height: 22px;
 }
 
 .fc-item-name {
   color: var(--ink);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 500;
+  gap: 6px;
+  font-weight: 400;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fc-item-pct {
@@ -681,8 +690,11 @@ textarea {
   font-family: var(--mono);
   color: var(--ink);
   font-size: 12px;
-  margin-right: 8px;
-  font-weight: 600;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 12px;
 }
 
 .fc-command {
@@ -703,6 +715,67 @@ textarea {
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.05em;
+}
+
+/* Indented operation row (+/–): 12px left indent to read as ledger */
+.fc-item--op .fc-item-name {
+  padding-left: 14px;
+}
+
+/* Result row (=): top separator, heavier weight */
+.fc-item--result {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+.fc-item--result .fc-item-name {
+  font-weight: 600;
+}
+.fc-item--result .fc-item-val {
+  font-weight: 600;
+}
+
+/* Usable Wealth summary block — modal conclusion row */
+.fc-usable {
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.fc-usable-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.fc-usable-caption {
+  font-size: 10px;
+  color: var(--ink4);
+  margin-top: 3px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+.fc-usable-val {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 12px;
+  flex-shrink: 0;
+}
+
+/* Footnote caption — replaces fc-command for surplus surplus notes */
+.fc-footnote {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--ink4);
+  font-style: italic;
+  line-height: 1.4;
 }
 
 /* Dark gradient card — for account/balance highlights */
