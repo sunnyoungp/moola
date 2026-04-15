@@ -661,15 +661,16 @@
 
     .fc-item-pct {
       font-family: var(--mono);
-      color: var(--ink2);
-      font-weight: 500;
+      color: var(--ink);
+      font-weight: 600;
     }
     
     .fc-item-val {
       font-family: var(--mono);
-      color: var(--ink4);
+      color: var(--ink);
       font-size: 12px;
       margin-right: 8px;
+      font-weight: 600;
     }
 
     .fc-command {

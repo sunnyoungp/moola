@@ -6296,16 +6296,20 @@
           const growth = prevLiq * roc;
           const organicNewLiq = Math.round(prevLiq + growth + netSavings - extraPmt);
           const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
+          const organicTotalNW = organicNewLiq + Math.round(retirementBal) + Math.round(realEstateEquity);
           const nwTip = isHistory
             ? 'Historical year: manual Net Worth entry only.'
             : hasNwOvForTip
-              ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicNewLiq + Math.round(retirementBal) + Math.round(realEstateEquity))
-              : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
-                '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
-                '\n + Added Wealth: ' + ftFmt(netSavings) +
-                // Note: one-time events are already part of netSavings now
-                (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
-                '\n = NEW BALANCE: ' + ftFmt(organicNewLiq);
+              ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicTotalNW)
+              : 'Liquid NW:\n  Previous balance: ' + ftFmt(prevLiq) +
+                '\n  + Market return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
+                '\n  + Net savings: ' + ftFmt(netSavings) +
+                (extraPmt !== 0 ? '\n  - Extra mortgage pmt: ' + ftFmt(extraPmt) : '') +
+                '\n  = New liquid NW: ' + ftFmt(organicNewLiq) +
+                (contrib401k > 0 ? '\n\n401k:\n  + Contribution this year: ' + ftFmt(contrib401k) : '') +
+                (Math.round(retirementBal) > 0 ? '\n  Retirement balance (total): ' + ftFmt(Math.round(retirementBal)) : '') +
+                (Math.round(realEstateEquity) > 0 ? '\n\nReal estate equity: ' + ftFmt(Math.round(realEstateEquity)) : '') +
+                '\n\nTOTAL NW: ' + ftFmt(organicTotalNW);
 
           let newLiq = organicNewLiq;
           const nwOv = ftOvMap[age]?.nw;
