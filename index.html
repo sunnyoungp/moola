@@ -6186,6 +6186,7 @@
           // One-time events are included to reflect real NW change from lumpy cash flows
           const netSavings = netHH - living - fixedCosts + ot;
           let requiredSavings = 0, discTooltip = '', noGoals = false;
+          let fundedGoals = []; // hoisted: accessible for out.push in all discMode branches
           if (ftGlobals.discMode === 'rate') {
             requiredSavings = netHH * ftGlobals.savingsRate / 100;
             discTooltip = 'Target savings based on ' + ftGlobals.savingsRate + '% rate';
@@ -6194,7 +6195,7 @@
             discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
             const pmts = [];
-            const fundedGoals = []; // goals configured but fully funded by compounding
+            // fundedGoals is declared above (hoisted) — goals configured but fully funded by compounding
 
             // Retirement — drop base<target outer guard; r<=0 means compounding already covers it
             if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
@@ -7365,7 +7366,7 @@
                   const contribLine = r.contrib401k > 0 ? `<div class="fc-item"><div class="fc-item-name">+ 401k contribution</div><div class="fc-item-val">+${ftFmt(r.contrib401k)}</div></div>` : '';
                   const retLine = r.retirementBal > 0 ? `<div class="fc-item"><div class="fc-item-name">Retirement balance (total)</div><div class="fc-item-val">${ftFmt(r.retirementBal)}</div></div>` : '';
                   const reLine = Math.round(r.realEstateEquity) > 0 ? `<div class="fc-section" style="margin:8px 12px 4px">Real Estate</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Equity (all properties)</div><div class="fc-item-val">${ftFmt(Math.round(r.realEstateEquity))}</div></div></div>` : '';
-                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth Breakdown</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div><div class="fc-list"><div class="fc-item" style="color:var(--ink3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em"><div class="fc-item-name">Liquid Portfolio</div></div><div class="fc-item"><div class="fc-item-name">Previous balance</div><div class="fc-item-val">${prevFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Market return (${roc}%)</div><div class="fc-item-val">${growthFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Net savings</div><div class="fc-item-val">${ftFmt(r.netSavings)}</div></div><div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px"><div class="fc-item-name" style="font-weight:600">= New liquid NW</div><div class="fc-item-val">${ftFmt(r.organicLiquid || r.liquidNW)}</div></div></div>${(r.contrib401k > 0 || r.retirementBal > 0) ? '<div class="fc-section" style="margin:8px 12px 4px">401k / Retirement</div><div class="fc-list">' + contribLine + retLine + '</div>' : ''}${reLine}<div class="fc-command" style="background:rgba(0,0,0,0.03);border-left-color:var(--fm)"><strong style="color:var(--fm)">TOTAL NW</strong>${totalNWFmt}</div></div>`;
+                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth Breakdown</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div><div class="fc-list"><div class="fc-item" style="color:var(--ink3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em"><div class="fc-item-name">Liquid Portfolio</div></div><div class="fc-item"><div class="fc-item-name">Previous balance</div><div class="fc-item-val">${prevFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Market return (${roc}%)</div><div class="fc-item-val">${growthFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Net savings</div><div class="fc-item-val">${ftFmt(r.netSavings)}</div></div><div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px"><div class="fc-item-name" style="font-weight:600">= New liquid NW</div><div class="fc-item-val">${ftFmt(r.liquidNW)}</div></div></div>${(r.contrib401k > 0 || r.retirementBal > 0) ? '<div class="fc-section" style="margin:8px 12px 4px">401k / Retirement</div><div class="fc-list">' + contribLine + retLine + '</div>' : ''}${reLine}<div class="fc-command" style="background:rgba(0,0,0,0.03);border-left-color:var(--fm)"><strong style="color:var(--fm)">TOTAL NW</strong>${totalNWFmt}</div></div>`;
                 }
                 return '<td class="ft-editable ' + (r.nw < 0 ? 'neg' : '') + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'nw\')" style="cursor:pointer"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nwCardHtml + MT(ftFmt(r.nw), 'future') + '</span></td>';
               }
