@@ -6174,6 +6174,13 @@
           const effectiveLiquidNW = nwOvForCalc !== undefined
             ? Math.round(nwOvForCalc - retirementBal - realEstateEquity)
             : liquidNW;
+          // retirementGoalBase: liquid cash + 401k/IRA accounts only.
+          // Investment property equity is excluded because it grows at property
+          // appreciation rate (not portfolio RoC), so projecting it at RoC
+          // would overstate the base and understate required savings.
+          const retirementGoalBase = nwOvForCalc !== undefined
+            ? Math.round(nwOvForCalc - realEstateEquity)
+            : (liquidNW + retirementBal);
 
           // Required savings vs Actual surplus
           // One-time events are included to reflect real NW change from lumpy cash flows
@@ -6187,9 +6194,9 @@
             discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
             const pmts = [];
-            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0 && investableNW < ftGlobals.retireNW) {
-              const r = requiredSavingsForGoal(investableNW, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
-              if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, useInvestable: true });
+            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0 && retirementGoalBase < ftGlobals.retireNW) {
+              const r = requiredSavingsForGoal(retirementGoalBase, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
+              if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false });
             }
             for (const { p } of propScheds) {
               if (p.purchaseAge > age) {
@@ -6229,7 +6236,8 @@
                 const downGoal = pmts[i];
                 if (downGoal.req > requiredSavings) {
                   const yrs = downGoal.targetAge - age;
-                  const baseNW = downGoal.useInvestable ? investableNW : effectiveLiquidNW;
+                  const baseNW = downGoal.goalBase !== undefined ? downGoal.goalBase
+                    : (downGoal.useInvestable ? investableNW : effectiveLiquidNW);
                   const projectedWithTopReq = baseNW * Math.pow(1 + roc, yrs) + (roc > 0 ? requiredSavings * (Math.pow(1 + roc, yrs) - 1) / roc : requiredSavings * yrs);
                   if (projectedWithTopReq < downGoal.targetNW) {
                     shortfalls.push(downGoal.label + ' (short by ' + ftFmt(Math.round(downGoal.targetNW - projectedWithTopReq)) + ')');
