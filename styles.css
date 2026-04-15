@@ -2643,11 +2643,12 @@
 
     /* ── Goals grid base (non-media) ─────────────────────────── */
     .chart-wrap {
-      position: relative;
-      min-width: 0;
-      overflow: hidden;
-      /* prevents canvas from escaping its container */
-    }
+    position: relative;
+    width: 100%;
+    /* Use flex-grow or height: 100% to fill the parent card */
+    height: 100%; 
+    display: flex;
+}
 
     .goals-grid {
       display: grid;

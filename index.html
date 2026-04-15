@@ -453,7 +453,7 @@
           <div class="card">
             <div class="sec">Allocation</div>
             <div style="display:flex;align-items:center;vertical-align:middle;gap:20px;flex-wrap:wrap">
-              <div class="chart-wrap" style="position:relative;height:210px;flex:1;min-width:180px">
+              <div class="chart-wrap">
                 <canvas id="allocChart"></canvas>
               </div>
               <div id="port-alloc-legend" class="custom-legend"
@@ -602,7 +602,7 @@
                   events</span>
               </div>
             </div>
-            <div class="chart-wrap" style="position:relative;height:290px"><canvas id="projChart"></canvas></div>
+            <div class="chart-wrap" style="position:relative"><canvas id="projChart"></canvas></div>
           </div>
         </div>
         <div class="card">
@@ -645,7 +645,7 @@
             <span>NW vs Goal Targets</span>
             <div style="display:flex;gap:10px;flex-wrap:wrap" id="goals-legend"></div>
           </div>
-          <div class="chart-wrap" style="position:relative;height:300px"><canvas id="goalsChart"></canvas></div>
+          <div class="chart-wrap" style="position:relative"><canvas id="goalsChart"></canvas></div>
         </div>
         <div id="goals-grid" class="goals-grid">
         </div>
@@ -679,7 +679,7 @@
         <div class="g2 mb-3">
           <div class="card">
             <div class="sec">Net Worth Trajectory</div>
-            <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeNW"></canvas></div>
+            <div class="chart-wrap" style="position:relative"><canvas id="lifeNW"></canvas></div>
           </div>
           <div class="card">
             <div class="sec">Income vs Expenses</div>
@@ -1772,17 +1772,28 @@
       // ── Supabase persistence ──────────────────────────────────────
       let _saveTimer = null;
 
-      async function ps() {
-        // Debounce Supabase writes — wait 800ms after last change before saving
+      async function ps(dataToSave) {
         clearTimeout(_saveTimer);
         _saveTimer = setTimeout(async () => {
-          const { data: { user } } = await db.auth.getUser();
-          if (!user) return;
-          await db.from('user_data').upsert({
-            user_id: user.id,
-            data: S,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
+          // 1. Get the current user FRESH from Supabase
+          const { data: { user }, error } = await db.auth.getUser();
+
+          // 2. Add defensive checks
+          if (error || !user) {
+            console.error("Auth session lost, aborting save.");
+            return;
+          }
+
+          // 3. Ensure you are sending the authenticated user's ID
+          const { error: upsertError } = await db
+            .from('user_data')
+            .upsert({
+              user_id: user.id, // Explicitly use the authenticated user ID
+              data: dataToSave,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' }); // Only conflicts on this specific user
+
+          if (upsertError) console.error("Save failed:", upsertError);
         }, 800);
       }
 
@@ -2135,8 +2146,8 @@
           if (el) el.style.display = fmtDisplay;
         });
       }
-      function setCur(c) { dispCur = c; S.settings.currency = c; syncCurUI(); ps(); reRender(); }
-      function setKrwFmt(f, el) { krwFmt = f; S.settings.krwFmt = f; document.querySelectorAll('#krw-fmt-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); ps(); reRender(); }
+      function setCur(c) { dispCur = c; S.settings.currency = c; syncCurUI(); ps(S); reRender(); }
+      function setKrwFmt(f, el) { krwFmt = f; S.settings.krwFmt = f; document.querySelectorAll('#krw-fmt-tabs .stab').forEach(t => t.classList.remove('on')); el.classList.add('on'); ps(S); reRender(); }
       function getFX() { return parseFloat(S.settings.fx || 1370); }
       function cvt(usd) { return dispCur === 'KRW' ? usd * getFX() : usd; }
       function sym() { return dispCur === 'KRW' ? '₩' : '$'; }
@@ -2171,7 +2182,7 @@
 
       function toggleTab(tabId) {
         pv()[tabId] = !pv()[tabId];
-        ps();
+        ps(S);
         syncPrivacyUI();
         reRender();
         updateAllChartAxes();
@@ -2232,7 +2243,7 @@
         pv().global = next;
         pv().dashboard = next;
         pv().nw = next;
-        ps(); syncPrivacyUI(); reRender();
+        ps(S); syncPrivacyUI(); reRender();
         updateAllChartAxes();
       }
 
@@ -2240,14 +2251,14 @@
         const next = !pv().dashboard;
         pv().dashboard = next;
         pv().nw = next;
-        ps(); syncPrivacyUI(); renderOverview();
+        ps(S); syncPrivacyUI(); renderOverview();
         updateAllChartAxes();
       }
 
       function toggleNW() {
         // NW only — no cascade
         pv().nw = !pv().nw;
-        ps(); syncPrivacyUI(); renderOverview();
+        ps(S); syncPrivacyUI(); renderOverview();
       }
 
       function syncPrivacyUI() {
@@ -2465,7 +2476,7 @@
           acct.balance = Math.round(total * 100) / 100;
           delete acct.manualOverride;
         });
-        ps();
+        ps(S);
       }
 
       function reRender() {
@@ -2628,7 +2639,7 @@
           }
         }
       }
-      function toggleOvGoalsView() { S.ovGoalsView = (S.ovGoalsView === 'cards' ? 'bars' : 'cards'); ps(); renderOverview(); }
+      function toggleOvGoalsView() { S.ovGoalsView = (S.ovGoalsView === 'cards' ? 'bars' : 'cards'); ps(S); renderOverview(); }
 
       // ── Snapshot modal ─────────────────────────────────────────────────
       let editSnapIdx = null;
@@ -2676,7 +2687,7 @@
           S.snapshots.push(snap);
           S.snapshots.sort((a, b) => a.date.localeCompare(b.date));
         }
-        ps();
+        ps(S);
         closeModal('m-snap');
         renderOverview();
         if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
@@ -2686,7 +2697,7 @@
         if (editSnapIdx === null) return;
         moConfirm('Delete this snapshot?', () => {
           S.snapshots.splice(editSnapIdx, 1);
-          ps();
+          ps(S);
           closeModal('m-snap');
           renderOverview();
           if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
@@ -2694,12 +2705,12 @@
       }
 
       function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--fm)' : 'var(--border-strong)'};background:${v ? 'var(--fll)' : 'var(--surface)'};color:${v ? 'var(--f)' : 'var(--ink3)'};font-size:11px;font-weight:500;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
-      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(); }
+      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(S); }
 
       // ══════════════════════════════════════════════════════════════
       // ACCOUNTS
-      function setChartGroup(mode) { S.chartGroupingMode = mode; ps(); renderAccounts(); }
-      function setTableGroup(mode) { S.tableGroupingMode = mode; ps(); renderAccounts(); }
+      function setChartGroup(mode) { S.chartGroupingMode = mode; ps(S); renderAccounts(); }
+      function setTableGroup(mode) { S.tableGroupingMode = mode; ps(S); renderAccounts(); }
 
       function renderAccounts() {
         // Eagerly load Future scenario data so ftProperties is available
@@ -3112,14 +3123,14 @@
           // Default new investment accounts to ON in portfolio
           if (isInvestmentAcct(newAcct)) S.portAcctToggles[newAcct.id] = true;
         }
-        ps(); closeModal('m-acct'); renderAccounts();
+        ps(S); closeModal('m-acct'); renderAccounts();
       }
 
       function delAcct(id) {
         moConfirm('Delete account? Funds linked to this account will be unlinked.', () => {
           S.accounts = S.accounts.filter(x => String(x.id) !== String(id));
           delete S.portAcctToggles[id];
-          ps(); renderAccounts();
+          ps(S); renderAccounts();
         });
       }
 
@@ -3235,7 +3246,7 @@
         if (from < 0 || to < 0) return;
         const [m] = S.accountCategories.splice(from, 1);
         S.accountCategories.splice(to, 0, m);
-        atcCatDragId = null; ps(); renderAcctTypesList();
+        atcCatDragId = null; ps(S); renderAcctTypesList();
       }
       function atcCatDragEnd(e) { atcCatDragId = null; e.currentTarget.style.opacity = '1'; }
 
@@ -3257,7 +3268,7 @@
         if (from < 0 || to < 0) return;
         const [m] = S.accountTypes.splice(from, 1);
         S.accountTypes.splice(to, 0, m);
-        atcTypeDragId = null; ps(); renderAcctTypesList();
+        atcTypeDragId = null; ps(S); renderAcctTypesList();
       }
       function atcTypeDragEnd(e) { atcTypeDragId = null; e.currentTarget.style.opacity = '1'; }
 
@@ -3268,7 +3279,7 @@
         if (nidx < 0 || nidx >= S.accountCategories.length) return;
         const [m] = S.accountCategories.splice(idx, 1);
         S.accountCategories.splice(nidx, 0, m);
-        ps(); renderAcctTypesList();
+        ps(S); renderAcctTypesList();
       }
 
       function moveAcctType(id, dir) {
@@ -3287,30 +3298,30 @@
 
         const [m] = S.accountTypes.splice(globalIdx, 1);
         S.accountTypes.splice(globalTargetIdx, 0, m);
-        ps(); renderAcctTypesList();
+        ps(S); renderAcctTypesList();
       }
 
       function addAcctCategory() {
         moPrompt('Category name:', name => {
           moConfirm('Is this an Investment category?',
-            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: true }); ps(); renderAcctTypesList(); },
-            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: false }); ps(); renderAcctTypesList(); }
+            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: true }); ps(S); renderAcctTypesList(); },
+            () => { const id = 'cat_' + Date.now(); S.accountCategories.push({ id, name, isInvestment: false }); ps(S); renderAcctTypesList(); }
           );
         });
       }
 
       function renameAcctCategory(id, name) {
         const cat = S.accountCategories?.find(c => String(c.id) === String(id));
-        if (cat && name.trim()) { cat.name = name.trim(); ps(); }
+        if (cat && name.trim()) { cat.name = name.trim(); ps(S); }
       }
 
       function setAcctTypeInvestment(id, val) {
         const t = S.accountTypes?.find(x => String(x.id) === String(id));
-        if (t) { t.isInvestment = val; ps(); }
+        if (t) { t.isInvestment = val; ps(S); }
       }
       function setAcctTypeBucket(id, bucketId) {
         const t = S.accountTypes?.find(x => String(x.id) === String(id));
-        if (t) { t.bucketId = bucketId; ps(); renderAcctTypesList(); }
+        if (t) { t.bucketId = bucketId; ps(S); renderAcctTypesList(); }
       }
 
       function delAcctCategory(id) {
@@ -3318,7 +3329,7 @@
         const doDelete = () => {
           types.forEach(t => delAcctTypeById(t.id, false));
           S.accountCategories = S.accountCategories.filter(c => String(c.id) !== String(id));
-          ps(); renderAcctTypesList();
+          ps(S); renderAcctTypesList();
         };
         if (types.length > 0) {
           moConfirm(`This category has ${types.length} type(s). Delete category and all its types?`, doDelete);
@@ -3331,13 +3342,13 @@
         moPrompt('Type name (e.g. "Mirae Asset", "IRP"):', name => {
           const id = 'type_' + Date.now();
           S.accountTypes.push({ id, name: name.trim(), categoryId });
-          ps(); renderAcctTypesList();
+          ps(S); renderAcctTypesList();
         });
       }
 
       function renameAcctType(id, name) {
         const t = S.accountTypes?.find(x => String(x.id) === String(id));
-        if (t && name.trim()) { t.name = name.trim(); ps(); }
+        if (t && name.trim()) { t.name = name.trim(); ps(S); }
       }
 
       function delAcctType(id) { delAcctTypeById(id, true); }
@@ -3346,14 +3357,14 @@
         const doDelete = () => {
           using.forEach(a => a.type = 'other-cash');
           S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
-          ps(); renderAcctTypesList();
+          ps(S); renderAcctTypesList();
         };
         if (using.length > 0 && withConfirm) {
           moConfirm(`${using.length} account(s) use this type. They will be set to "other". Continue?`, doDelete);
         } else {
           if (using.length > 0) using.forEach(a => a.type = 'other-cash');
           S.accountTypes = (S.accountTypes || []).filter(t => String(t.id) !== String(id));
-          ps(); renderAcctTypesList();
+          ps(S); renderAcctTypesList();
         }
       }
 
@@ -3428,12 +3439,12 @@
 
       function togglePortAcct(id) {
         S.portAcctToggles[id] = !(S.portAcctToggles[id] !== false);
-        ps(); renderPortfolio(); renderRebalAcctTabs();
+        ps(S); renderPortfolio(); renderRebalAcctTabs();
       }
 
       function toggleAllPortAccts(state) {
         S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.portAcctToggles[a.id] = state);
-        ps(); renderPortfolio(); renderRebalAcctTabs();
+        ps(S); renderPortfolio(); renderRebalAcctTabs();
       }
 
 
@@ -3659,9 +3670,9 @@
           S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, shares, targetPct, retPct });
         }
         syncAccountsFromPortfolio();
-        ps(); closeModal('m-fund'); renderPortfolio();
+        ps(S); closeModal('m-fund'); renderPortfolio();
       }
-      function delFund(id) { moConfirm('Remove this fund?', () => { S.funds = S.funds.filter(x => String(x.id) !== String(id)); syncAccountsFromPortfolio(); ps(); renderPortfolio(); }); }
+      function delFund(id) { moConfirm('Remove this fund?', () => { S.funds = S.funds.filter(x => String(x.id) !== String(id)); syncAccountsFromPortfolio(); ps(S); renderPortfolio(); }); }
 
       // ══════════════════════════════════════════════════════════════
       // REBALANCE
@@ -3915,19 +3926,19 @@
         dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
       }
       function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
-      function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(); updateProj(); } }
+      function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(S); updateProj(); } }
       function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
       function addStress() {
         moPrompt('Event name:', n => {
           moPrompt('Cost ($):', a => {
             moPrompt('Year:', y => {
               S.stressEvents.push({ name: n, amount: parseFloat(a) || 0, year: parseInt(y) || NY });
-              ps(); renderStress(); updateProj();
+              ps(S); renderStress(); updateProj();
             }, String(NY));
           }, '0');
         });
       }
-      function delStress(i) { S.stressEvents.splice(i, 1); ps(); renderStress(); updateProj(); }
+      function delStress(i) { S.stressEvents.splice(i, 1); ps(S); renderStress(); updateProj(); }
 
       // ══════════════════════════════════════════════════════════════
       // GOALS
@@ -3994,7 +4005,7 @@
         if (!S.editGoalId) return;
         const g = S.goals.find(x => String(x.id) === String(S.editGoalId));
         if (g) g.hidden = !g.hidden;
-        ps(); closeModal('m-goal'); renderGoals(); renderOverview();
+        ps(S); closeModal('m-goal'); renderGoals(); renderOverview();
       }
       function moveGoal(dir) {
         if (!S.editGoalId) return;
@@ -4004,10 +4015,10 @@
         if (newIdx < 0 || newIdx >= S.goals.length) return;
         const [moved] = S.goals.splice(idx, 1);
         S.goals.splice(newIdx, 0, moved);
-        ps(); renderGoals(); renderOverview();
+        ps(S); renderGoals(); renderOverview();
       }
-      function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => String(x.id) === String(S.editGoalId)), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes, hidden: false }); ps(); closeModal('m-goal'); renderGoals(); renderOverview(); }
-      function delGoal(id) { moConfirm('Remove this goal?', () => { S.goals = S.goals.filter(x => String(x.id) !== String(id)); ps(); renderGoals(); renderOverview(); }); }
+      function saveGoal() { const name = document.getElementById('g-name').value.trim(), cat = document.getElementById('g-cat').value, amount = parseFloat(document.getElementById('g-amt').value) || 0, year = parseInt(document.getElementById('g-yr').value) || NY + 5, type = document.getElementById('g-type').value, notes = document.getElementById('g-notes').value.trim(); if (!name) return; if (S.editGoalId) { Object.assign(S.goals.find(x => String(x.id) === String(S.editGoalId)), { name, cat, amount, year, type, notes }); } else S.goals.push({ id: nextId(S.goals), name, cat, amount, year, type, notes, hidden: false }); ps(S); closeModal('m-goal'); renderGoals(); renderOverview(); }
+      function delGoal(id) { moConfirm('Remove this goal?', () => { S.goals = S.goals.filter(x => String(x.id) !== String(id)); ps(S); renderGoals(); renderOverview(); }); }
 
       // ══════════════════════════════════════════════════════════════
       // SPREADSHEET — overlay-textarea architecture
@@ -4168,7 +4179,7 @@
         if (D()[ssR]) D()[ssR][ssC] = val;
         ED().style.display = 'none';
         document.querySelectorAll('#ss-tbl .ss-ref-hl').forEach(t => t.classList.remove('ss-ref-hl'));
-        ps();
+        ps(S);
         if (rebuild !== false) { buildSS(); renderLifeCharts(); }
       }
 
@@ -4284,7 +4295,7 @@
                 D()[r][c] = adjustFormula(srcVal, srcR, srcC, r, c);
               }
             }
-            ps(); buildSS(); renderLifeCharts();
+            ps(S); buildSS(); renderLifeCharts();
           }
           ssDragging = false;
         });
@@ -4315,7 +4326,7 @@
           else if (e.key === 'Delete' || e.key === 'Backspace') {
             handled();
             for (let r = ssSelR0; r <= ssSelR1; r++)for (let c = ssSelC0; c <= ssSelC1; c++)D()[r][c] = '';
-            ps(); buildSS(); renderLifeCharts();
+            ps(S); buildSS(); renderLifeCharts();
           }
           else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { handled(); ssCopy(); }
           else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { handled(); ssPaste(); }
@@ -4348,7 +4359,7 @@
               D()[ri][ci] = cell;
             });
           });
-          ps(); buildSS(); renderLifeCharts();
+          ps(S); buildSS(); renderLifeCharts();
         });
 
         // formula bar
@@ -4361,7 +4372,7 @@
           if (td) { const cv = td.querySelector('.ss-cv'); if (cv) cv.textContent = cellDisplay(ssR, ssC); }
         });
         fb.addEventListener('keydown', e => {
-          if (e.key === 'Enter') { e.preventDefault(); if (D()[ssR]) D()[ssR][ssC] = fb.value; ps(); buildSS(); renderLifeCharts(); outer.focus(); }
+          if (e.key === 'Enter') { e.preventDefault(); if (D()[ssR]) D()[ssR][ssC] = fb.value; ps(S); buildSS(); renderLifeCharts(); outer.focus(); }
           if (e.key === 'Escape') { e.preventDefault(); outer.focus(); }
         });
 
@@ -4419,19 +4430,19 @@
             D()[r][c] = adjustFormula(cell, ssCopied.fromR + cr, ssCopied.fromC + cc, r, c);
           }
         }
-        ps(); buildSS(); renderLifeCharts();
+        ps(S); buildSS(); renderLifeCharts();
       }
 
       function ssFillDown() {
         if (ssSelR0 === ssSelR1 && ssSelC0 === ssSelC1) {
-          if (ssR > 0) { D()[ssR][ssC] = adjustFormula(D()[ssR - 1]?.[ssC] ?? '', (ssR - 1), (ssC), (ssR), (ssC)); ps(); buildSS(); renderLifeCharts(); }
+          if (ssR > 0) { D()[ssR][ssC] = adjustFormula(D()[ssR - 1]?.[ssC] ?? '', (ssR - 1), (ssC), (ssR), (ssC)); ps(S); buildSS(); renderLifeCharts(); }
           return;
         }
         for (let c = ssSelC0; c <= ssSelC1; c++) {
           const src = D()[ssSelR0]?.[c] ?? ''
           for (let r = ssSelR0 + 1; r <= ssSelR1; r++)D()[r][c] = adjustFormula(src, (ssSelR0), (c), (r), (c));
         }
-        ps(); buildSS(); renderLifeCharts();
+        ps(S); buildSS(); renderLifeCharts();
       }
 
       // (adjustFormula defined above)
@@ -4445,31 +4456,31 @@
         const from = ssDragCol, to = ci;
         const nc = [...C()]; const [mc] = nc.splice(from, 1); nc.splice(to, 0, mc); S.ssCols = nc;
         S.ssData = D().map(row => { const nr = [...row]; const [mv] = nr.splice(from, 1); nr.splice(to, 0, mv); return nr; });
-        ssDragCol = null; ps(); buildSS();
+        ssDragCol = null; ps(S); buildSS();
       }
-      function ssRenameCol(ci) { moPrompt('Rename column:', n => { C()[ci] = n; ps(); buildSS(); }, C()[ci]); }
+      function ssRenameCol(ci) { moPrompt('Rename column:', n => { C()[ci] = n; ps(S); buildSS(); }, C()[ci]); }
 
       // ── row/col management ────────────────────────────────────────
-      function ssAddRow() { D().push(new Array(NC()).fill('')); ps(); buildSS(); }
+      function ssAddRow() { D().push(new Array(NC()).fill('')); ps(S); buildSS(); }
       function ssDelRow() {
         if (NR() <= 1) return;
         D().splice(ssSelR0, 1);
         if (ssR >= NR()) ssR = NR() - 1;
         ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
-        ps(); buildSS();
+        ps(S); buildSS();
       }
       function ssAddCol() {
-        moPrompt('Column name:', name => { C().push(name); S.ssData = D().map(r => [...r, '']); ps(); buildSS(); }, 'New col');
+        moPrompt('Column name:', name => { C().push(name); S.ssData = D().map(r => [...r, '']); ps(S); buildSS(); }, 'New col');
       }
       function ssDelCol() {
         if (NC() <= 1) return;
         moConfirm('Delete last column?', () => {
           C().pop(); S.ssData = D().map(r => { const nr = [...r]; nr.pop(); return nr; });
           if (ssC >= NC()) ssC = NC() - 1; ssSelR0 = ssR; ssSelC0 = ssC; ssSelR1 = ssR; ssSelC1 = ssC;
-          ps(); buildSS();
+          ps(S); buildSS();
         });
       }
-      function ssRecalc() { ps(); buildSS(); renderLifeCharts(); }
+      function ssRecalc() { ps(S); buildSS(); renderLifeCharts(); }
 
       let ssEditColIdx = null;
       function openColModal(ci) {
@@ -4489,7 +4500,7 @@
         if (name) S.ssCols[ssEditColIdx] = name;
         if (!S.ssMeta) S.ssMeta = {};
         S.ssMeta[ssEditColIdx] = { fmt, dec };
-        ps(); buildSS(); renderLifeCharts();
+        ps(S); buildSS(); renderLifeCharts();
         closeModal('m-col');
       }
 
@@ -4715,7 +4726,7 @@
         const t = {};
         Object.keys(THEME_DEFAULT).forEach(k => { t[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim(); });
         S.settings.theme = t;
-        ps();
+        ps(S);
       }
 
       function loadTheme() {
@@ -4936,7 +4947,7 @@
       function delSnap(i) {
         moConfirm('Delete snapshot?', () => {
           S.snapshots.splice(i, 1);
-          ps(); renderSettings(); renderOverview();
+          ps(S); renderSettings(); renderOverview();
         });
       }
 
@@ -4955,14 +4966,14 @@
         const moved = S.snapshots.splice(snapDragIdx, 1)[0];
         S.snapshots.splice(i, 0, moved);
         snapDragIdx = null;
-        ps(); renderSettings(); renderOverview();
+        ps(S); renderSettings(); renderOverview();
       }
       function snapDragEnd(e) {
         snapDragIdx = null;
         e.currentTarget.style.opacity = '1';
       }
       function exportData() { const a = document.createElement('a'); a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(S, null, 2)); a.download = 'moola-export.json'; a.click(); }
-      function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { S = JSON.parse(ev.target.result); ps(); location.reload(); } catch (e) { alert('Invalid file.'); } }; r.readAsText(f); }
+      function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { S = JSON.parse(ev.target.result); ps(S); location.reload(); } catch (e) { alert('Invalid file.'); } }; r.readAsText(f); }
 
       // ══════════════════════════════════════════════════════════════
       // MODALS
@@ -5018,7 +5029,7 @@
         const newName = document.getElementById('ctx-tab-name').value.trim();
         if (t && newName) {
           t.name = newName;
-          ps();
+          ps(S);
           renderSidebar();
         }
         closeModal('m-rename-tab');
@@ -5041,7 +5052,7 @@
         const t = S.tabs.find(x => x.id === ctxTabId);
         if (t) {
           t.icon = iconKey;
-          ps();
+          ps(S);
           renderSidebar();
         }
         closeModal('m-icon-tab');
@@ -5052,7 +5063,7 @@
         const idx = S.tabs.findIndex(t => t.id === ctxTabId);
         if (idx !== -1) {
           S.tabs[idx].archived = true;
-          ps();
+          ps(S);
           renderSidebar();
 
           const activeTabId = document.querySelector('.tc.on')?.id?.replace('tab-', '');
@@ -5267,7 +5278,7 @@
         const t = S.tabs.find(x => x.id === tabId);
         if (t) {
           t.archived = false;
-          ps();
+          ps(S);
           renderSidebar();
         }
       }
@@ -5301,7 +5312,7 @@
           const temp = S.tabs[idx];
           S.tabs[idx] = S.tabs[idx - 1];
           S.tabs[idx - 1] = temp;
-          ps();
+          ps(S);
           renderSidebar();
         }
       }
@@ -5322,7 +5333,7 @@
           const temp = S.tabs[idx];
           S.tabs[idx] = S.tabs[idx + 1];
           S.tabs[idx + 1] = temp;
-          ps();
+          ps(S);
           renderSidebar();
         }
       }
@@ -5365,7 +5376,7 @@
           if (fromIdx !== -1 && toIdx !== -1) {
             const [movedTab] = S.tabs.splice(fromIdx, 1);
             S.tabs.splice(toIdx, 0, movedTab);
-            ps();
+            ps(S);
             renderSidebar();
           }
         }
@@ -5442,7 +5453,7 @@
             const now = new Date();
             fxUpd.textContent = `updated ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
           }
-          ps();
+          ps(S);
         } catch (e) {
           console.error('FX auto-sync failed', e);
         }
@@ -5477,7 +5488,7 @@
               valueUpdates++;
             }
           });
-          syncAccountsFromPortfolio(); ps();
+          syncAccountsFromPortfolio(); ps(S);
           if (failedTickers.length === tickers.length) {
             errors.push('No quotes received — prices may be delayed or market closed');
           } else if (failedTickers.length > 0) {
@@ -5503,7 +5514,7 @@
           showPriceBar(errors.join(' · '), true);
         } else {
           S.settings.lastPriceSync = Date.now();
-          ps();
+          ps(S);
           updateSyncTimeDisplay();
 
           const h = new Date().getUTCHours();
@@ -5516,7 +5527,7 @@
 
           S.settings.lastPriceSyncStatus = `${timeStr} · ${updNote}`;
           showPriceBar(S.settings.lastPriceSyncStatus);
-          ps();
+          ps(S);
         }
 
         // Re-render if we updated any fund values
@@ -5699,7 +5710,7 @@
         if (!S) return;
         S.future_scenarios = JSON.parse(JSON.stringify(ftScenarios));
         S.future_active_scenario = ftActiveScenarioId;
-        ps();
+        ps(S);
       }
 
       function ftSwitchScenario(id) {
@@ -5836,7 +5847,7 @@
       }
 
       // ── Overlap detection ───────────────────────────────────────────
-      function ftGetPhaseOverlaps() {
+      function ftGetPhaseOverlaps(S) {
         const sorted = ftExpPhases.slice().sort((a, b) => a.startAge - b.startAge);
         const conflicts = new Set();
         for (let i = 0; i < sorted.length - 1; i++) {
@@ -6652,7 +6663,7 @@
       function ftRenderPhaseCard(ph, idx) {
         const col = FT_PHASE_PALETTE[idx % FT_PHASE_PALETTE.length];
         const benchmark = FT_CITY_BENCHMARKS[ph.location?.trim()] || 0;
-        const overlapIds = ftGetPhaseOverlaps();
+        const overlapIds = ftGetPhaseOverlaps(S);
         const hasOverlap = overlapIds.has(ph.id);
         const isExpanded = ftActivePhaseId === ph.id;
 
@@ -7101,7 +7112,7 @@
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 5h8v2H4V5zm0 4h8v2H4V9z"/></svg>
               </div>
               <div class="ft-sort-label">${FT_SEC_LABELS[id] || id}</div>
-              <input type="checkbox" class="ft-sort-check" ${vis[id] !== false ? 'checked' : ''} onchange="S.future.secVis['${id}']=this.checked;ps();ftRenderFuture()">
+              <input type="checkbox" class="ft-sort-check" ${vis[id] !== false ? 'checked' : ''} onchange="S.future.secVis['${id}']=this.checked;ps(S);ftRenderFuture()">
             </div>
           `).join('');
         };
@@ -7112,7 +7123,7 @@
           const [moved] = order.splice(ftDragIdx, 1);
           order.splice(targetIdx, 0, moved);
           ftDragIdx = null;
-          ps(); ftRenderFuture(); renderList();
+          ps(S); ftRenderFuture(); renderList();
         };
 
         renderList();
@@ -7131,8 +7142,8 @@
               <div class="ft-sort-handle">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 5h8v2H4V5zm0 4h8v2H4V9z"/></svg>
               </div>
-              <input type="checkbox" class="ft-sort-check" ${vis[key] ? 'checked' : ''} onchange="S.future.colVis['${key}']=this.checked; ftColVis['${key}']=this.checked; ps(); ftRecalc()">
-              <input type="text" class="ft-sort-input" value="${labels[key] || key}" oninput="S.future.colLabels['${key}']=this.value; ftColLabels['${key}']=this.value; ps(); ftRenderTable()" placeholder="Label">
+              <input type="checkbox" class="ft-sort-check" ${vis[key] ? 'checked' : ''} onchange="S.future.colVis['${key}']=this.checked; ftColVis['${key}']=this.checked; ps(S); ftRecalc()">
+              <input type="text" class="ft-sort-input" value="${labels[key] || key}" oninput="S.future.colLabels['${key}']=this.value; ftColLabels['${key}']=this.value; ps(S); ftRenderTable()" placeholder="Label">
             </div>
           `).join('');
         };
@@ -7144,14 +7155,14 @@
           order.splice(targetIdx, 0, moved);
           ftDragIdx = null;
           ftColOrder = [...order]; // Sync global
-          ps(); ftRecalc(); renderList();
+          ps(S); ftRecalc(); renderList();
         };
 
         renderList();
         openModal('m-ft-columns');
       }
 
-      function ftRenderChips() {
+      function ftRenderChips(S) {
         // Legacy chip logic removed as requested.
         // Columns are now managed via ftOpenColumnManager().
       }
