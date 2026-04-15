@@ -7372,11 +7372,12 @@
                 } else {
                   const prevFmt = ftFmt(r.prevLiquid || 0);
                   const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
-                  const contribLine = r.contrib401k > 0 ? `<div class="fc-item"><div class="fc-item-name">+ 401k contribution</div><div class="fc-item-val">+${ftFmt(r.contrib401k)}</div></div>` : '';
-                  const retLine = r.retirementBal > 0 ? `<div class="fc-item"><div class="fc-item-name">Retirement balance (total)</div><div class="fc-item-val">${ftFmt(r.retirementBal)}</div></div>` : '';
-                  const reLine = Math.round(r.realEstateEquity) > 0 ? `<div class="fc-section" style="margin:8px 12px 4px">Real Estate</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Equity (all properties)</div><div class="fc-item-val">${ftFmt(Math.round(r.realEstateEquity))}</div></div></div>` : '';
-                  const usableLineHtml = `<div class="fc-section" style="margin:8px 12px 4px">Usable Wealth</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name" style="color:var(--ink2);line-height:1.2;align-self:center">Usable net worth<br><span style="font-size:10px;font-weight:400;color:var(--ink3)">Liquid + Inv Properties ${r.isRetiredForCalc ? '+ Retirement' : '(Retirement locked)'}</span></div><div class="fc-item-val" style="font-weight:600">${ftFmt(Math.round(r.investableNW))}</div></div></div>`;
-                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth Breakdown</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div><div class="fc-list"><div class="fc-item" style="color:var(--ink3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em"><div class="fc-item-name">Liquid Portfolio</div></div><div class="fc-item"><div class="fc-item-name">Previous balance</div><div class="fc-item-val">${prevFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Market return (${roc}%)</div><div class="fc-item-val">${growthFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Net savings</div><div class="fc-item-val">${ftFmt(r.netSavings)}</div></div><div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px"><div class="fc-item-name" style="font-weight:600">= New liquid NW</div><div class="fc-item-val">${ftFmt(r.liquidNW)}</div></div></div>${(r.contrib401k > 0 || r.retirementBal > 0) ? '<div class="fc-section" style="margin:8px 12px 4px">401k / Retirement</div><div class="fc-list">' + contribLine + retLine + '</div>' : ''}${reLine}${usableLineHtml}<div class="fc-command" style="background:rgba(0,0,0,0.03);border-left-color:var(--fm)"><strong style="color:var(--fm)">TOTAL NW</strong>${totalNWFmt}</div></div>`;
+                  const sectionStyle = 'margin:12px 12px 4px;padding-top:0;border:none';
+                  const liqSection = `<div class="fc-section" style="${sectionStyle}">Liquid Portfolio</div>`;
+                  const retLine = (r.contrib401k > 0 || r.retirementBal > 0) ? `<div class="fc-section" style="${sectionStyle}">401k / Retirement</div><div class="fc-list">` + (r.contrib401k > 0 ? `<div class="fc-item"><div class="fc-item-name">+ 401k contribution</div><div class="fc-item-val">+${ftFmt(r.contrib401k)}</div></div>` : '') + `<div class="fc-item"><div class="fc-item-name">Retirement balance (total)</div><div class="fc-item-val">${ftFmt(r.retirementBal)}</div></div></div>` : '';
+                  const reLine = Math.round(r.realEstateEquity) > 0 ? `<div class="fc-section" style="${sectionStyle}">Real Estate</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Equity (all properties)</div><div class="fc-item-val">${ftFmt(Math.round(r.realEstateEquity))}</div></div></div>` : '';
+                  const usableLineHtml = `<div class="fc-section" style="${sectionStyle}">Usable Wealth</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name" style="color:var(--ink2);line-height:1.2;align-self:center">Usable net worth<br><span style="font-size:10px;font-weight:400;color:var(--ink3)">Liquid + Inv Properties ${r.isRetiredForCalc ? '+ Retirement' : '(Retirement locked)'}</span></div><div class="fc-item-val" style="font-weight:700">${ftFmt(Math.round(r.investableNW))}</div></div></div>`;
+                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth Breakdown</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div>${liqSection}<div class="fc-list"><div class="fc-item"><div class="fc-item-name">Previous balance</div><div class="fc-item-val">${prevFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Market return (${roc}%)</div><div class="fc-item-val">${growthFmt}</div></div><div class="fc-item"><div class="fc-item-name">+ Net savings</div><div class="fc-item-val">${ftFmt(r.netSavings)}</div></div><div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px"><div class="fc-item-name" style="font-weight:600">= New liquid NW</div><div class="fc-item-val">${ftFmt(r.liquidNW)}</div></div></div>${retLine}${reLine}${usableLineHtml}</div>`;
                 }
                 return '<td class="ft-editable ' + (r.nw < 0 ? 'neg' : '') + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'nw\')" style="cursor:pointer"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nwCardHtml + MT(ftFmt(r.nw), 'future') + '</span></td>';
               }
@@ -7489,19 +7490,19 @@
                           <div class="fc-item-val">${ftFmt(rowNetHHMo)}/mo</div>
                         </div>
                         <div class="fc-item">
-                          <div class="fc-item-name" style="color:var(--rose)">− Fixed costs (housing + kids + healthcare)</div>
-                          <div class="fc-item-val" style="color:var(--rose)">−${ftFmt(fixedMo)}/mo</div>
+                          <div class="fc-item-name" style="color:var(--rose)">&minus;&nbsp;Fixed costs (housing + kids + healthcare)</div>
+                          <div class="fc-item-val" style="color:var(--rose)">&minus;${ftFmt(fixedMo)}/mo</div>
                         </div>
                         <div class="fc-item">
-                          <div class="fc-item-name" style="color:var(--rose)">− Required goal savings</div>
-                          <div class="fc-item-val" style="color:var(--rose)">−${ftFmt(reqSavMo2)}/mo</div>
+                          <div class="fc-item-name" style="color:var(--rose)">&minus;&nbsp;Required goal savings</div>
+                          <div class="fc-item-val" style="color:var(--rose)">&minus;${ftFmt(reqSavMo2)}/mo</div>
                         </div>
                         <div class="fc-item" style="border-top:1px solid var(--border-subtle);margin-top:4px;padding-top:8px">
                           <div class="fc-item-name" style="font-weight:600">= Free to spend</div>
                           <div class="fc-item-val" style="color:#16a34a;font-weight:700">+${ftFmt(r.freeSpend)}/mo</div>
                         </div>
                       </div>
-                      <div class="fc-command" style="color:var(--ink2)">${surplusLabel}</div>
+                      <div class="fc-command" style="color:var(--ink2);background:var(--bg-card);border-left-color:var(--border)">${surplusLabel}</div>
                     </div>
                   `;
                   return '<td style="color:' + color + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
@@ -7527,9 +7528,9 @@
                     : 'All goals are fully funded by compounding. No extra savings needed.';
                   const goalLines = isOnTrack
                     ? (r.fundedGoals || []).map(g =>
-                        '<div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px">'
-                        + '<div class="fc-item-name" style="color:#16a34a">✓ ' + g.label + '</div>'
-                        + '<div class="fc-item-val" style="color:#16a34a">projected ' + ftFmt(g.projectedNW) + '</div>'
+                        '<div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px;align-items:flex-start">'
+                        + '<div class="fc-item-name" style="color:#16a34a;display:flex;gap:4px"><span>✓</span><span>' + g.label + '</span></div>'
+                        + '<div class="fc-item-val" style="color:#16a34a;text-align:right">projected<br><strong>' + ftFmt(g.projectedNW) + '</strong></div>'
                         + '</div>'
                       ).join('')
                     : '';
@@ -7560,12 +7561,15 @@
                 const rowFixedCosts2 = r.housing + Math.round(r.kids) + Math.round(r.healthcare);
                 const rowNetHH2 = r.netSavings + r.living + rowFixedCosts2 - (r.ot || 0);
                 const bindingLabel = r.bindingGoal || 'savings target';
+                const isDeficit = r.monthlySurplus < 0;
+                const reqColor = isDeficit ? '#f59e0b' : 'var(--ink)';
+                const reqMoColor = isDeficit ? '#f59e0b' : 'var(--ink)';
                 const reqCard = `
                   <div class="forensic-card">
                     <div class="fc-header">
                       <div>
                         <div class="fc-title"><span>🎯</span> Required Savings</div>
-                        <div class="fc-deficit" style="color:#f59e0b">${ftFmt(reqMo)}/mo needed</div>
+                        <div class="fc-deficit" style="color:${reqColor}">${ftFmt(reqMo)}/mo needed</div>
                       </div>
                     </div>
                     <div class="fc-list">
@@ -7579,17 +7583,17 @@
                       </div>
                       <div class="fc-item">
                         <div class="fc-item-name">Monthly equivalent</div>
-                        <div class="fc-item-val" style="color:#f59e0b;font-weight:700">${ftFmt(reqMo)}/mo</div>
+                        <div class="fc-item-val" style="color:${reqMoColor};font-weight:700">${ftFmt(reqMo)}/mo</div>
                       </div>
                       <div class="fc-item">
                         <div class="fc-item-name">Take-home available</div>
                         <div class="fc-item-val">${ftFmt(Math.round(rowNetHH2 / 12))}/mo</div>
                       </div>
                     </div>
-                    ${shortfallHtml ? '<div class="fc-section" style="margin:8px 12px 4px">Downstream Risks</div><div class="fc-list">' + shortfallHtml + '</div>' : ''}
+                    ${shortfallHtml ? '<div class="fc-section" style="margin:16px 12px 4px;padding-top:0;border:none">Downstream Risks</div><div class="fc-list">' + shortfallHtml + '</div>' : ''}
                   </div>
                 `;
-                return '<td style="color:#f59e0b;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
+                return '<td style="color:' + reqColor + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
               }
               // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
               const val = r[c];
