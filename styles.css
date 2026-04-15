@@ -497,6 +497,12 @@
       transition: border-color .15s ease, box-shadow .15s ease;
     }
 
+    .card:has(#projChart) {
+      display: flex;
+      flex-direction: column;
+      min-height: 0; 
+    }
+
     .card:hover {
       border-color: var(--border-strong);
       box-shadow: var(--sh2);
@@ -782,8 +788,15 @@
     .g2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      gap: 16px;
       min-width: 0;
+      align-items: stretch; /* Forces both grid columns to match height */
+    }
+
+    /* Ensure the wrapper inside the right-hand card takes all space */
+    .g2 > .card:last-child {
+      display: flex;
+      flex-direction: column;
     }
 
     @media (max-width: 1023px) {
@@ -2643,12 +2656,11 @@
 
     /* ── Goals grid base (non-media) ─────────────────────────── */
     .chart-wrap {
-    position: relative;
-    width: 100%;
-    /* Use flex-grow or height: 100% to fill the parent card */
-    height: 100%; 
-    display: flex;
-}
+      position: relative;
+      width: 100%;
+      flex-grow: 1; /* Takes up all space not used by the header */
+      min-height: 0; /* Crucial for preventing flex-child overflow */
+    }
 
     .goals-grid {
       display: grid;
