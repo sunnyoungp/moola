@@ -4273,19 +4273,21 @@
     /* Smart Responsive Container for Allocation Card */
     .allocation-content {
       display: flex;
-      flex-wrap: wrap; /* Crucial: allows legend to wrap below chart when squished */
-      align-items: stretch; 
+      flex-wrap: nowrap; /* Forces left and right layout */
+      align-items: center; 
       gap: 20px;
       flex: 1;
-      min-height: 0; /* Crucial for preventing container expansion loop */
+      min-height: 0; 
     }
 
     /* Pie Chart Wrapper Priority Scaling */
     .allocation-content .chart-wrap {
       position: relative;
       flex-grow: 1;
-      min-width: 180px; /* Chart forces a wrap if the container width falls below limit */
-      min-height: 0;
+      min-width: 140px; 
+      max-width: 280px; /* Constrain horizontal explosion */
+      min-height: 180px; /* Guarantee a minimum height */
+      max-height: 280px; /* Prevent it from blowing up the Grid layout vertically */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -4301,11 +4303,12 @@
     /* Legend Restraints */
     #port-alloc-legend {
       flex: 1;
-      min-width: 180px; /* Minimum width the legend needs to stay readable */
+      min-width: 140px; /* Slimmer min-width fits better */
       display: flex;
       flex-direction: column;
       gap: 4px; /* Reduced gap constraint for density */
       overflow-y: auto;
+      max-height: 280px; /* Match chart max scaling */
       min-height: 0;
       padding-right: 4px;
     }
