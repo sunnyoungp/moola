@@ -6012,13 +6012,14 @@
           }
         }
         if (!housing) housing = ftGetRent(curAge);
+        const infFactor = Math.pow(1 + ftGlobals.expInflation / 100, curAge - ftGlobals.projectionStartingAge);
         let kids = 0;
         for (const ce of ftLifeEvents.filter(e => e.type === 'child')) {
           const childAge = curAge - ce.age;
-          if (childAge >= 0) for (const st of ce.stages) { if (childAge >= st.childAgeStart && childAge < st.childAgeEnd) { kids += st.annual; break; } }
+          if (childAge >= 0) for (const st of ce.stages) { if (childAge >= st.childAgeStart && childAge < st.childAgeEnd) { kids += st.annual * infFactor; break; } }
         }
         let healthcare = 0;
-        for (const he of ftLifeEvents.filter(e => e.type === 'healthcare')) { if (curAge >= he.startAge && curAge <= he.endAge) healthcare += (he.monthlyCost || 0) * 12; }
+        for (const he of ftLifeEvents.filter(e => e.type === 'healthcare')) { if (curAge >= he.startAge && curAge <= he.endAge) healthcare += (he.monthlyCost || 0) * 12 * infFactor; }
         const ot = ftLifeEvents.filter(e => e.type === 'oneTime' && e.age === curAge).reduce((s, e) => s + e.amount, 0);
         return Math.round(todayNW + (netHH - living - housing - kids - healthcare) / 12 * monthsRemaining + ot);
       }
@@ -6089,6 +6090,13 @@
             if (streamVal > 0) incBreakdown.push(s.name + ': ' + ftFmt(streamVal));
           }
 
+          if (ftGlobals.ssEnabled && age >= ftGlobals.ssClaimAge) {
+            const ssAmount = (ftGlobals.ssBenefit || 2500) * 12;
+            income += ssAmount;
+            fixedNetAcc += ssAmount;
+            incBreakdown.push('Social Security: ' + ftFmt(ssAmount) + ' (exempt from Moola marginal tax loop)');
+          }
+
           const taxableTotal = Math.max(0, taxableGrossAcc - contrib401k);
           const taxRate = ftGlobals.taxMode === 'auto' ? ftCalcAutoTax(taxableTotal, married) : ftGlobals.taxFlat / 100;
           let netHH = Math.round(taxableGrossAcc - taxableTotal * taxRate) + fixedNetAcc;
@@ -6126,11 +6134,12 @@
           const housingTip = 'Housing Outflow Breakdown:\n' + housingBreakdown.join('\n');
 
           // Kids
+          const infFactor = Math.pow(1 + ftGlobals.expInflation / 100, age - ftGlobals.projectionStartingAge);
           let kids = 0;
-          for (const ce of childEvs) { const ca = age - ce.age; if (ca >= 0) for (const st of ce.stages) { if (ca >= st.childAgeStart && ca < st.childAgeEnd) { kids += st.annual; break; } } }
+          for (const ce of childEvs) { const ca = age - ce.age; if (ca >= 0) for (const st of ce.stages) { if (ca >= st.childAgeStart && ca < st.childAgeEnd) { kids += st.annual * infFactor; break; } } }
           // Healthcare
           let healthcare = 0;
-          for (const he of healthEvs) { if (age >= he.startAge && age <= he.endAge) healthcare += (he.monthlyCost || 0) * 12; }
+          for (const he of healthEvs) { if (age >= he.startAge && age <= he.endAge) healthcare += (he.monthlyCost || 0) * 12 * infFactor; }
 
           const fixedCosts = housing + kids + healthcare;
 
@@ -6167,7 +6176,8 @@
             : liquidNW;
 
           // Required savings vs Actual surplus
-          const netSavings = netHH - living - fixedCosts;
+          // One-time events are included to reflect real NW change from lumpy cash flows
+          const netSavings = netHH - living - fixedCosts + ot;
           let requiredSavings = 0, discTooltip = '', noGoals = false;
           if (ftGlobals.discMode === 'rate') {
             requiredSavings = netHH * ftGlobals.savingsRate / 100;
@@ -6179,20 +6189,20 @@
             const pmts = [];
             if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0 && investableNW < ftGlobals.retireNW) {
               const r = requiredSavingsForGoal(investableNW, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
-              if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r });
+              if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, useInvestable: true });
             }
             for (const { p } of propScheds) {
               if (p.purchaseAge > age) {
                 const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, dc, p.purchaseAge, age, roc);
-                if (r > 0) pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r });
+                if (r > 0) pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false });
               }
             }
             for (const oe of oneTimeEvs) {
               if (oe.age > age && (oe.amount || 0) < 0) {
                 const cost = Math.abs(oe.amount);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, cost, oe.age, age, roc);
-                if (r > 0) pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r });
+                if (r > 0) pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r, targetAge: oe.age, targetNW: cost, useInvestable: false });
               }
             }
             for (const ce of childEvs) {
@@ -6202,16 +6212,33 @@
                   if (parentAgeAtCollege > age) {
                     const totalCost = st.annual * (st.childAgeEnd - st.childAgeStart);
                     const r = requiredSavingsForGoal(effectiveLiquidNW, totalCost, parentAgeAtCollege, age, roc);
-                    if (r > 0) pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r });
+                    if (r > 0) pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r, targetAge: parentAgeAtCollege, targetNW: totalCost, useInvestable: false });
                   }
                 }
               }
             }
             if (pmts.length) {
-              const top = pmts.reduce((a, b) => a.req > b.req ? a : b);
+              pmts.sort((a, b) => a.targetAge - b.targetAge);
+              const top = pmts[0];
               requiredSavings = top.req;
               topGoalLabel = top.label;
               discTooltip = 'goal-based minimum: ' + ftFmt(Math.round(top.req)) + ' · binding: ' + top.label;
+
+              const shortfalls = [];
+              for (let i = 1; i < pmts.length; i++) {
+                const downGoal = pmts[i];
+                if (downGoal.req > requiredSavings) {
+                  const yrs = downGoal.targetAge - age;
+                  const baseNW = downGoal.useInvestable ? investableNW : effectiveLiquidNW;
+                  const projectedWithTopReq = baseNW * Math.pow(1 + roc, yrs) + (roc > 0 ? requiredSavings * (Math.pow(1 + roc, yrs) - 1) / roc : requiredSavings * yrs);
+                  if (projectedWithTopReq < downGoal.targetNW) {
+                    shortfalls.push(downGoal.label + ' (short by ' + ftFmt(Math.round(downGoal.targetNW - projectedWithTopReq)) + ')');
+                  }
+                }
+              }
+              if (shortfalls.length > 0) {
+                discTooltip += '\\n⚠ Warning: Nearest-goal savings rate causes shortfall for: ' + shortfalls.join(', ');
+              }
             } else {
               noGoals = true; requiredSavings = 0;
               discTooltip = 'No active goals — NW growth covers all targets.';
@@ -6260,13 +6287,14 @@
           const netSavTip = 'Calculation:\nNet Take-home: ' + ftFmt(netHH) + '/yr' +
             '\n - Adjusted Living: ' + ftFmt(living) +
             '\n - Fixed costs: ' + ftFmt(fixedCosts) +
+            (ot !== 0 ? '\n ' + (ot > 0 ? '+' : '-') + ' One-time events: ' + ftFmt(Math.abs(ot)) : '') +
             '\n = Added wealth: ' + ftFmt(netSavings) + '/yr';
 
           // NW: liquid compounds + actual surplus (netSavings)
           // For history rows, we don't compound. NW is only shown if it has an override.
           const prevLiq = isHistory ? 0 : (liquidNW || 0);
           const growth = prevLiq * roc;
-          const organicNewLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
+          const organicNewLiq = Math.round(prevLiq + growth + netSavings - extraPmt);
           const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
           const nwTip = isHistory
             ? 'Historical year: manual Net Worth entry only.'
@@ -6275,7 +6303,7 @@
               : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
                 '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
                 '\n + Added Wealth: ' + ftFmt(netSavings) +
-                (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
+                // Note: one-time events are already part of netSavings now
                 (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
                 '\n = NEW BALANCE: ' + ftFmt(organicNewLiq);
 
