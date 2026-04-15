@@ -6194,24 +6194,48 @@
             discTooltip = 'Historical data — enter Net Worth to calculate required savings.';
           } else {
             const pmts = [];
-            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0 && retirementGoalBase < ftGlobals.retireNW) {
+            const fundedGoals = []; // goals configured but fully funded by compounding
+
+            // Retirement — drop base<target outer guard; r<=0 means compounding already covers it
+            if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
               const r = requiredSavingsForGoal(retirementGoalBase, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
-              if (r > 0) pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false });
+              if (r > 0) {
+                pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false });
+              } else {
+                const projectedNW = Math.round(retirementGoalBase * Math.pow(1 + roc, ftGlobals.retireAge - age));
+                fundedGoals.push({ label: 'Retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, targetNW: ftGlobals.retireNW, projectedNW });
+              }
             }
+
+            // Property down payments
             for (const { p } of propScheds) {
               if (p.purchaseAge > age) {
                 const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, dc, p.purchaseAge, age, roc);
-                if (r > 0) pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false });
+                if (r > 0) {
+                  pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false });
+                } else {
+                  const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, p.purchaseAge - age));
+                  fundedGoals.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, targetNW: dc, projectedNW });
+                }
               }
             }
+
+            // One-time expenses
             for (const oe of oneTimeEvs) {
               if (oe.age > age && (oe.amount || 0) < 0) {
                 const cost = Math.abs(oe.amount);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, cost, oe.age, age, roc);
-                if (r > 0) pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r, targetAge: oe.age, targetNW: cost, useInvestable: false });
+                if (r > 0) {
+                  pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r, targetAge: oe.age, targetNW: cost, useInvestable: false });
+                } else {
+                  const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, oe.age - age));
+                  fundedGoals.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, targetNW: cost, projectedNW });
+                }
               }
             }
+
+            // College
             for (const ce of childEvs) {
               for (const st of (ce.stages || [])) {
                 if (st.name && st.name.toLowerCase().includes('college')) {
@@ -6219,7 +6243,12 @@
                   if (parentAgeAtCollege > age) {
                     const totalCost = st.annual * (st.childAgeEnd - st.childAgeStart);
                     const r = requiredSavingsForGoal(effectiveLiquidNW, totalCost, parentAgeAtCollege, age, roc);
-                    if (r > 0) pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r, targetAge: parentAgeAtCollege, targetNW: totalCost, useInvestable: false });
+                    if (r > 0) {
+                      pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r, targetAge: parentAgeAtCollege, targetNW: totalCost, useInvestable: false });
+                    } else {
+                      const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, parentAgeAtCollege - age));
+                      fundedGoals.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, targetNW: totalCost, projectedNW });
+                    }
                   }
                 }
               }
@@ -6249,8 +6278,15 @@
                 discTooltip += '\\n⚠ Downstream goals need more savings than nearest-goal rate: ' + shortfalls.join(', ');
               }
             } else {
-              noGoals = true; requiredSavings = 0;
-              discTooltip = 'No active goals — NW growth covers all targets.';
+              requiredSavings = 0;
+              if (fundedGoals.length === 0) {
+                noGoals = true;
+                discTooltip = 'No goals set — add a property, retirement target, or large purchase.';
+              } else {
+                noGoals = false;
+                discTooltip = 'On track at ' + (roc * 100).toFixed(0) + '% — all goals funded by compounding:\\n'
+                  + fundedGoals.map(g => '\u2713 ' + g.label + ': projected ' + ftFmt(g.projectedNW) + ' vs target ' + ftFmt(g.targetNW)).join('\\n');
+              }
             }
           }
 
@@ -6373,7 +6409,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined });
         }
         return out;
       }
@@ -7472,21 +7508,35 @@
                 if (r.isHistory) return '<td style="color:var(--ink3)">—</td>';
                 const reqMo = Math.round(r.reqSavings / 12);
                 if (r.reqSavings === 0) {
-                  const zeroReason = r.noGoals ? 'No upcoming goals — add a property, retirement target, or large purchase.' : 'Goal fully funded — current NW is on track to compound to your target.';
+                  const isOnTrack = !r.noGoals && (r.fundedGoals || []).length > 0;
+                  const zeroColor = r.noGoals ? 'var(--ink3)' : '#16a34a';
+                  const headerColor = r.noGoals ? 'var(--ink2)' : '#16a34a';
+                  const zeroReason = r.noGoals
+                    ? 'No goals set — add a property, retirement target, or large purchase.'
+                    : 'All goals are fully funded by compounding. No extra savings needed.';
+                  const goalLines = isOnTrack
+                    ? (r.fundedGoals || []).map(g =>
+                        '<div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px">'
+                        + '<div class="fc-item-name" style="color:#16a34a">✓ ' + g.label + '</div>'
+                        + '<div class="fc-item-val" style="color:#16a34a">projected ' + ftFmt(g.projectedNW) + '</div>'
+                        + '</div>'
+                      ).join('')
+                    : '';
                   const zeroCard = `
                     <div class="forensic-card">
                       <div class="fc-header">
                         <div>
                           <div class="fc-title"><span>🎯</span> Required Savings</div>
-                          <div class="fc-deficit" style="color:var(--ink2)">$0 / mo required</div>
+                          <div class="fc-deficit" style="color:${headerColor}">$0 / mo required</div>
                         </div>
                       </div>
                       <div class="fc-list">
-                        <div class="fc-item"><div class="fc-item-name" style="color:var(--ink2)">${zeroReason}</div></div>
+                        <div class="fc-item"><div class="fc-item-name">${zeroReason}</div></div>
+                        ${goalLines}
                       </div>
                     </div>
                   `;
-                  return '<td style="color:var(--ink3);font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '$0</span></td>';
+                  return '<td style="color:' + zeroColor + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '$0</span></td>';
                 }
                 // Parse downstream shortfall warnings from discTooltip
                 const rawDisc = r.discTooltip || '';
