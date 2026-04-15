@@ -6083,10 +6083,6 @@
           const taxRate = ftGlobals.taxMode === 'auto' ? ftCalcAutoTax(taxableTotal, married) : ftGlobals.taxFlat / 100;
           let netHH = Math.round(taxableGrossAcc - taxableTotal * taxRate) + fixedNetAcc;
 
-          // Use NW override if available (overrides previous calculation logic)
-          const nwOverride = ftOvMap[age]?.nw;
-          if (nwOverride !== undefined) liquidNW = nwOverride;
-
           const living = ftGetLiving(age);
 
           let taxTip = 'effective rate: ' + ((taxRate || 0) * 100).toFixed(1) + '% (marginal fed ' + (ftGetFedMarginalRate(taxableTotal, married) * 100).toFixed(1) + '% + state ' + ((STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default) * 100).toFixed(1) + '%)';
@@ -6150,7 +6146,10 @@
               investmentPropertyEquity += cv - ftCalcRemainingDebt(p, yo);
             }
           }
-          const investableNW = liquidNW + retirementBal + investmentPropertyEquity;
+          const nwOvForCalc = ftOvMap[age]?.nw;
+          const investableNW = nwOvForCalc !== undefined
+            ? Math.round(nwOvForCalc - realEstateEquity + investmentPropertyEquity)
+            : (liquidNW + retirementBal + investmentPropertyEquity);
 
           // Required savings vs Actual surplus
           const netSavings = netHH - living - fixedCosts;
@@ -6261,14 +6260,18 @@
 
           let newLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
           const nwOv = ftOvMap[age]?.nw;
+          // nwOv is the total NW the user typed (what the NW column shows).
+          // Derive liquidNW = totalNW - retirement - realEstate so that
+          // the displayed nw (liquidNW + retirement + realEstate) equals nwOv exactly.
+          const nwOvLiq = nwOv !== undefined ? Math.round(nwOv - retirementBal - realEstateEquity) : undefined;
 
           if (isHistory) {
-            newLiq = (nwOv !== undefined) ? nwOv : null;
+            newLiq = (nwOvLiq !== undefined) ? nwOvLiq : null;
           } else if (age === curAge) {
             // Anchor to liquid accounts only
-            newLiq = (nwOv !== undefined) ? nwOv : liquidSeed;
-          } else if (nwOv !== undefined) {
-            newLiq = nwOv;
+            newLiq = (nwOvLiq !== undefined) ? nwOvLiq : liquidSeed;
+          } else if (nwOvLiq !== undefined) {
+            newLiq = nwOvLiq;
           }
 
           let displayLiq = newLiq;
@@ -6946,7 +6949,7 @@
           // ── GENERAL ────────────────────────────────────────────────────
           + SH('General')
           + '<div class="ft-gl-row"><label class="ft-gl-lbl">Projection starting age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.projectionStartingAge + '" oninput="ftGlobals.projectionStartingAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
-          + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Starting NW</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + nwCtrl + '</div></div>'
+          + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Starting NW</label><div id="ft-nw-ov-ctrl" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + nwCtrl + '</div></div>'
           + '<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.numFormat !== 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip ' + (ftGlobals.numFormat === 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
           // ── RETURNS & TAXES ─────────────────────────────────────────────
           + SH('Returns &amp; Taxes')
@@ -7422,7 +7425,7 @@
         ftRenderPanel(); ftRecalc();
       }
       function ftRemoveExpPhase(id) { ftExpPhases = ftExpPhases.filter(p => p.id !== id); if (ftActivePhaseId === id) ftActivePhaseId = null; ftRenderPanel(); ftRecalc(); }
-      function ftUpdateExpPhase(id, field, val) { const ph = ftExpPhases.find(p => p.id === id); if (ph) { ph[field] = val; if (field !== 'name' && field !== 'location') ftRecalc(); } }
+      function ftUpdateExpPhase(id, field, val) { const ph = ftExpPhases.find(p => p.id === id); if (ph) { ph[field] = val; if (field !== 'name' && field !== 'location') ftRecalc(); else ftSaveScenario(); } }
 
       function ftAutoUpdateExpPhases(partnerAge) {
         const existing = ftExpPhases.find(p => p.startAge >= partnerAge);
@@ -7535,24 +7538,25 @@
       }
 
       function ftStartEditNwOv(which) {
+        const ctrl = document.getElementById('ft-nw-ov-ctrl');
+        if (!ctrl) return;
         const cur = which === 'today' ? ftGetTodayNW() : ftGetEoyNW();
-        const rowEl = document.querySelector(which === 'today' ? '.ft-today-row' : '.ft-eoy-row');
-        if (!rowEl) return;
-        const vis = ftColOrder.filter(c => ftColVis[c]);
-        const nwIdx = vis.indexOf('nw');
-        if (nwIdx < 0) return;
-        const td = rowEl.cells[nwIdx];
-        if (!td) return;
-        td.innerHTML = '<input class="ft-cell-input" type="number" value="' + cur + '">';
-        const inp = td.querySelector('input');
-        inp.focus(); inp.select();
-        const commit = () => {
-          const v = parseFloat(inp.value);
-          if (!isNaN(v)) { if (which === 'today') ftNwTodayOv = v; else ftNwEoyOv = v; ftRecalc(); }
-          else ftRenderTable();
-        };
-        inp.addEventListener('blur', commit);
-        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') ftRenderTable(); });
+        ctrl.innerHTML = '<input class="ft-gl-inp" type="number" id="ft-nw-ov-inp" value="' + cur + '" style="width:110px">'
+          + ' <button class="btn bsm" onclick="ftCommitNwOv(\'' + which + '\')" style="font-size:10px;padding:2px 8px">done</button>'
+          + ' <button class="btn bsm" onclick="ftRenderPanel()" style="font-size:10px;padding:2px 6px">cancel</button>';
+        const inp = document.getElementById('ft-nw-ov-inp');
+        if (inp) {
+          inp.focus(); inp.select();
+          inp.addEventListener('keydown', e => { if (e.key === 'Enter') ftCommitNwOv(which); if (e.key === 'Escape') ftRenderPanel(); });
+        }
+      }
+
+      function ftCommitNwOv(which) {
+        const inp = document.getElementById('ft-nw-ov-inp');
+        if (!inp) return;
+        const v = parseFloat(inp.value);
+        if (!isNaN(v)) { if (which === 'today') ftNwTodayOv = v; else ftNwEoyOv = v; ftRecalc(); }
+        ftRenderPanel();
       }
 
       function ftClearNwOv(which) { if (which === 'today') ftNwTodayOv = null; else ftNwEoyOv = null; ftRecalc(); }
