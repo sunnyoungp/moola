@@ -4269,3 +4269,43 @@
       width: 14px;
       height: 14px;
     }
+
+    /* Smart Responsive Container for Allocation Card */
+    .allocation-content {
+      display: flex;
+      flex-wrap: wrap; /* Crucial: allows legend to wrap below chart when squished */
+      align-items: stretch; 
+      gap: 20px;
+      flex: 1;
+      min-height: 0; /* Crucial for preventing container expansion loop */
+    }
+
+    /* Pie Chart Wrapper Priority Scaling */
+    .allocation-content .chart-wrap {
+      position: relative;
+      flex-grow: 1;
+      min-width: 180px; /* Chart forces a wrap if the container width falls below limit */
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Canvas Override: Prevent Canvas Ignoring Constraints */
+    .allocation-content .chart-wrap canvas {
+      max-height: 100% !important;
+      max-width: 100% !important;
+      object-fit: contain; /* Enforces native scale-to-fit boundary tracking */
+    }
+
+    /* Legend Restraints */
+    #port-alloc-legend {
+      flex: 1;
+      min-width: 180px; /* Minimum width the legend needs to stay readable */
+      display: flex;
+      flex-direction: column;
+      gap: 4px; /* Reduced gap constraint for density */
+      overflow-y: auto;
+      min-height: 0;
+      padding-right: 4px;
+    }
