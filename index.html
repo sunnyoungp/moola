@@ -6200,18 +6200,23 @@
 
             // Retirement — drop base<target outer guard; r<=0 means compounding already covers it
             if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
-              const r = requiredSavingsForGoal(retirementGoalBase, ftGlobals.retireNW, ftGlobals.retireAge, age, roc);
+              // Compute investment property equity at retirement age up-front so it can
+              // offset the goal target in both the funded check and the funded-goals branch.
+              let futureInvPropEquity = 0;
+              for (const { p } of propScheds) {
+                if (p.propType !== 'primary' && ftGlobals.retireAge >= p.purchaseAge) {
+                  const yo = ftGlobals.retireAge - p.purchaseAge;
+                  const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
+                  futureInvPropEquity += cv - ftCalcRemainingDebt(p, yo);
+                }
+              }
+              // Subtract investment property equity from the target so that properties
+              // already cover part of the retirement goal (matches how usable NW is displayed).
+              const adjustedRetireGoal = Math.max(0, ftGlobals.retireNW - Math.round(futureInvPropEquity));
+              const r = requiredSavingsForGoal(retirementGoalBase, adjustedRetireGoal, ftGlobals.retireAge, age, roc);
               if (r > 0) {
                 pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false });
               } else {
-                let futureInvPropEquity = 0;
-                for (const { p } of propScheds) {
-                  if (p.propType !== 'primary' && ftGlobals.retireAge >= p.purchaseAge) {
-                    const yo = ftGlobals.retireAge - p.purchaseAge;
-                    const cv = p.price * Math.pow(1 + (p.appreciation || 4) / 100, yo);
-                    futureInvPropEquity += cv - ftCalcRemainingDebt(p, yo);
-                  }
-                }
                 const projectedNW = Math.round(retirementGoalBase * Math.pow(1 + roc, ftGlobals.retireAge - age)) + Math.round(futureInvPropEquity);
                 fundedGoals.push({ label: 'Retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, targetNW: ftGlobals.retireNW, projectedNW });
               }
