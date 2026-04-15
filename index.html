@@ -697,11 +697,11 @@
         </div>
       </div>
 
-      <!-- FUTURE -->
+      <!-- LIFE PLAN -->
       <div id="tab-future" class="tc" style="padding-bottom:2rem">
         <!-- Title row -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:40px;margin-bottom:14px">
-          <div class="page-title">Future</div>
+          <div class="page-title">Life plan</div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="btn bsm" onclick="ftOpenSectionManager()" title="Configure layout">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -801,7 +801,7 @@
           </div>
           <div class="ft-sec-body" id="ftb-table">
             <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
-              <button class="btn bsm" onclick="ftAppendRow()">+ add row (future)</button>
+              <button class="btn bsm" onclick="ftAppendRow()">+ add row (life plan)</button>
               <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
               <button class="btn bsm" id="ft-reset-ov-btn" onclick="ftResetAllOverrides()"
                 style="display:none;background:var(--rose-l);color:var(--rose);border-color:var(--rose)"
@@ -1556,11 +1556,11 @@
       </div>
     </div>
 
-    <!-- FUTURE LAYOUT MANAGER MODAL -->
+    <!-- LIFE PLAN LAYOUT MANAGER MODAL -->
     <div class="mo-ov" id="m-ft-layout">
       <div class="modal" style="width:400px;max-width:96vw">
         <div class="modal-title">
-          <span>Configure Future Layout</span>
+          <span>Configure Life Plan Layout</span>
           <button class="bgh btn bsm" onclick="closeModal('m-ft-layout')">✕</button>
         </div>
         <p style="font-size:12px;color:var(--ink3);margin-bottom:12px;line-height:1.5">
@@ -1573,7 +1573,7 @@
       </div>
     </div>
 
-    <!-- FUTURE COLUMN MANAGER MODAL -->
+    <!-- LIFE PLAN COLUMN MANAGER MODAL -->
     <div class="mo-ov" id="m-ft-columns">
       <div class="modal" style="width:480px;max-width:96vw">
         <div class="modal-title">
@@ -1926,7 +1926,7 @@
             { id: 'projections', name: 'Projections', icon: 'lineChart', archived: false },
             { id: 'goals', name: 'Goals', icon: 'target', archived: false },
             { id: 'life', name: 'Life', icon: 'layout', archived: false },
-            { id: 'future', name: 'Future', icon: 'future', archived: false },
+            { id: 'future', name: 'Life plan', icon: 'future', archived: false },
             { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
           ],
           accounts: [],
@@ -2486,7 +2486,7 @@
       }
       function renderTab(id) {
         if (id === 'rebalance') renderRebalAcctTabs();
-        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderFuture, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -2713,8 +2713,8 @@
       function setTableGroup(mode) { S.tableGroupingMode = mode; ps(S); renderAccounts(); }
 
       function renderAccounts() {
-        // Eagerly load Future scenario data so ftProperties is available
-        // even if the Future tab has never been rendered in this session.
+        // Eagerly load Life plan scenario data so ftProperties is available
+        // even if the Life plan tab has never been rendered in this session.
         if (ftProperties.length === 0 && S?.future_scenarios?.length) {
           const activeScId = S.future_active_scenario || S.future_scenarios[0]?.id;
           const sc = S.future_scenarios.find(s => s.id === activeScId);
@@ -2989,14 +2989,14 @@
               <tbody>${rows}</tbody>
             </table>
           </div>
-          <div style="font-size:10.5px;color:var(--ink3);margin-top:10px">Read-only · sourced from Future → Properties settings · equity = appraised value − remaining mortgage</div>
+          <div style="font-size:10.5px;color:var(--ink3);margin-top:10px">Read-only · sourced from Life plan → Properties settings · equity = appraised value − remaining mortgage</div>
         </div>`;
       }
 
       function openPropertyEditorFromAssets(pid) {
-        // Navigate to Future tab — renderFuture() will reload ftProperties from saved scenario
+        // Navigate to Life plan tab — renderLifePlan() will reload ftProperties from saved scenario
         showTab('future', document.querySelector('.nt[data-tab="future"]'));
-        // After renderFuture completes synchronously, open settings on Properties tab
+        // After renderLifePlan completes synchronously, open settings on Properties tab
         setTimeout(() => {
           const p = ftProperties.find(x => x.id === pid);
           if (p) p.expanded = true;
@@ -5553,7 +5553,7 @@
       }
 
       // ══════════════════════════════════════════════════════════════
-      // FUTURE TAB
+      // LIFE PLAN TAB
       // ══════════════════════════════════════════════════════════════
 
       // ── Runtime state ──────────────────────────────────────────────
@@ -6815,7 +6815,7 @@
         if (body) body.classList.toggle('ft-sec-hidden');
       }
 
-      function ftRenderFuture() {
+      function ftRenderLifePlan() {
         const order = S.future.secOrder || ['metrics', 'savings', 'graph', 'timeline', 'table'];
         const vis = S.future.secVis || {};
         const container = document.getElementById('tab-future');
@@ -7089,7 +7089,7 @@
         });
       }
 
-      // ── Future layout & columns managers ──────────────────────────
+      // ── Life plan layout & columns managers ──────────────────────────
       const FT_SEC_LABELS = {
         metrics: 'Projections Summary',
         savings: 'Savings Tracker',
@@ -7112,7 +7112,7 @@
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 5h8v2H4V5zm0 4h8v2H4V9z"/></svg>
               </div>
               <div class="ft-sort-label">${FT_SEC_LABELS[id] || id}</div>
-              <input type="checkbox" class="ft-sort-check" ${vis[id] !== false ? 'checked' : ''} onchange="S.future.secVis['${id}']=this.checked;ps(S);ftRenderFuture()">
+              <input type="checkbox" class="ft-sort-check" ${vis[id] !== false ? 'checked' : ''} onchange="S.future.secVis['${id}']=this.checked;ps(S);ftRenderLifePlan()">
             </div>
           `).join('');
         };
@@ -7123,7 +7123,7 @@
           const [moved] = order.splice(ftDragIdx, 1);
           order.splice(targetIdx, 0, moved);
           ftDragIdx = null;
-          ps(S); ftRenderFuture(); renderList();
+          ps(S); ftRenderLifePlan(); renderList();
         };
 
         renderList();
@@ -7519,7 +7519,7 @@
           // Last year, shift end down
           ftGlobals.maxAge--;
         } else {
-          // Future year, just clear all overrides for this specific age
+          // Life plan year, just clear all overrides for this specific age
           delete ftOvMap[age];
         }
         ftSaveScenario();
@@ -7560,7 +7560,7 @@
       function ftRecalc() {
         if (!document.getElementById('ft-metrics')) return;
         ftRows = ftCalcRows();
-        ftRenderFuture();
+        ftRenderLifePlan();
         ftSaveScenario();
       }
 
@@ -7585,7 +7585,7 @@
         });
       }
 
-      function renderFuture() {
+      function renderLifePlan() {
         // Ensure S.future is initialized
         if (!S.future) S.future = {};
         if (!S.future.secOrder) S.future.secOrder = ['metrics', 'savings', 'graph', 'timeline', 'table'];
