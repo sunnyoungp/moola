@@ -3984,6 +3984,53 @@ body.sb-collapsed .priv-section {
   filter: brightness(1.15);
 }
 
+/* ── Timeline event tick marks ───────────────────────────────── */
+.ft-tl-tick {
+  position: absolute;
+  width: 14px;           /* wide invisible hit area for easy hover/click */
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 3;
+}
+.ft-tl-tick::before {    /* the actual visible 1.5px line */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  transform: translateX(-50%);
+  background: var(--tc, #94a3b8);
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity .12s, width .12s;
+}
+.ft-tl-tick:hover::before {
+  opacity: 1;
+  width: 2.5px;
+}
+
+/* ── Timeline tooltip (shown via JS, fixed-position) ─────────── */
+#ft-tick-tooltip {
+  position: fixed;
+  background: rgba(28,27,25,.9);
+  color: #fff;
+  font-size: 11px;
+  font-family: var(--sans);
+  font-weight: 500;
+  letter-spacing: -.1px;
+  line-height: 1.4;
+  padding: 5px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.22);
+  transform: translateX(-50%);
+  transition: opacity .1s;
+  display: none;
+}
+
 .card-phase {
   background: var(--white);
   border: 1px solid var(--border);

@@ -6509,8 +6509,9 @@
           const col = EV_COLORS[ev.type] || '#94a3b8';
           const rawLabel = (ev.label || ev.name || ev.type || '').slice(0, 24);
           const tip = rawLabel + ' \u00b7 age ' + ev._age;
-          // 1px tick spanning the full bar area — hoverable for tooltip, clickable for detail
-          html += '<div style="position:absolute;left:calc(' + pct.toFixed(2) + '% - 0.75px);top:' + LABEL_ZONE_H + 'px;width:1.5px;height:' + ganttH + 'px;background:' + col + ';z-index:3;cursor:pointer;opacity:0.7" title="' + tip + '" onclick="ftOpenEventForensic(this,\'' + ev.id + '\')"></div>';
+          // Wide hit area + visual line via ::before + JS tooltip on hover
+          const safeTip = tip.replace(/"/g, '&quot;');
+          html += '<div class="ft-tl-tick" style="left:' + pct.toFixed(2) + '%;top:' + LABEL_ZONE_H + 'px;height:' + ganttH + 'px;--tc:' + col + '" data-tip="' + safeTip + '" onmouseenter="ftShowTick(this)" onmouseleave="ftHideTick()" onclick="ftHideTick();ftOpenEventForensic(this,\'' + ev.id + '\')"></div>';
         });
 
         // ── 4. Age Axis ─────────────────────────────────────────────────
@@ -6624,6 +6625,28 @@
           </div>
         `;
         wrapper.innerHTML = cardHtml;
+      }
+
+      // ── Timeline tick tooltips ────────────────────────────────────────
+      function ftShowTick(el) {
+        const tip = el.dataset.tip;
+        if (!tip) return;
+        let t = document.getElementById('ft-tick-tooltip');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'ft-tick-tooltip';
+          document.body.appendChild(t);
+        }
+        const r = el.getBoundingClientRect();
+        t.textContent = tip;
+        t.style.left = (r.left + r.width / 2) + 'px';
+        t.style.top = (r.top > 50 ? r.top - 34 : r.bottom + 8) + 'px';
+        t.style.display = 'block';
+        t.style.opacity = '1';
+      }
+      function ftHideTick() {
+        const t = document.getElementById('ft-tick-tooltip');
+        if (t) { t.style.opacity = '0'; setTimeout(() => { if (t) t.style.display = 'none'; }, 100); }
       }
 
       // ── Event cards ─────────────────────────────────────────────────
