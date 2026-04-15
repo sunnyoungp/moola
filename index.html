@@ -6150,6 +6150,11 @@
           const investableNW = nwOvForCalc !== undefined
             ? Math.round(nwOvForCalc - realEstateEquity + investmentPropertyEquity)
             : (liquidNW + retirementBal + investmentPropertyEquity);
+          // effectiveLiquidNW: use override-derived liquid NW if present so that
+          // goal calculations (property, one-time, college) use the overridden base.
+          const effectiveLiquidNW = nwOvForCalc !== undefined
+            ? Math.round(nwOvForCalc - retirementBal - realEstateEquity)
+            : liquidNW;
 
           // Required savings vs Actual surplus
           const netSavings = netHH - living - fixedCosts;
@@ -6169,14 +6174,14 @@
             for (const { p } of propScheds) {
               if (p.purchaseAge > age) {
                 const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
-                const r = requiredSavingsForGoal(liquidNW, dc, p.purchaseAge, age, roc);
+                const r = requiredSavingsForGoal(effectiveLiquidNW, dc, p.purchaseAge, age, roc);
                 if (r > 0) pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r });
               }
             }
             for (const oe of oneTimeEvs) {
               if (oe.age > age && (oe.amount || 0) < 0) {
                 const cost = Math.abs(oe.amount);
-                const r = requiredSavingsForGoal(liquidNW, cost, oe.age, age, roc);
+                const r = requiredSavingsForGoal(effectiveLiquidNW, cost, oe.age, age, roc);
                 if (r > 0) pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r });
               }
             }
@@ -6186,7 +6191,7 @@
                   const parentAgeAtCollege = ce.age + st.childAgeStart;
                   if (parentAgeAtCollege > age) {
                     const totalCost = st.annual * (st.childAgeEnd - st.childAgeStart);
-                    const r = requiredSavingsForGoal(liquidNW, totalCost, parentAgeAtCollege, age, roc);
+                    const r = requiredSavingsForGoal(effectiveLiquidNW, totalCost, parentAgeAtCollege, age, roc);
                     if (r > 0) pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r });
                   }
                 }
@@ -6251,14 +6256,20 @@
           // For history rows, we don't compound. NW is only shown if it has an override.
           const prevLiq = isHistory ? 0 : (liquidNW || 0);
           const growth = prevLiq * roc;
-          const nwTip = isHistory ? 'Historical year: manual Net Worth entry only.' : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
-            '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
-            '\n + Added Wealth: ' + ftFmt(netSavings) +
-            (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
-            (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
-            '\n = NEW BALANCE: ' + ftFmt(Math.round(prevLiq + growth + netSavings + ot - extraPmt));
+          const organicNewLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
+          const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
+          const nwTip = isHistory
+            ? 'Historical year: manual Net Worth entry only.'
+            : hasNwOvForTip
+              ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicNewLiq + Math.round(retirementBal) + Math.round(realEstateEquity))
+              : 'Calculation:\nPrevious Balance: ' + ftFmt(prevLiq) +
+                '\n + Return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
+                '\n + Added Wealth: ' + ftFmt(netSavings) +
+                (ot !== 0 ? '\n + One-time: ' + ftFmt(ot) : '') +
+                (extraPmt !== 0 ? '\n - Extra Pmt: ' + ftFmt(extraPmt) : '') +
+                '\n = NEW BALANCE: ' + ftFmt(organicNewLiq);
 
-          let newLiq = Math.round(prevLiq + growth + netSavings + ot - extraPmt);
+          let newLiq = organicNewLiq;
           const nwOv = ftOvMap[age]?.nw;
           // nwOv is the total NW the user typed (what the NW column shows).
           // Derive liquidNW = totalNW - retirement - realEstate so that
