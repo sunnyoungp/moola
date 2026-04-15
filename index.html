@@ -7429,7 +7429,7 @@
                       <div class="fc-command" style="color:var(--ink2)">${surplusLabel}</div>
                     </div>
                   `;
-                  return '<td style="color:' + color + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + '</span>' + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</td>';
+                  return '<td style="color:' + color + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
                 }
               }
               if (c === 'monthlySurplus') {
@@ -7458,7 +7458,7 @@
                       </div>
                     </div>
                   `;
-                  return '<td style="color:var(--ink3);font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '</span>$0</td>';
+                  return '<td style="color:var(--ink3);font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '$0</span></td>';
                 }
                 // Parse downstream shortfall warnings from discTooltip
                 const rawDisc = r.discTooltip || '';
@@ -7500,7 +7500,7 @@
                     ${shortfallHtml ? '<div class="fc-section" style="margin:8px 12px 4px">Downstream Risks</div><div class="fc-list">' + shortfallHtml + '</div>' : ''}
                   </div>
                 `;
-                return '<td style="color:#f59e0b;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + '</span>' + ftFmt(r.reqSavings) + '</td>';
+                return '<td style="color:#f59e0b;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
               }
               // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
               const val = r[c];
