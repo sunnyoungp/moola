@@ -6434,7 +6434,7 @@
 
         const LANE_H = 36;       // px height of each Gantt lane bar
         const LANE_GAP = 5;      // px gap between lanes
-        const LABEL_ZONE_H = 90; // px above bars reserved for labels (increased for 4-lane stacking)
+        const LABEL_ZONE_H = 6;  // minimal top padding — labels replaced by hover tooltips
         const AXIS_H = 22;       // px below bars for age ticks
 
         // ── 1. Slot-Assignment Collision Engine (greedy lowest-slot) ──
@@ -6494,7 +6494,7 @@
           });
         });
 
-        // ── 3. Event Markers + Staggered Labels ───────────────────────
+        // ── 3. Event Markers — vertical tick lines with hover tooltips ─
         const EV_COLORS = {
           income: '#4E61A8', partner: '#7C3AED',
           property: '#D97706', child: '#059669',
@@ -6504,35 +6504,13 @@
           .map(ev => ({ ...ev, _age: ev.type === 'healthcare' ? (ev.startAge || ev.age || 0) : (ev.age || 0) }))
           .filter(ev => ev._age >= startAge && ev._age <= endAge)
           .sort((a, b) => a._age - b._age);
-        const labelLanes = [[], [], [], []];
         sortedEvs.forEach(ev => {
           const pct = (ev._age - startAge) / span * 100;
           const col = EV_COLORS[ev.type] || '#94a3b8';
-          const rawLabel = (ev.label || ev.name || ev.type || '').slice(0, 13);
-          const tip = rawLabel + ' \u00b7 ' + ev._age;
-
-          // Multi-lane greedy lane assignment (up to 4 lanes)
-          let slot = 0;
-          for (let li = 0; li < 4; li++) {
-            const lane = labelLanes[li];
-            const last = lane[lane.length - 1];
-            if (!last || (pct - last.pct) > 10.5) { // ~10.5% width buffer per label
-              slot = li;
-              lane.push({ pct });
-              break;
-            }
-          }
-          // Vertical positioning (descending from top of label zone)
-          const labelTopPx = 70 - (slot * 18);
-
-          // Vertical line marker
-          const lineTop = LABEL_ZONE_H - 6;
-          html += '<div style="position:absolute;left:calc(' + pct.toFixed(2) + '% - 0.75px);top:' + lineTop + 'px;width:1.5px;height:' + (ganttH + 6) + 'px;background:' + col + ';z-index:3;pointer-events:none;opacity:0.6"></div>';
-          // Label component
-          html += '<div style="position:absolute;left:' + pct.toFixed(2) + '%;top:' + labelTopPx + 'px;transform:translateX(-50%);z-index:4;cursor:pointer;text-align:center" onclick="ftOpenEventForensic(this,\'' + ev.id + '\')" title="' + tip + '">'
-            + '<div style="width:5px;height:5px;border-radius:50%;background:' + col + ';margin:0 auto 2px"></div>'
-            + '<span style="font-size:9px;font-weight:600;color:var(--ink2);white-space:nowrap;display:block;letter-spacing:-.2px">' + tip + '</span>'
-            + '</div>';
+          const rawLabel = (ev.label || ev.name || ev.type || '').slice(0, 24);
+          const tip = rawLabel + ' \u00b7 age ' + ev._age;
+          // 1px tick spanning the full bar area — hoverable for tooltip, clickable for detail
+          html += '<div style="position:absolute;left:calc(' + pct.toFixed(2) + '% - 0.75px);top:' + LABEL_ZONE_H + 'px;width:1.5px;height:' + ganttH + 'px;background:' + col + ';z-index:3;cursor:pointer;opacity:0.7" title="' + tip + '" onclick="ftOpenEventForensic(this,\'' + ev.id + '\')"></div>';
         });
 
         // ── 4. Age Axis ─────────────────────────────────────────────────
