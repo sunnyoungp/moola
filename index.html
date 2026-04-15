@@ -7387,8 +7387,49 @@
                   return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                 } else {
                   const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
-                  return '<td style="color:' + color + ';font-family:var(--mono)" title="' + tip + ' · current spending: ' + ftFmt(livingMo) + '/mo">'
-                    + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</td>';
+                  const netHHMo = Math.round((r.income + r.partner + (r.netSavings - (r.income + r.partner) + (r.living + r.housing + Math.round(r.kids) + Math.round(r.healthcare)))) / 12);
+                  // Reconstruct netHH from available row data: netHH = netSavings + living + fixedCosts - ot
+                  const rowFixedCosts = r.housing + Math.round(r.kids) + Math.round(r.healthcare);
+                  const rowNetHH = r.netSavings + r.living + rowFixedCosts - (r.ot || 0);
+                  const rowNetHHMo = Math.round(rowNetHH / 12);
+                  const fixedMo = Math.round(rowFixedCosts / 12);
+                  const reqSavMo2 = Math.round(r.requiredSavings / 12);
+                  const rawMo = rowNetHHMo - fixedMo - reqSavMo2;
+                  const surplusLabel = r.noGoals
+                    ? 'No upcoming goals — all targets funded by compounding.'
+                    : r.bindingGoal
+                      ? `Surplus after saving for: ${r.bindingGoal}`
+                      : 'Surplus after all goals and obligations.';
+                  const freeCardHtml = `
+                    <div class="forensic-card">
+                      <div class="fc-header">
+                        <div>
+                          <div class="fc-title"><span>💰</span> Free to Spend Breakdown</div>
+                          <div class="fc-deficit" style="color:#16a34a">+${ftFmt(r.freeSpend)}/mo</div>
+                        </div>
+                      </div>
+                      <div class="fc-list">
+                        <div class="fc-item">
+                          <div class="fc-item-name">Take-home income</div>
+                          <div class="fc-item-val">${ftFmt(rowNetHHMo)}/mo</div>
+                        </div>
+                        <div class="fc-item">
+                          <div class="fc-item-name" style="color:var(--rose)">− Fixed costs (housing + kids + healthcare)</div>
+                          <div class="fc-item-val" style="color:var(--rose)">−${ftFmt(fixedMo)}/mo</div>
+                        </div>
+                        <div class="fc-item">
+                          <div class="fc-item-name" style="color:var(--rose)">− Required goal savings</div>
+                          <div class="fc-item-val" style="color:var(--rose)">−${ftFmt(reqSavMo2)}/mo</div>
+                        </div>
+                        <div class="fc-item" style="border-top:1px solid var(--border-subtle);margin-top:4px;padding-top:8px">
+                          <div class="fc-item-name" style="font-weight:600">= Free to spend</div>
+                          <div class="fc-item-val" style="color:#16a34a;font-weight:700">+${ftFmt(r.freeSpend)}/mo</div>
+                        </div>
+                      </div>
+                      <div class="fc-command" style="color:var(--ink2)">${surplusLabel}</div>
+                    </div>
+                  `;
+                  return '<td style="color:' + color + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + '</span>' + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</td>';
                 }
               }
               if (c === 'monthlySurplus') {
@@ -7398,6 +7439,68 @@
                   : 'Leftover after all expenses and goals';
                 return '<td style="color:' + color + ';font-family:var(--mono);font-weight:600" title="' + surpTip + '">'
                   + (r.monthlySurplus >= 0 ? '+' : '') + ftFmt(r.monthlySurplus) + '/mo</td>';
+              }
+              if (c === 'reqSavings') {
+                if (r.isHistory) return '<td style="color:var(--ink3)">—</td>';
+                const reqMo = Math.round(r.reqSavings / 12);
+                if (r.reqSavings === 0) {
+                  const zeroReason = r.noGoals ? 'No upcoming goals — add a property, retirement target, or large purchase.' : 'Goal fully funded — current NW is on track to compound to your target.';
+                  const zeroCard = `
+                    <div class="forensic-card">
+                      <div class="fc-header">
+                        <div>
+                          <div class="fc-title"><span>🎯</span> Required Savings</div>
+                          <div class="fc-deficit" style="color:var(--ink2)">$0 / mo required</div>
+                        </div>
+                      </div>
+                      <div class="fc-list">
+                        <div class="fc-item"><div class="fc-item-name" style="color:var(--ink2)">${zeroReason}</div></div>
+                      </div>
+                    </div>
+                  `;
+                  return '<td style="color:var(--ink3);font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '</span>$0</td>';
+                }
+                // Parse downstream shortfall warnings from discTooltip
+                const rawDisc = r.discTooltip || '';
+                const shortfallMatch = rawDisc.match(/Warning: Nearest-goal savings rate causes shortfall for: (.+)/);
+                const shortfallList = shortfallMatch ? shortfallMatch[1].split(', ') : [];
+                const shortfallHtml = shortfallList.length > 0
+                  ? shortfallList.map(s => `<div class="fc-item"><div class="fc-item-name" style="color:#d97706">⚠ ${s} may fall short at current savings rate</div></div>`).join('')
+                  : '';
+                // Reconstruct key numbers from row data
+                const rowFixedCosts2 = r.housing + Math.round(r.kids) + Math.round(r.healthcare);
+                const rowNetHH2 = r.netSavings + r.living + rowFixedCosts2 - (r.ot || 0);
+                const bindingLabel = r.bindingGoal || 'savings target';
+                const reqCard = `
+                  <div class="forensic-card">
+                    <div class="fc-header">
+                      <div>
+                        <div class="fc-title"><span>🎯</span> Required Savings</div>
+                        <div class="fc-deficit" style="color:#f59e0b">${ftFmt(reqMo)}/mo needed</div>
+                      </div>
+                    </div>
+                    <div class="fc-list">
+                      <div class="fc-item">
+                        <div class="fc-item-name" style="font-weight:600">Binding goal</div>
+                        <div class="fc-item-val" style="font-size:11px;text-align:right;max-width:180px;white-space:normal;line-height:1.3">${bindingLabel}</div>
+                      </div>
+                      <div class="fc-item">
+                        <div class="fc-item-name">Annual savings required</div>
+                        <div class="fc-item-val">${ftFmt(r.reqSavings)}/yr</div>
+                      </div>
+                      <div class="fc-item">
+                        <div class="fc-item-name">Monthly equivalent</div>
+                        <div class="fc-item-val" style="color:#f59e0b;font-weight:700">${ftFmt(reqMo)}/mo</div>
+                      </div>
+                      <div class="fc-item">
+                        <div class="fc-item-name">Take-home available</div>
+                        <div class="fc-item-val">${ftFmt(Math.round(rowNetHH2 / 12))}/mo</div>
+                      </div>
+                    </div>
+                    ${shortfallHtml ? '<div class="fc-section" style="margin:8px 12px 4px">Downstream Risks</div><div class="fc-list">' + shortfallHtml + '</div>' : ''}
+                  </div>
+                `;
+                return '<td style="color:#f59e0b;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + '</span>' + ftFmt(r.reqSavings) + '</td>';
               }
               // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
               const val = r[c];
