@@ -5130,7 +5130,7 @@
         // Free demo key, CORS-safe, 250 req/day, no signup needed
         try {
           const res = await fetchWithTimeout(
-            `https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=demo`, 7000);
+            `https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 7000);
           if (res.ok) {
             const data = await res.json();
             const q = Array.isArray(data) ? data[0] : data;
@@ -5176,18 +5176,46 @@
           }
         } catch (_) { }
 
+        // Source 4: Twelve Data (free tier: 8 req/min, 800/day — no signup needed for demo)
+        try {
+          const res = await fetchWithTimeout(
+            `https://api.twelvedata.com/price?symbol=${ticker}&apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 7000);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.price) {
+              const p = parseFloat(data.price);
+              if (p > 0) return { price: p, change: 0, changePct: 0 };
+            }
+          }
+        } catch (_) { }
+
         return null; // all sources failed for this ticker
       }
 
       async function fetchQuotes(tickers) {
-        // Fetch all tickers in parallel for speed
-        const settled = await Promise.allSettled(
-          tickers.map(t => fetchSingleQuote(t).then(q => ({ ticker: t, q })))
-        );
         const out = {};
-        settled.forEach(r => {
-          if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
-        });
+        let remaining = [...tickers];
+
+        // Up to 3 attempts with staggered delays to avoid rate-limit storms
+        for (let attempt = 0; attempt < 3 && remaining.length > 0; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+
+          // Fetch in small batches of 5 to avoid slamming APIs
+          for (let i = 0; i < remaining.length; i += 5) {
+            const batch = remaining.slice(i, i + 5);
+            const settled = await Promise.allSettled(
+              batch.map(t => fetchSingleQuote(t).then(q => ({ ticker: t, q })))
+            );
+            settled.forEach(r => {
+              if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
+            });
+            // Small delay between batches to space out requests
+            if (i + 5 < remaining.length) await new Promise(r => setTimeout(r, 300));
+          }
+
+          remaining = tickers.filter(t => !out[t]);
+        }
+
         return out;
       }
 
@@ -5467,9 +5495,9 @@
         if (icon) icon.style.animation = 'spinIcon .7s linear infinite';
         if (btn) btn.disabled = true;
 
-        showPriceBar('Syncing…');
-
         const tickers = [...new Set(S.funds.map(f => f.ticker))];
+        showPriceBar(`Syncing ${tickers.length} tickers…`);
+
         const errors = [];
         let quotes = {};
 
