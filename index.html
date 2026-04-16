@@ -7070,77 +7070,89 @@
         const sampleGross = ftGetIncome(ftGlobals.projectionStartingAge);
         const married = !!(pEv && pEv.age <= ftGlobals.projectionStartingAge);
         const autoTaxPct = (ftCalcAutoTax(sampleGross, married) * 100).toFixed(1);
-        const taxCtrl = ftGlobals.taxMode === 'auto'
-          ? '<span class="ft-tax-auto">auto ~' + autoTaxPct + '%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'flat\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Override</button>'
-          : '<input class="ft-gl-inp" type="number" value="' + ftGlobals.taxFlat + '" oninput="ftGlobals.taxFlat=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"> <span class="ft-gl-unit">%</span> <button class="btn bsm" onclick="ftSetTaxMode(\'auto\')" style="font-size:10px;padding:2px 7px;margin-left:4px">Auto</button>';
 
-        // Retirement conflict check
+        // Tax rate control
+        const taxCtrl = ftGlobals.taxMode === 'auto'
+          ? '<div style="display:flex;align-items:center;gap:8px"><span class="ft-tax-auto">auto ~' + autoTaxPct + '%</span><button class="btn bsm" onclick="ftSetTaxMode(\'flat\')" style="font-size:10px;padding:2px 7px">Override</button></div>'
+          : '<div style="display:flex;align-items:center;gap:6px"><input class="ft-ed-inp" type="number" value="' + ftGlobals.taxFlat + '" oninput="ftGlobals.taxFlat=+this.value;ftSaveScenario();ftRecalc()" style="flex:1"><button class="btn bsm" onclick="ftSetTaxMode(\'auto\')" style="font-size:10px;padding:2px 7px;flex-shrink:0">Auto</button></div>';
+
+        // Retirement conflict check (unchanged logic)
         const goalLastChildExpAge = ftLifeEvents.filter(e => e.type === 'child')
           .flatMap(ce => (ce.stages || []).map(st => ce.age + st.childAgeEnd))
           .reduce((m, v) => Math.max(m, v), 0);
         const goalRetireConflict = ftGlobals.retireAge > 0 && goalLastChildExpAge > ftGlobals.retireAge
-          ? '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:6px">⚠ Retirement age ' + ftGlobals.retireAge + ' is before last child expense at age ' + goalLastChildExpAge + ' — extend retirement age or shorten child cost stages.</div>' : '';
+          ? '<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:var(--rs);padding:6px 10px;font-size:11px;color:#7A5A00;margin-bottom:10px">⚠ Retirement age ' + ftGlobals.retireAge + ' is before last child expense at age ' + goalLastChildExpAge + ' — extend retirement age or shorten child cost stages.</div>' : '';
 
-        // Budget mode sub-controls (savings rate input OR goal-based note)
+        // Budget mode sub-controls
         const discControls = ftGlobals.discMode === 'rate'
-          ? '<div class="ft-gl-row"><label class="ft-gl-lbl">Target savings rate</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.savingsRate + '" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div><div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
-          : '<div style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:4px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
+          ? ftEdField('Target savings rate (%)', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.savingsRate + '" oninput="ftGlobals.savingsRate=+this.value;ftSaveScenario();ftRecalc()">')
+            + '<div style="font-size:11px;color:var(--ink3);line-height:1.5;margin-top:-4px;margin-bottom:10px">Free to spend = (net income − housing − kids − target savings) ÷ 12</div>'
+          : '<div style="font-size:11px;color:var(--ink3);line-height:1.5;margin-bottom:10px">Also factors in: property down payments, large purchases (negative one-time events), college cost stages. Required savings = maximum of all goal constraints each year.</div>';
 
         // Retirement spending mode
         const spendMode = ftGlobals.retireSpendMode || '4pct';
         const inheritCtrl = spendMode === 'inheritance'
-          ? '<div class="ft-gl-row" style="margin-top:6px"><label class="ft-gl-lbl">Inheritance target</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.inheritanceTarget || 0) + '" oninput="ftGlobals.inheritanceTarget=+this.value;ftSaveScenario();ftRecalc()" style="width:90px"><span class="ft-gl-unit">$</span></div>'
+          ? ftEdField('Inheritance target', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.inheritanceTarget || 0) + '" oninput="ftGlobals.inheritanceTarget=+this.value;ftSaveScenario();ftRecalc()">')
           : '';
-        const spendModeCtrl = '<div class="ft-gl-row" style="align-items:flex-start;margin-top:8px"><label class="ft-gl-lbl">Retirement spending</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (spendMode === '4pct' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'4pct\';ftSaveScenario();ftRenderPanel();ftRecalc()" style="font-size:11px">4% Rule</button><button class="ft-chip ' + (spendMode === 'inheritance' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'inheritance\';ftSaveScenario();ftRenderPanel();ftRecalc()" style="font-size:11px">Inheritance Goal</button></div></div>'
-          + inheritCtrl;
 
+        // Retirement tax fields
         const rothBal = ftGlobals.rothBalanceOv !== null ? ftGlobals.rothBalanceOv : (S?.accounts?.find(a => a.type === 'brokerage-roth')?.balance || 0);
-        const retTax = ftGlobals.retireTaxEnabled ? '<div style="background:var(--s2);border-radius:var(--rs);padding:10px 12px;margin-top:6px">'
-          + '<div class="ft-ev-fr"><label>Roth IRA balance</label><input class="ft-gl-inp" type="number" value="' + rothBal + '" oninput="ftGlobals.rothBalanceOv=+this.value;ftSaveScenario();ftRecalc()" style="width:110px">' + (ftGlobals.rothBalanceOv === null ? '<span style="font-size:10px;color:var(--teal)">synced from Moola</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv=' + rothBal + ';ftRenderPanel()" style="font-size:10px;padding:1px 6px">override</button>' : '<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px">reset</button>') + '</div>'
-          + '<div class="ft-ev-fr"><label>401k tax rate</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.k401TaxRate || 25) + '" oninput="ftGlobals.k401TaxRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
-          + '<div class="ft-ev-fr"><label>Capital gains rate</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.capGainsRate || 15) + '" oninput="ftGlobals.capGainsRate=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
-          + '</div>' : '';
-        const ssCtrl = ftGlobals.ssEnabled ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><div class="ft-ev-fr"><label>Monthly benefit</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.ssBenefit || 2500) + '" oninput="ftGlobals.ssBenefit=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$/mo</span></div><div class="ft-ev-fr"><label>Claim age</label><input class="ft-gl-inp" type="number" value="' + (ftGlobals.ssClaimAge || 67) + '" oninput="ftGlobals.ssClaimAge=+this.value;ftSaveScenario();ftRecalc()" style="width:65px"><span class="ft-gl-unit">yrs</span></div></div>' : '';
+        const retTax = ftGlobals.retireTaxEnabled
+          ? ftEdField('Roth IRA balance',
+              '<div style="display:flex;align-items:center;gap:6px"><input class="ft-ed-inp" type="number" value="' + rothBal + '" oninput="ftGlobals.rothBalanceOv=+this.value;ftSaveScenario();ftRecalc()" style="flex:1">'
+              + (ftGlobals.rothBalanceOv === null
+                ? '<span style="font-size:10px;color:var(--teal);flex-shrink:0">synced</span><button class="btn bsm" onclick="ftGlobals.rothBalanceOv=' + rothBal + ';ftRenderPanel()" style="font-size:10px;padding:1px 6px;flex-shrink:0">override</button>'
+                : '<button class="btn bsm" onclick="ftGlobals.rothBalanceOv=null;ftRenderPanel()" style="font-size:10px;padding:1px 6px;flex-shrink:0">reset</button>')
+              + '</div>')
+            + ftEdField('401k tax rate (%)', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.k401TaxRate || 25) + '" oninput="ftGlobals.k401TaxRate=+this.value;ftSaveScenario();ftRecalc()">')
+            + ftEdField('Capital gains rate (%)', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.capGainsRate || 15) + '" oninput="ftGlobals.capGainsRate=+this.value;ftSaveScenario();ftRecalc()">')
+          : '';
 
-        // Starting NW section
+        // Social Security fields
+        const ssCtrl = ftGlobals.ssEnabled
+          ? ftEdField('Monthly benefit', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.ssBenefit || 2500) + '" oninput="ftGlobals.ssBenefit=+this.value;ftSaveScenario();ftRecalc()">')
+            + ftEdField('Claim age', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.ssClaimAge || 67) + '" oninput="ftGlobals.ssClaimAge=+this.value;ftSaveScenario();ftRecalc()">')
+          : '';
+
+        // Starting NW control
         const todayNW = ftGetTodayNW();
         const nwCtrl = ftNwTodayOv !== null
-          ? '<span style="font-family:var(--mono);font-size:12px">' + ftFmt(ftNwTodayOv) + '</span> <button class="btn bsm" onclick="ftClearNwOv(\'today\');ftRenderPanel()" style="font-size:10px;padding:2px 6px;margin-left:4px">reset</button>'
-          : '<span style="font-size:10px;color:var(--teal);font-family:var(--mono)">' + ftFmt(todayNW) + ' (synced)</span> <button class="btn bsm" onclick="ftStartEditNwOv(\'today\')" style="font-size:10px;padding:2px 6px;margin-left:4px">override</button>';
+          ? '<div style="display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono);font-size:13px;color:var(--ink)">' + ftFmt(ftNwTodayOv) + '</span><button class="btn bsm" onclick="ftClearNwOv(\'today\');ftRenderPanel()" style="font-size:10px;padding:2px 6px">reset</button></div>'
+          : '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--teal);font-family:var(--mono)">' + ftFmt(todayNW) + ' (synced)</span><button class="btn bsm" onclick="ftStartEditNwOv(\'today\')" style="font-size:10px;padding:2px 6px">override</button></div>';
 
-        // Section header helper
-        const SH = label => '<div style="margin:18px 0 10px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">' + label + '</span><div style="flex:1;height:1px;background:var(--border)"></div></div>';
-
-        return '<div class="ft-panel-hdr">Global Settings</div>'
+        return ''
           // ── GENERAL ────────────────────────────────────────────────────
-          + SH('General')
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Projection starting age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.projectionStartingAge + '" oninput="ftGlobals.projectionStartingAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
-          + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Starting NW</label><div id="ft-nw-ov-ctrl" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + nwCtrl + '</div></div>'
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Numbers format</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.numFormat !== 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120k</button><button class="ft-chip ' + (ftGlobals.numFormat === 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()" style="font-size:11px">$120,000</button></div></div>'
+          + ftEdSection('General')
+          + ftEdField('Projection starting age', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.projectionStartingAge + '" oninput="ftGlobals.projectionStartingAge=+this.value;ftSaveScenario();ftRecalc()">')
+          + ftEdField('Starting NW', '<div id="ft-nw-ov-ctrl">' + nwCtrl + '</div>')
+          + ftEdField('Numbers format', '<div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.numFormat !== 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'compact\';ftSaveScenario();ftRecalc()">$120k</button><button class="ft-chip ' + (ftGlobals.numFormat === 'full' ? 'on' : '') + '" onclick="ftGlobals.numFormat=\'full\';ftSaveScenario();ftRecalc()">$120,000</button></div>')
           // ── RETURNS & TAXES ─────────────────────────────────────────────
-          + SH('Returns &amp; Taxes')
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Real portfolio return<br><span style="font-size:10px;color:var(--ink3)">inflation-adjusted</span></label><input class="ft-gl-inp" type="number" value="' + ftGlobals.roc + '" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Expense inflation / yr</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.expInflation + '" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">%</span></div>'
-          + '<div class="ft-gl-row" style="align-items:flex-start"><label class="ft-gl-lbl">Tax rate</label><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + taxCtrl + '</div></div>'
-          + (ftGlobals.taxMode === 'auto' ? '<div class="ft-gl-row" style="margin-top:4px"><label class="ft-gl-lbl" style="font-size:11px">State</label><input class="ft-gl-inp" type="text" value="' + (ftGlobals.state || 'CA') + '" oninput="ftGlobals.state=this.value.toUpperCase();ftSaveScenario();ftRecalc()" style="width:70px"></div><div id="ft-tax-detail-note" style="font-size:10.5px;color:var(--ink3);line-height:1.5;margin-bottom:8px">US federal marginal + ' + (ftGlobals.state || 'CA') + ' state (' + ((STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default) * 100).toFixed(1) + '%) · 401k-eligible streams reduce taxable income</div>' : '')
+          + ftEdSection('Returns &amp; Taxes')
+          + ftEdField('Real portfolio return (%, inflation-adjusted)', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.roc + '" oninput="ftGlobals.roc=+this.value;ftSaveScenario();ftRecalc()">')
+          + ftEdField('Expense inflation per year (%)', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.expInflation + '" step="0.1" oninput="ftGlobals.expInflation=+this.value;ftSaveScenario();ftRecalc()">')
+          + ftEdField('Tax rate', taxCtrl)
+          + (ftGlobals.taxMode === 'auto'
+            ? ftEdField('State', '<input class="ft-ed-inp" type="text" value="' + (ftGlobals.state || 'CA') + '" oninput="ftGlobals.state=this.value.toUpperCase();ftSaveScenario();ftRecalc()">')
+              + '<div id="ft-tax-detail-note" style="font-size:11px;color:var(--ink3);line-height:1.5;margin-top:-4px;margin-bottom:10px">US federal marginal + ' + (ftGlobals.state || 'CA') + ' state (' + ((STATE_TAX_RATES[ftGlobals.state] ?? STATE_TAX_RATES.default) * 100).toFixed(1) + '%) · 401k-eligible streams reduce taxable income</div>'
+            : '')
           // ── RETIREMENT ──────────────────────────────────────────────────
-          + SH('Retirement')
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement age</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireAge + '" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()" style="width:70px"><span class="ft-gl-unit">yrs</span></div>'
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">Retirement NW target</label><input class="ft-gl-inp" type="number" value="' + ftGlobals.retireNW + '" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()" style="width:90px"><span class="ft-gl-unit">$</span></div>'
-          + '<div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:6px;font-family:var(--mono)">4% withdrawal — ' + ftFmt(ftGlobals.retireNW) + ' supports ~' + ftFmt(Math.round(ftGlobals.retireNW * 0.04)) + '/yr in retirement spending</div>'
+          + ftEdSection('Retirement')
+          + ftEdField('Retirement age', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.retireAge + '" oninput="ftGlobals.retireAge=+this.value;ftSaveScenario();ftRecalc()">')
+          + ftEdField('Retirement NW target', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.retireNW + '" oninput="ftGlobals.retireNW=+this.value;ftSaveScenario();ftRecalc()">')
+          + '<div style="font-size:10.5px;color:var(--f);background:var(--fll);border-radius:var(--rs);padding:5px 8px;margin-bottom:10px;font-family:var(--mono)">4% withdrawal — ' + ftFmt(ftGlobals.retireNW) + ' supports ~' + ftFmt(Math.round(ftGlobals.retireNW * 0.04)) + '/yr in retirement spending</div>'
           + goalRetireConflict
-          + '<div class="ft-gl-row" style="align-items:flex-start;margin-top:4px"><label class="ft-gl-lbl">Budget mode</label><div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.discMode === 'rate' ? 'on' : '') + '" onclick="ftSetDiscMode(\'rate\')" style="font-size:11px">Savings rate</button><button class="ft-chip ' + (ftGlobals.discMode === 'goal' ? 'on' : '') + '" onclick="ftSetDiscMode(\'goal\')" style="font-size:11px">Goal-based</button></div></div>'
+          + ftEdField('Budget mode', '<div style="display:flex;gap:4px"><button class="ft-chip ' + (ftGlobals.discMode === 'rate' ? 'on' : '') + '" onclick="ftSetDiscMode(\'rate\')">Savings rate</button><button class="ft-chip ' + (ftGlobals.discMode === 'goal' ? 'on' : '') + '" onclick="ftSetDiscMode(\'goal\')">Goal-based</button></div>')
           + discControls
-          + spendModeCtrl
-          + '<div style="height:1px;background:var(--border);margin:12px 0 8px"></div>'
-          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl">Social Security</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.ssEnabled ? ' checked' : '') + ' onchange="ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
+          + ftEdField('Retirement spending', '<div style="display:flex;gap:4px"><button class="ft-chip ' + (spendMode === '4pct' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'4pct\';ftSaveScenario();ftRenderPanel();ftRecalc()">4% Rule</button><button class="ft-chip ' + (spendMode === 'inheritance' ? 'on' : '') + '" onclick="ftGlobals.retireSpendMode=\'inheritance\';ftSaveScenario();ftRenderPanel();ftRecalc()">Inheritance Goal</button></div>')
+          + inheritCtrl
+          + ftEdToggleRow('Social Security', ftGlobals.ssEnabled, 'ftGlobals.ssEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()')
           + ssCtrl
-          + '<div style="height:1px;background:var(--border);margin:12px 0 8px"></div>'
-          + '<div class="ft-gl-row" style="align-items:center;margin-bottom:6px"><label class="ft-gl-lbl">Retirement tax estimate</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox"' + (ftGlobals.retireTaxEnabled ? ' checked' : '') + ' onchange="ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()"> enabled</label></div>'
+          + ftEdToggleRow('Retirement tax estimate', ftGlobals.retireTaxEnabled, 'ftGlobals.retireTaxEnabled=this.checked;ftSaveScenario();ftRenderPanel();ftRecalc()')
           + retTax
           // ── CONTRIBUTIONS ───────────────────────────────────────────────
-          + SH('Contributions')
-          + '<div class="ft-gl-row"><label class="ft-gl-lbl">401k contribution / yr<br><span style="font-size:10px;color:var(--ink3)">(401k-eligible streams only)</span></label><input class="ft-gl-inp" type="number" value="' + ftGlobals.f401k + '" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()"><span class="ft-gl-unit">$</span></div>';
+          + ftEdSection('Contributions')
+          + ftEdField('401k contribution per year', '<input class="ft-ed-inp" type="number" value="' + ftGlobals.f401k + '" oninput="ftGlobals.f401k=+this.value;ftSaveScenario();ftRecalc()">')
+          + '<div style="font-size:11px;color:var(--ink3);margin-top:-4px">401k-eligible streams only</div>';
       }
 
       // ── Income tab ─────────────────────────────────────────────────

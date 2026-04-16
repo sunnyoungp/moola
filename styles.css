@@ -5178,8 +5178,8 @@ body.sb-collapsed .priv-section {
 
 /* ── Field input ──────────────────────────────────────────────── */
 .ft-ed-inp {
-  background: var(--s2);
-  border: none;
+  background: var(--white);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 7px 10px;
   font-size: 13px;
@@ -5192,7 +5192,8 @@ body.sb-collapsed .priv-section {
 }
 
 .ft-ed-inp:focus {
-  box-shadow: 0 0 0 2px var(--fl);
+  border-color: var(--f);
+  box-shadow: 0 0 0 2px var(--fll);
 }
 
 /* ── Toggle row — label left, toggle right ────────────────────── */
