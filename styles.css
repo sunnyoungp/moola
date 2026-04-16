@@ -774,9 +774,8 @@ textarea {
 
 /* Category drain label — truncates on overflow */
 .fc-cat-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   max-width: 160px;
 }
 
