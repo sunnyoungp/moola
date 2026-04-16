@@ -654,15 +654,15 @@ textarea {
 .fc-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
-
 .fc-item {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-size: 12.5px;
   min-height: 22px;
+  padding: 3px 0;
 }
 
 .fc-item-name {
@@ -698,7 +698,7 @@ textarea {
 .fc-command {
   margin-top: 24px;
   padding: 14px 16px;
-  background: rgba(220, 38, 38, 0.05);
+  background: #EBF3FD;
   border-radius: 6px;
   font-size: 12.5px;
   line-height: 1.5;
@@ -716,15 +716,16 @@ textarea {
 
 /* Indented operation row (+/–): 12px left indent to read as ledger */
 .fc-item--op .fc-item-name {
-  padding-left: 14px;
+  padding-left: 8px;
 }
 
 /* Result row (=): pill with background */
 .fc-item--result {
-  background: var(--s2);
+  background: #EBF3FD;
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 6px;
+  align-items: center;
 }
 .fc-item--result .fc-item-name {
   font-weight: 600;
@@ -802,13 +803,13 @@ textarea {
 
 /* Usable Wealth summary block — modal conclusion row */
 .fc-usable {
-  background: var(--s2);
+  background: #EBF3FD;
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 8px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
 }
 .fc-usable-label {
   font-size: 13px;
