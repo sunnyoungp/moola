@@ -1990,9 +1990,9 @@
         if (!S.future) S.future = {};
         if (!S.future.secOrder) S.future.secOrder = ['metrics', 'savings', 'graph', 'timeline', 'table'];
         if (!S.future.secVis) S.future.secVis = { metrics: true, savings: true, graph: true, timeline: true, table: true };
-        if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
-        if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
-        if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
+        if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids', 'bills'];
+        if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, bills: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
+        if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', bills: 'bills', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
         if (!S.future_scenarios) S.future_scenarios = [];
 
         // Ensure accountCategories + accountTypes exist (for old saves)
@@ -5576,16 +5576,17 @@
       let ftExpPhases = [
         {
           id: 'ph0', name: 'Solo', startAge: 25, endAge: 999,
-          monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: ''
+          monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '',
+          monthlyBills: 0, billsEnabled: false
         }
       ];
       let ftOvMap = {};
       let ftNwTodayOv = null, ftNwEoyOv = null;
       let ftScenarios = [{ id: 'sc0', name: 'Base case', data: null }];
       let ftActiveScenarioId = 'sc0';
-      let ftColOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
-      let ftColVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
-      let ftColLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
+      let ftColOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids', 'bills'];
+      let ftColVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, bills: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
+      let ftColLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', bills: 'bills', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
       let ftHistoryStartAge = null; // Renamed from ftMinAge for persistence separation
       let ftDragSrc = null, ftRows = [], ftChart = null, ftNextId = 100;
       function ftResetNextId() {
@@ -5679,6 +5680,8 @@
             if (ph.rentMonthly !== undefined && ph.monthlyRent === undefined) { ph.monthlyRent = ph.rentMonthly; delete ph.rentMonthly; }
             if (ph.renting === undefined) ph.renting = true;
             if (ph.location === undefined) ph.location = '';
+            if (ph.billsEnabled === undefined) ph.billsEnabled = false;
+            if (ph.monthlyBills === undefined) ph.monthlyBills = 0;
           });
           // UPDATE ALL expense phases that were created at age 25 to use the current projectionStartingAge
           // This handles cases where projection starting age has changed but expense phases were saved at the old age
@@ -5919,6 +5922,11 @@
         const inf = ftGlobals.expInflation / 100;
         return Math.round((ph.monthlyRent || 0) * 12 * Math.pow(1 + inf, age - ftGlobals.projectionStartingAge));
       }
+      function ftGetBills(age) {
+        const ph = ftGetPhase(age); if (!ph || !ph.billsEnabled) return 0;
+        const inf = ftGlobals.expInflation / 100;
+        return Math.round((ph.monthlyBills || 0) * 12 * Math.pow(1 + inf, age - ftGlobals.projectionStartingAge));
+      }
 
       // ── Property mortgage helpers ──────────────────────────────────
       function ftCalcPropMortgage(p) {
@@ -6140,8 +6148,9 @@
           // Healthcare
           let healthcare = 0;
           for (const he of healthEvs) { if (age >= he.startAge && age <= he.endAge) healthcare += (he.monthlyCost || 0) * 12 * infFactor; }
+          const bills = ftGetBills(age);
 
-          const fixedCosts = housing + kids + healthcare;
+          const fixedCosts = housing + kids + healthcare + bills;
 
           // One-time events + property extra payments
           let ot = oneTimeEvs.filter(e => e.age === age).reduce((s, e) => s + e.amount, 0);
@@ -6422,9 +6431,9 @@
 
           const isBuy = propScheds.some(({ p }) => age === p.purchaseAge);
           const rowTotalIncome = income + partner;
-          const rowTotalExpenses = living + housing + kids + healthcare + (ot < 0 ? Math.abs(ot) : 0);
+          const rowTotalExpenses = living + housing + kids + healthcare + bills + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined });
         }
         return out;
       }
@@ -6841,6 +6850,10 @@
             + '<div class="ft-form-row cond"><label>Renting</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
             + (ph.renting ? '<div class="ft-form-row cond"><label>Monthly rent</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div></div>' : '')
             + mortgageNote
+            // Bills section
+            + '<div class="ft-form-section-hdr">Bills</div>'
+            + '<div class="ft-form-row cond"><label>Include bills</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"' + (ph.billsEnabled ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'billsEnabled\',this.checked);ftRenderPanel()"> enabled</label></div>'
+            + (ph.billsEnabled ? '<div class="ft-form-row cond"><label>Monthly amount</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyBills || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyBills\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (utilities, subscriptions, etc.)</span></div></div>' : '')
             // Location section
             + '<div class="ft-form-section-hdr">Location</div>'
             + '<div class="ft-form-row"><label>City</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
@@ -7671,7 +7684,7 @@
       function ftAddExpPhase() {
         const maxStart = ftExpPhases.reduce((m, p) => Math.max(m, p.startAge), 25);
         const newId = ftUid();
-        ftExpPhases.push({ id: newId, name: 'New phase', startAge: maxStart + 1, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '' });
+        ftExpPhases.push({ id: newId, name: 'New phase', startAge: maxStart + 1, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '', monthlyBills: 0, billsEnabled: false });
         ftActivePhaseId = newId;
         ftRenderPanel(); ftRecalc();
       }
@@ -7683,7 +7696,7 @@
         if (!existing) {
           const soloPhase = ftExpPhases.find(p => p.startAge < partnerAge && p.endAge === 999);
           if (soloPhase) soloPhase.endAge = partnerAge - 1;
-          ftExpPhases.push({ id: ftUid(), name: 'With partner', startAge: partnerAge, endAge: 999, monthlyLiving: 3500, monthlyRent: 3500, renting: true, location: '' });
+          ftExpPhases.push({ id: ftUid(), name: 'With partner', startAge: partnerAge, endAge: 999, monthlyLiving: 3500, monthlyRent: 3500, renting: true, location: '', monthlyBills: 0, billsEnabled: false });
         }
       }
 
@@ -7845,9 +7858,9 @@
         if (!S.future) S.future = {};
         if (!S.future.secOrder) S.future.secOrder = ['metrics', 'savings', 'graph', 'timeline', 'table'];
         if (!S.future.secVis) S.future.secVis = { metrics: true, savings: true, graph: true, timeline: true, table: true };
-        if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids'];
-        if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
-        if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
+        if (!S.future.colOrder) S.future.colOrder = ['age', 'nw', 'netsav', 'freeSpend', 'monthlySurplus', 'totalIncome', 'totalExpenses', 'reqSavings', 'income', 'partner', 'living', 'housing', 'kids', 'bills'];
+        if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, bills: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
+        if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', bills: 'bills', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
 
         // Reset to defaults before loading
         ftIncomeStreams = [];
@@ -7875,7 +7888,7 @@
         // NOW create default expense phase with the correct projectionStartingAge (after loading from scenario)
         // Only create if no phases were loaded from scenario
         if (ftExpPhases.length === 0) {
-          ftExpPhases = [{ id: 'ph0', name: 'Solo', startAge: ftGlobals.projectionStartingAge, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '' }];
+          ftExpPhases = [{ id: 'ph0', name: 'Solo', startAge: ftGlobals.projectionStartingAge, endAge: 999, monthlyLiving: 2000, monthlyRent: 2000, renting: true, location: '', monthlyBills: 0, billsEnabled: false }];
         }
         ftActivePhaseId = null;
         ftResetNextId();
