@@ -6670,6 +6670,25 @@
         return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '148, 163, 184';
       }
 
+      // ── Editor panel helpers ──────────────────────────────────────
+      function ftEdSection(label) {
+        return '<div class="ft-ed-section">' + label + '</div>';
+      }
+      function ftEdField(label, inputHtml) {
+        return '<div class="ft-ed-field"><label class="ft-ed-lbl">' + label + '</label>' + inputHtml + '</div>';
+      }
+      function ftEdToggleRow(label, checked, onChange) {
+        return '<div class="ft-ed-toggle-row">'
+          + '<span style="font-size:12px;color:var(--ink2)">' + label + '</span>'
+          + '<label class="ft-toggle"><input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="' + onChange + '"><span class="ft-toggle-track"></span></label>'
+          + '</div>';
+      }
+      function ftEdHdr(meta, title, actions) {
+        return '<div class="ft-ed-hdr"><div><div class="ft-ed-meta">' + meta + '</div><div class="ft-ed-title">' + title + '</div></div>'
+          + (actions ? '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">' + actions + '</div>' : '')
+          + '</div><div class="ft-ed-body">';
+      }
+
       // ── Income stream card ──────────────────────────────────────────
       function ftRenderStreamCard(s) {
         const cls = s.expanded ? 'expanded' : '';
@@ -6679,6 +6698,16 @@
         const types = ['salary', 'freelance', 'passive'];
         const typeOpts = types.map(t => '<option value="' + t + '"' + (s.incomeType === t ? ' selected' : '') + '>' + t + '</option>').join('');
         const rmBtn = '<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveStream(\'' + s.id + '\')" title="Remove">✕</button>';
+        // Take-home estimate (unchanged logic)
+        const curAge = ftGlobals.projectionStartingAge;
+        const totalGross = ftGetIncome(curAge) + ftGetPartnerIncome(curAge);
+        const married = !!(ftLifeEvents.find(e => e.type === 'partner')?.age <= curAge);
+        const taxable = Math.max(0, totalGross - ftGlobals.f401k);
+        const tax = ftGlobals.taxMode === 'auto' ? ftCalcAutoTax(taxable, married) : taxable * (ftGlobals.taxFlat / 100);
+        const effRate = totalGross > 0 ? tax / totalGross : 0;
+        const is401k = s.eligible401k && ftHas401kEligible(curAge);
+        const monthly401k = is401k ? ftGlobals.f401k / 12 : 0;
+        const calcNet = Math.max(0, Math.round((s.annual * (1 - effRate)) / 12 - monthly401k));
         return '<div class="ft-ev-card ' + cls + '" id="ft-sc-' + s.id + '">'
           + '<div class="ft-ev-card-hdr" onclick="ftToggleStreamExpand(\'' + s.id + '\')">'
           + '<div class="ft-ev-dot" style="background:' + col + '"></div>'
@@ -6688,28 +6717,22 @@
           + '<span class="ft-ev-impact pos">+' + ftFmt(s.takeHomeOverride ? s.takeHomeOverride * 12 : s.annual) + '/yr</span>'
           + rmBtn + '<span class="ft-ev-chevron">▶</span></div>'
           + '<div class="ft-ev-body">'
-          + '<div class="ft-ev-fr"><label>Name</label><input type="text" value="' + s.name + '" oninput="ftUpdateStream(\'' + s.id + '\',\'name\',this.value)"></div>'
-          + '<div class="ft-ev-fr"><label>Start age</label><input type="number" value="' + s.startAge + '" oninput="ftUpdateStream(\'' + s.id + '\',\'startAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-          + '<div class="ft-ev-fr"><label>Ongoing</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"' + (s.ongoing ? ' checked' : '') + ' onchange="ftUpdateStream(\'' + s.id + '\',\'ongoing\',this.checked);ftRenderPanel()"> ongoing</label>'
-          + (s.ongoing ? '' : '<label style="margin-left:8px">End age</label><input type="number" value="' + (s.endAge || 65) + '" oninput="ftUpdateStream(\'' + s.id + '\',\'endAge\',+this.value)" style="width:65px"><span style="font-size:11px;color:var(--ink3)">yrs</span>') + '</div>'
-          + '<div class="ft-ev-fr"><label>Annual amount (gross)</label><input type="number" value="' + s.annual + '" oninput="ftUpdateStream(\'' + s.id + '\',\'annual\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
-          + '<div class="ft-ev-fr"><label>Growth rate / yr</label><input type="number" value="' + (s.growth || 0) + '" step="0.5" oninput="ftUpdateStream(\'' + s.id + '\',\'growth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-          + (() => {
-            const curAge = ftGlobals.projectionStartingAge;
-            const totalGross = ftGetIncome(curAge) + ftGetPartnerIncome(curAge);
-            const married = !!(ftLifeEvents.find(e => e.type === 'partner')?.age <= curAge);
-            const taxable = Math.max(0, totalGross - ftGlobals.f401k);
-            const tax = ftGlobals.taxMode === 'auto' ? ftCalcAutoTax(taxable, married) : taxable * (ftGlobals.taxFlat / 100);
-            const effRate = totalGross > 0 ? tax / totalGross : 0;
-            const is401k = s.eligible401k && ftHas401kEligible(curAge);
-            const monthly401k = is401k ? ftGlobals.f401k / 12 : 0;
-            const calcNet = Math.max(0, Math.round((s.annual * (1 - effRate)) / 12 - monthly401k));
-            return '<div class="ft-ev-fr"><label>Monthly take-home</label><input type="number" value="' + (s.takeHomeOverride || '') + '" placeholder="Calculated ~$' + calcNet + '" oninput="ftUpdateStream(\'' + s.id + '\',\'takeHomeOverride\',this.value?+this.value:null)"><span style="font-size:11px;color:var(--ink3)">$/mo</span></div>'
-              + '<div style="font-size:10.5px;color:var(--ink3);margin-bottom:8px;margin-left:90px;opacity:0.8;display:flex;align-items:center;gap:4px">Calculated estimate: ' + ftFmt(calcNet) + '/mo <span class="ft-wtt-trigger" title="Estimated after taxes and 401k deductions. Matches your actual bank deposit.">ⓘ</span></div>'
-              + (s.takeHomeOverride ? '<div style="font-size:10.5px;color:var(--teal);margin-bottom:8px;margin-left:90px;font-weight:500">Using manual override — this stream is excluded from auto-tax calculator.</div>' : '');
-          })()
-          + '<div class="ft-ev-fr"><label>Income type</label><select onchange="ftUpdateStream(\'' + s.id + '\',\'incomeType\',this.value)">' + typeOpts + '</select></div>'
-          + '<div class="ft-ev-fr"><label>401k eligible</label><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"' + (s.eligible401k ? ' checked' : '') + ' onchange="ftUpdateStream(\'' + s.id + '\',\'eligible401k\',this.checked)"> Yes — 401k contribution deducted in years this is active</label></div>'
+          + ftEdHdr('income stream', s.name)
+          + ftEdSection('Basics')
+          + ftEdField('Name', '<input class="ft-ed-inp" type="text" value="' + s.name + '" oninput="ftUpdateStream(\'' + s.id + '\',\'name\',this.value)">')
+          + ftEdField('Start age', '<input class="ft-ed-inp" type="number" value="' + s.startAge + '" oninput="ftUpdateStream(\'' + s.id + '\',\'startAge\',+this.value)">')
+          + ftEdToggleRow('Ongoing', s.ongoing, 'ftUpdateStream(\'' + s.id + '\',\'ongoing\',this.checked);ftRenderPanel()')
+          + (s.ongoing ? '' : ftEdField('End age', '<input class="ft-ed-inp" type="number" value="' + (s.endAge || 65) + '" oninput="ftUpdateStream(\'' + s.id + '\',\'endAge\',+this.value)">'))
+          + ftEdSection('Earnings')
+          + ftEdField('Annual amount (gross)', '<input class="ft-ed-inp" type="number" value="' + s.annual + '" oninput="ftUpdateStream(\'' + s.id + '\',\'annual\',+this.value)">')
+          + ftEdField('Growth rate per year (%)', '<input class="ft-ed-inp" type="number" value="' + (s.growth || 0) + '" step="0.5" oninput="ftUpdateStream(\'' + s.id + '\',\'growth\',+this.value)">')
+          + ftEdField('Monthly take-home', '<input class="ft-ed-inp" type="number" value="' + (s.takeHomeOverride || '') + '" placeholder="Calculated ~$' + calcNet + '" oninput="ftUpdateStream(\'' + s.id + '\',\'takeHomeOverride\',this.value?+this.value:null)">')
+          + '<div style="font-size:10.5px;color:var(--ink3);margin-top:-4px;margin-bottom:10px;display:flex;align-items:center;gap:4px">Calculated estimate: ' + ftFmt(calcNet) + '/mo <span class="ft-wtt-trigger" title="Estimated after taxes and 401k deductions. Matches your actual bank deposit.">ⓘ</span></div>'
+          + (s.takeHomeOverride ? '<div style="font-size:10.5px;color:var(--teal);margin-bottom:10px;font-weight:500">Using manual override — this stream is excluded from auto-tax calculator.</div>' : '')
+          + ftEdSection('Settings')
+          + ftEdField('Income type', '<select class="ft-ed-inp" onchange="ftUpdateStream(\'' + s.id + '\',\'incomeType\',this.value)">' + typeOpts + '</select>')
+          + ftEdToggleRow('401k eligible', s.eligible401k, 'ftUpdateStream(\'' + s.id + '\',\'eligible401k\',this.checked)')
+          + '</div>'
           + '</div></div>';
       }
 
@@ -6762,25 +6785,33 @@
           + '<span class="ft-ev-impact neg">-' + ftFmt(downCash) + ' upfront</span>'
           + rmBtn + '<span class="ft-ev-chevron">▶</span></div>'
           + '<div class="ft-ev-body">'
-          + '<div class="ft-ev-fr"><label>Name</label><input type="text" value="' + p.name + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'name\',this.value)"></div>'
-          + '<div class="ft-ev-fr"><label>Purchase age</label><input type="number" value="' + p.purchaseAge + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'purchaseAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-          + '<div class="ft-ev-fr"><label>Home price</label><input type="number" value="' + p.price + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'price\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
-          + '<div class="ft-ev-fr"><label>Down payment</label><input type="number" value="' + p.downPct + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'downPct\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-          + '<div class="ft-ev-fr"><label>Mortgage rate</label><input type="number" value="' + p.mrate + '" step="0.1" oninput="ftUpdateProperty(\'' + p.id + '\',\'mrate\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-          + '<div class="ft-ev-fr"><label>Mortgage term</label><input type="number" value="' + (p.termYrs || 30) + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'termYrs\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-          + '<div class="ft-ev-fr"><label>Type</label><div style="display:flex;gap:5px"><button class="ft-chip ' + (p.propType === 'primary' ? 'on' : '') + '" onclick="ftUpdateProperty(\'' + p.id + '\',\'propType\',\'primary\');ftRenderPanel()">Primary home</button><button class="ft-chip ' + (p.propType === 'investment' ? 'on' : '') + '" onclick="ftUpdateProperty(\'' + p.id + '\',\'propType\',\'investment\');ftRenderPanel()">Investment</button></div></div>'
-          + '<div class="ft-ev-fr"><label>Appreciation / yr</label><input type="number" value="' + (p.appreciation || 4) + '" step="0.5" oninput="ftUpdateProperty(\'' + p.id + '\',\'appreciation\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-          + (p.propType === 'investment' ? '<div class="ft-ev-fr"><label>Monthly rental income</label><input type="number" value="' + (p.rentalMonthly || 0) + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'rentalMonthly\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/mo</span></div><div class="ft-ev-fr"><label>Rental income growth / yr</label><input type="number" value="' + (p.rentalGrowth || 3) + '" step="0.5" oninput="ftUpdateProperty(\'' + p.id + '\',\'rentalGrowth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>' : '')
-          + '<div id="ft-prop-pill-' + p.id + '" class="ft-ev-pill">Down+closing=' + ftFmt(downCash) + '  ·  ' + ftFmt(Math.round(mort / 12)) + '/mo  ·  Payoff age ' + (sched.payoffAge ?? '—') + '  ·  Saves ' + ftFmt(sched.interestSaved) + '</div>'
+          + ftEdHdr('property', p.name)
+          + ftEdSection('Purchase')
+          + ftEdField('Name', '<input class="ft-ed-inp" type="text" value="' + p.name + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'name\',this.value)">')
+          + ftEdField('Purchase age', '<input class="ft-ed-inp" type="number" value="' + p.purchaseAge + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'purchaseAge\',+this.value)">')
+          + ftEdField('Home price', '<input class="ft-ed-inp" type="number" value="' + p.price + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'price\',+this.value)">')
+          + ftEdField('Down payment (%)', '<input class="ft-ed-inp" type="number" value="' + p.downPct + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'downPct\',+this.value)">')
+          + ftEdField('Mortgage rate (%)', '<input class="ft-ed-inp" type="number" value="' + p.mrate + '" step="0.1" oninput="ftUpdateProperty(\'' + p.id + '\',\'mrate\',+this.value)">')
+          + ftEdField('Mortgage term (years)', '<input class="ft-ed-inp" type="number" value="' + (p.termYrs || 30) + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'termYrs\',+this.value)">')
+          + ftEdSection('Type')
+          + '<div class="ft-ed-field"><div style="display:flex;gap:5px"><button class="ft-chip ' + (p.propType === 'primary' ? 'on' : '') + '" onclick="ftUpdateProperty(\'' + p.id + '\',\'propType\',\'primary\');ftRenderPanel()">Primary home</button><button class="ft-chip ' + (p.propType === 'investment' ? 'on' : '') + '" onclick="ftUpdateProperty(\'' + p.id + '\',\'propType\',\'investment\');ftRenderPanel()">Investment</button></div></div>'
+          + ftEdField('Appreciation per year (%)', '<input class="ft-ed-inp" type="number" value="' + (p.appreciation || 4) + '" step="0.5" oninput="ftUpdateProperty(\'' + p.id + '\',\'appreciation\',+this.value)">')
+          + (p.propType === 'investment'
+            ? ftEdSection('Rental')
+              + ftEdField('Monthly rental income', '<input class="ft-ed-inp" type="number" value="' + (p.rentalMonthly || 0) + '" oninput="ftUpdateProperty(\'' + p.id + '\',\'rentalMonthly\',+this.value)">')
+              + ftEdField('Rental income growth per year (%)', '<input class="ft-ed-inp" type="number" value="' + (p.rentalGrowth || 3) + '" step="0.5" oninput="ftUpdateProperty(\'' + p.id + '\',\'rentalGrowth\',+this.value)">')
+            : '')
+          + '<div id="ft-prop-pill-' + p.id + '" class="ft-ev-pill" style="margin-top:20px">Down+closing=' + ftFmt(downCash) + '  ·  ' + ftFmt(Math.round(mort / 12)) + '/mo  ·  Payoff age ' + (sched.payoffAge ?? '—') + '  ·  Saves ' + ftFmt(sched.interestSaved) + '</div>'
           + readinessHtml
-          + '<div style="border-top:1px solid var(--border);margin:10px 0 6px"></div>'
-          + '<div style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px" onclick="ftTogglePropExtras(\'' + p.id + '\')">'
-          + '<span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Extra lump sum payments</span>'
-          + '<span style="font-size:9px;color:var(--ink3);transition:transform .15s;' + (extrasExpanded ? 'transform:rotate(90deg)' : '') + '">▶</span>'
+          + ftEdSection('Extra Payments')
+          + '<div style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-bottom:8px" onclick="ftTogglePropExtras(\'' + p.id + '\')">'
+          + '<span style="font-size:12px;color:var(--ink2)">Lump sum payments</span>'
+          + '<span style="font-size:9px;color:var(--ink3);transition:transform .15s;' + (extrasExpanded ? 'transform:rotate(90deg);display:inline-block' : 'display:inline-block') + '">▶</span>'
           + '</div>'
           + '<div style="display:' + (extrasExpanded ? 'block' : 'none') + '" id="ft-prex-' + p.id + '">'
           + epRows
           + '<button class="ft-ev-add-btn" onclick="ftAddPropExtra(\'' + p.id + '\')" style="margin-top:4px">+ add lump sum payment</button>'
+          + '</div>'
           + '</div>'
           + '</div></div>';
       }
@@ -6827,37 +6858,31 @@
         const accentColor = hasOverlap ? '#FFC107' : col;
 
         if (isExpanded) {
-          return '<div class="card-phase expanded" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + accentColor + ';position:relative">'
-            // Header
-            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-            + '<div style="display:flex;align-items:center;gap:8px">'
-            + '<span style="width:10px;height:10px;border-radius:2px;background:' + col + ';display:inline-block;flex-shrink:0"></span>'
-            + '<span style="font-size:13px;font-weight:600;color:var(--ink)">Edit: ' + ph.name + '</span>'
-            + '</div>'
-            + '<div style="display:flex;align-items:center;gap:6px">'
-            + '<button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" style="font-size:11px;font-weight:600;color:var(--f);padding:3px 8px;border-radius:var(--rs);background:var(--fll)">done</button>'
-            + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">\u2715</button>'
-            + '</div>'
-            + '</div>'
+          return '<div class="card-phase expanded" id="ft-phc-' + ph.id + '" style="border-left:3px solid ' + accentColor + '">'
+            + ftEdHdr('life phase', ph.name,
+              '<button class="ft-rm-btn" onclick="ftClickPhase(\'' + ph.id + '\')" style="font-size:11px;font-weight:600;color:var(--f);padding:3px 8px;border-radius:var(--rs);background:var(--fll)">done</button>'
+              + '<button class="ft-rm-btn" onclick="ftRemoveExpPhase(\'' + ph.id + '\')" title="Delete phase">\u2715</button>'
+            )
             + overlapWarning
-            // Core fields — 30/70 grid
-            + '<div class="ft-form-row"><label>Phase name</label><input type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)"></div>'
-            + '<div class="ft-form-row"><label>Age range</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)" style="width:62px"><span style="color:var(--ink3);font-size:12px">\u2013</span><input type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\' ? 999 : +this.value)" placeholder="\u221e" style="width:62px"></div></div>'
-            + '<div class="ft-form-row"><label>Living cost</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (food, travel, out)</span></div></div>'
-            + (benchmark ? '<div style="font-size:10.5px;color:var(--ink3);margin:-2px 0 8px calc(30% + 8px)">Median in ' + (ph.location || 'this city') + ' \u2248$' + benchmark.toLocaleString() + '/mo</div>' : '')
+            // Basics section
+            + ftEdSection('Basics')
+            + ftEdField('Phase name', '<input class="ft-ed-inp" type="text" value="' + ph.name + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'name\',this.value)">')
+            + '<div class="ft-ed-field"><label class="ft-ed-lbl">Age range</label><div class="ft-ed-range"><input class="ft-ed-inp" type="number" value="' + ph.startAge + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'startAge\',+this.value)"><span style="color:var(--ink3)">\u2013</span><input class="ft-ed-inp" type="number" value="' + (ph.endAge === 999 ? '' : ph.endAge) + '" placeholder="\u221e" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'endAge\',this.value===\'\' ? 999 : +this.value)"></div></div>'
+            + ftEdField('Monthly living cost', '<input class="ft-ed-inp" type="number" value="' + (ph.monthlyLiving || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyLiving\',+this.value)">')
+            + (benchmark ? '<div style="font-size:11px;color:var(--ink3);margin-top:-4px;margin-bottom:10px">Median in ' + (ph.location || 'this city') + ' \u2248$' + benchmark.toLocaleString() + '/mo</div>' : '')
             // Housing section
-            + '<div class="ft-form-section-hdr">Housing</div>'
-            + '<div class="ft-form-row cond"><label>Renting</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"' + (ph.renting ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()"> paying rent</label></div>'
-            + (ph.renting ? '<div class="ft-form-row cond"><label>Monthly rent</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div></div>' : '')
+            + ftEdSection('Housing')
+            + ftEdToggleRow('Paying rent', ph.renting, 'ftUpdateExpPhase(\'' + ph.id + '\',\'renting\',this.checked);ftRenderPanel()')
+            + (ph.renting ? ftEdField('Monthly rent', '<input class="ft-ed-inp" type="number" value="' + (ph.monthlyRent || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyRent\',+this.value)">') : '')
             + mortgageNote
             // Bills section
-            + '<div class="ft-form-section-hdr">Bills</div>'
-            + '<div class="ft-form-row cond"><label>Include bills</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"' + (ph.billsEnabled ? ' checked' : '') + ' onchange="ftUpdateExpPhase(\'' + ph.id + '\',\'billsEnabled\',this.checked);ftRenderPanel()"> enabled</label></div>'
-            + (ph.billsEnabled ? '<div class="ft-form-row cond"><label>Monthly amount</label><div style="display:flex;align-items:center;gap:6px"><input type="number" value="' + (ph.monthlyBills || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyBills\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo (utilities, subscriptions, etc.)</span></div></div>' : '')
+            + ftEdSection('Bills')
+            + ftEdToggleRow('Include bills', ph.billsEnabled, 'ftUpdateExpPhase(\'' + ph.id + '\',\'billsEnabled\',this.checked);ftRenderPanel()')
+            + (ph.billsEnabled ? ftEdField('Monthly amount', '<input class="ft-ed-inp" type="number" value="' + (ph.monthlyBills || 0) + '" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'monthlyBills\',+this.value)">') : '')
             // Location section
-            + '<div class="ft-form-section-hdr">Location</div>'
-            + '<div class="ft-form-row"><label>City</label><input type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)"></div>'
-            + '</div>';
+            + ftEdSection('Location')
+            + ftEdField('City', '<input class="ft-ed-inp" type="text" value="' + (ph.location || '') + '" placeholder="e.g. NYC, SF, Seoul" oninput="ftUpdateExpPhase(\'' + ph.id + '\',\'location\',this.value)">')
+            + '</div></div>';
         } else {
           // ── Closed / Summary mode ──────────────────────────────────────
           return '<div class="card-phase" id="ft-phc-' + ph.id + '" onclick="ftClickPhase(\'' + ph.id + '\')" style="border-left:3px solid ' + col + ';position:relative;cursor:pointer">'
@@ -6890,33 +6915,47 @@
         let title = '', summary = '', impact = '', impactCls = 'pos', body = '';
         if (ev.type === 'partner') {
           title = 'Partner'; summary = 'age ' + ev.age + ' · $' + (ev.income / 1000).toFixed(0) + 'k'; impact = '+' + ftFmt(ev.income) + '/yr';
-          body = '<div class="ft-ev-fr"><label>Age when partner joins</label><input type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            + '<div class="ft-ev-fr"><label>Partner starting income</label><input type="number" value="' + ev.income + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'income\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$/yr</span></div>'
-            + '<div class="ft-ev-fr"><label>Partner income growth / yr</label><input type="number" value="' + ev.incomeGrowth + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'incomeGrowth\',+this.value)"><span style="font-size:11px;color:var(--ink3)">%</span></div>'
-            + '<div class="ft-ev-fr"><label>Retirement age</label><input type="number" value="' + (ev.retireAge !== undefined ? ev.retireAge : ftGlobals.retireAge) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'retireAge\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            + '<div class="ft-ev-note">Added to household income from this age. Click any partner cell in the table to override a specific year.</div>';
+          body = ftEdHdr('life event', 'Partner')
+            + ftEdSection('Basics')
+            + ftEdField('Age when partner joins', '<input class="ft-ed-inp" type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)">')
+            + ftEdSection('Income')
+            + ftEdField('Starting income (annual)', '<input class="ft-ed-inp" type="number" value="' + ev.income + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'income\',+this.value)">')
+            + ftEdField('Income growth per year (%)', '<input class="ft-ed-inp" type="number" value="' + ev.incomeGrowth + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'incomeGrowth\',+this.value)">')
+            + ftEdField('Retirement age', '<input class="ft-ed-inp" type="number" value="' + (ev.retireAge !== undefined ? ev.retireAge : ftGlobals.retireAge) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'retireAge\',+this.value)">')
+            + '<div class="ft-ev-note">Added to household income from this age. Click any partner cell in the table to override a specific year.</div>'
+            + '</div>';
         } else if (ev.type === 'child') {
           const totalCost = (ev.stages || []).reduce((s, st) => s + st.annual * (st.childAgeEnd - st.childAgeStart), 0);
           title = 'Child'; summary = 'born when you\'re ' + ev.age; impact = '~' + ftFmt(totalCost) + ' total'; impactCls = 'neg';
           const stageRows = (ev.stages || []).map((st, si) => '<div class="ft-ev-stage"><input type="text" value="' + st.name + '" placeholder="Stage name" oninput="ftUpdateStage(\'' + ev.id + '\',' + si + ',\'name\',this.value)"><span style="font-size:10px;color:var(--ink3);white-space:nowrap">child age</span><input type="number" value="' + st.childAgeStart + '" oninput="ftUpdateStage(\'' + ev.id + '\',' + si + ',\'childAgeStart\',+this.value)"><span style="font-size:10px;color:var(--ink3)">–</span><input type="number" value="' + st.childAgeEnd + '" oninput="ftUpdateStage(\'' + ev.id + '\',' + si + ',\'childAgeEnd\',+this.value)"><input type="number" value="' + st.annual + '" oninput="ftUpdateStage(\'' + ev.id + '\',' + si + ',\'annual\',+this.value)"><span style="font-size:10px;color:var(--ink3)">$/yr</span><button class="ft-rm-btn" onclick="ftRemoveStage(\'' + ev.id + '\',' + si + ')">✕</button></div>').join('');
-          body = '<div class="ft-ev-fr"><label>Your age when child is born</label><input type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            + '<div class="ft-ev-note">Cost stages use the child\'s age. Each stage is editable.</div>'
-            + '<div style="font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Cost stages (child age → annual cost)</div>'
-            + stageRows + '<button class="ft-ev-add-btn" onclick="ftAddStage(\'' + ev.id + '\')" style="margin-top:5px">+ add stage</button>';
+          body = ftEdHdr('life event', 'Child')
+            + ftEdSection('Basics')
+            + ftEdField('Your age when child is born', '<input class="ft-ed-inp" type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)">')
+            + ftEdSection('Cost Stages')
+            + '<div class="ft-ev-note" style="margin-bottom:8px">Cost stages use the child\'s age. Each stage is editable.</div>'
+            + stageRows
+            + '<button class="ft-ev-add-btn" onclick="ftAddStage(\'' + ev.id + '\')" style="margin-top:5px">+ add stage</button>'
+            + '</div>';
         } else if (ev.type === 'oneTime') {
           const sign = ev.amount >= 0 ? '+' : '';
           title = ev.label || 'One-time Event'; summary = 'age ' + ev.age + ' · ' + (ev.oneTimeType || 'event');
           impact = sign + ftFmt(ev.amount || 0); impactCls = (ev.amount || 0) >= 0 ? 'pos' : 'neg';
-          body = '<div class="ft-ev-fr"><label>Age</label><input type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)" style="width:70px"><span style="font-size:11px;color:var(--ink3)">yrs</span></div>'
-            + '<div class="ft-ev-fr"><label>Amount (negative = expense)</label><input type="number" value="' + (ev.amount || 0) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'amount\',+this.value)"><span style="font-size:11px;color:var(--ink3)">$</span></div>'
-            + '<div class="ft-ev-fr"><label>Label</label><input type="text" value="' + (ev.label || '') + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'label\',this.value)"></div>'
-            + '<div class="ft-ev-fr"><label>Type</label><select onchange="ftUpdateEvent(\'' + ev.id + '\',\'oneTimeType\',this.value)">' + ['bonus', 'inheritance', 'large purchase', 'extra mortgage payment', 'other'].map(t => '<option ' + (ev.oneTimeType === t ? 'selected' : '') + '>' + t + '</option>').join('') + '</select></div>';
+          body = ftEdHdr('life event', ev.label || 'One-time Event')
+            + ftEdSection('Details')
+            + ftEdField('Age', '<input class="ft-ed-inp" type="number" value="' + ev.age + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'age\',+this.value)">')
+            + ftEdField('Amount (negative = expense)', '<input class="ft-ed-inp" type="number" value="' + (ev.amount || 0) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'amount\',+this.value)">')
+            + ftEdField('Label', '<input class="ft-ed-inp" type="text" value="' + (ev.label || '') + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'label\',this.value)">')
+            + ftEdField('Type', '<select class="ft-ed-inp" onchange="ftUpdateEvent(\'' + ev.id + '\',\'oneTimeType\',this.value)">' + ['bonus', 'inheritance', 'large purchase', 'extra mortgage payment', 'other'].map(t => '<option ' + (ev.oneTimeType === t ? 'selected' : '') + '>' + t + '</option>').join('') + '</select>')
+            + '</div>';
         } else if (ev.type === 'healthcare') {
           title = ev.label || 'Healthcare'; summary = 'age ' + ev.startAge + '–' + ev.endAge;
           impact = '-' + ftFmt((ev.monthlyCost || 0) * 12) + '/yr'; impactCls = 'neg';
-          body = '<div class="ft-ev-fr"><label>Label</label><input type="text" value="' + (ev.label || '') + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'label\',this.value)"></div>'
-            + '<div class="ft-ev-fr"><label>Start age</label><input type="number" value="' + (ev.startAge || 30) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'startAge\',+this.value)" style="width:70px"><label style="margin-left:8px">End age</label><input type="number" value="' + (ev.endAge || 35) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'endAge\',+this.value)" style="width:70px"></div>'
-            + '<div class="ft-ev-fr"><label>Monthly cost</label><input type="number" value="' + (ev.monthlyCost || 0) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'monthlyCost\',+this.value)"><span style="font-size:11px;color:var(--ink3)">/mo</span></div>';
+          body = ftEdHdr('life event', ev.label || 'Healthcare')
+            + ftEdSection('Details')
+            + ftEdField('Label', '<input class="ft-ed-inp" type="text" value="' + (ev.label || '') + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'label\',this.value)">')
+            + '<div class="ft-ed-field"><label class="ft-ed-lbl">Age range</label><div class="ft-ed-range"><input class="ft-ed-inp" type="number" value="' + (ev.startAge || 30) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'startAge\',+this.value)"><span style="color:var(--ink3)">\u2013</span><input class="ft-ed-inp" type="number" value="' + (ev.endAge || 35) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'endAge\',+this.value)"></div></div>'
+            + ftEdField('Monthly cost', '<input class="ft-ed-inp" type="number" value="' + (ev.monthlyCost || 0) + '" oninput="ftUpdateEvent(\'' + ev.id + '\',\'monthlyCost\',+this.value)">')
+            + '</div>';
         }
         const rmBtn = '<button class="ft-rm-btn" onclick="event.stopPropagation();ftRemoveEvent(\'' + ev.id + '\')" title="Remove event">✕</button>';
         return '<div class="ft-ev-card ' + cls + '" id="ft-evc-' + ev.id + '">'
