@@ -836,6 +836,27 @@ textarea {
   flex-shrink: 0;
 }
 
+/* Affordability breakdown row */
+.fc-afford-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 12px;
+}
+.fc-afford-lbl {
+  color: var(--ink2);
+}
+.fc-afford-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 12px;
+}
+
 /* Footnote caption — replaces fc-command for surplus surplus notes */
 .fc-footnote {
   margin-top: 16px;

@@ -7463,6 +7463,12 @@
           + '<div class="fc-bar-track"><div class="fc-bar-fill--safe" style="width:' + safePct + '%"></div><div class="fc-bar-fill--danger" style="width:' + dangerPct + '%"></div></div>';
       }
 
+      function fcAffordRow(label, val, opts) {
+        var valCls = 'fc-afford-val';
+        var valStyle = opts && opts.color ? ' style="color:' + opts.color + '"' : '';
+        return '<div class="fc-afford-row"><span class="fc-afford-lbl">' + label + '</span><span class="' + valCls + '"' + valStyle + '>' + val + '</span></div>';
+      }
+
       // ── Table ───────────────────────────────────────────────────────
       function ftRenderTable() {
         const vis = ftColOrder.filter(c => ftColVis[c]);
@@ -7698,7 +7704,16 @@
                     + fcItem('Annual savings required', ftFmt(r.reqSavings) + '/yr')
                   )
                   + fcResultPill('Required monthly savings', null, ftFmt(reqMo) + '/mo')
-                  + fcFootnote('Take-home available: ' + ftFmt(Math.round(rowNetHH2 / 12)) + '/mo', {right: true})
+                  + (function() {
+                    var takeHomeMo = Math.round(rowNetHH2 / 12);
+                    var leftOverMo = r.monthlySurplus + reqMo;
+                    var expensesMo = takeHomeMo - leftOverMo;
+                    var leftColor = leftOverMo >= reqMo ? FC.green : FC.red;
+                    return fcDivider()
+                      + fcAffordRow('Take-home', ftFmt(takeHomeMo) + '/mo')
+                      + fcAffordRow('\u2212 Expenses', '\u2212' + ftFmt(expensesMo) + '/mo')
+                      + fcAffordRow('= Left over', ftFmt(leftOverMo) + '/mo', {color: leftColor});
+                  })()
                   + (shortfallHtml ? fcDivider() + fcSection('Downstream Risks') + fcList(shortfallHtml) : '')
                 );
                 return '<td style="color:' + reqColor + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
