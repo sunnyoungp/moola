@@ -771,10 +771,33 @@ textarea {
   flex-shrink: 0;
 }
 
+/* Category drain label — truncates on overflow */
+.fc-cat-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Category drain row value+pct wrapper */
 .fc-cat-vals {
   display: flex;
   align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.fc-cat-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.fc-cat-pct {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 /* Usable Wealth summary block — modal conclusion row */
@@ -816,7 +839,6 @@ textarea {
   margin-top: 16px;
   font-size: 11px;
   color: var(--ink4);
-  font-style: italic;
   line-height: 1.4;
 }
 .fc-footnote--right {
