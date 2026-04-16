@@ -643,14 +643,12 @@ textarea {
 
 .fc-section {
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .09em;
+  font-weight: 500;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink4);
+  color: var(--ink3);
   margin-bottom: 10px;
   margin-top: 20px;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
 }
 
 .fc-list {
@@ -662,13 +660,13 @@ textarea {
 .fc-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   font-size: 12.5px;
   min-height: 22px;
 }
 
 .fc-item-name {
-  color: var(--ink);
+  color: var(--ink2);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -701,8 +699,7 @@ textarea {
   margin-top: 24px;
   padding: 14px 16px;
   background: rgba(220, 38, 38, 0.05);
-  border-left: 3px solid #dc2626;
-  border-radius: var(--rx);
+  border-radius: 6px;
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--ink);
@@ -722,24 +719,69 @@ textarea {
   padding-left: 14px;
 }
 
-/* Result row (=): top separator, heavier weight */
+/* Result row (=): pill with background */
 .fc-item--result {
-  border-top: 1px solid var(--border-subtle);
-  margin-top: 4px;
-  padding-top: 10px;
+  background: var(--s1);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 6px;
 }
 .fc-item--result .fc-item-name {
   font-weight: 600;
+  color: var(--ink);
 }
 .fc-item--result .fc-item-val {
   font-weight: 600;
 }
 
+/* Divider between sections */
+.fc-divider {
+  border: none;
+  border-top: 0.5px solid var(--border);
+  margin: 16px 0;
+}
+
+/* Diagnostic comparison bar */
+.fc-compare-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink3);
+  margin-bottom: 4px;
+}
+.fc-compare-row:last-of-type { margin-bottom: 8px; }
+.fc-compare-val--danger { color: var(--rose); font-weight: 600; }
+.fc-compare-val--safe { color: var(--teal); font-weight: 600; }
+.fc-bar-track {
+  height: 6px;
+  background: var(--s2);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+}
+.fc-bar-fill--safe { background: var(--teal); }
+.fc-bar-fill--danger { background: var(--rose); }
+
+/* Category drain dot */
+.fc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Category drain row value+pct wrapper */
+.fc-cat-vals {
+  display: flex;
+  align-items: center;
+}
+
 /* Usable Wealth summary block — modal conclusion row */
 .fc-usable {
-  background: rgba(99, 102, 241, 0.06);
-  border-radius: 8px;
-  padding: 12px 14px;
+  background: var(--s1);
+  border-radius: 6px;
+  padding: 10px 12px;
   margin-top: 8px;
   display: flex;
   justify-content: space-between;
@@ -776,6 +818,9 @@ textarea {
   color: var(--ink4);
   font-style: italic;
   line-height: 1.4;
+}
+.fc-footnote--right {
+  text-align: right;
 }
 
 /* Dark gradient card — for account/balance highlights */

@@ -7386,6 +7386,84 @@
           + '</div>';
       }
 
+      // ── Forensic card builder constants & helpers ──────────────────
+      const FC = {
+        red: '#dc2626', green: '#16a34a', amber: '#d97706',
+        blue: '#3B82F6', teal: 'var(--teal)', rose: 'var(--rose)',
+        ink: 'var(--ink)', ink2: 'var(--ink2)', ink3: 'var(--ink3)',
+        s1: 'var(--s1)', s2: 'var(--s2)', f: 'var(--f)',
+        mono: 'var(--mono)',
+      };
+
+      function fcCard(inner) {
+        return '<div class="forensic-card">' + inner + '</div>';
+      }
+
+      function fcHeader(emoji, title, value, color) {
+        return '<div class="fc-header"><div>'
+          + '<div class="fc-title"><span>' + emoji + '</span> ' + title + '</div>'
+          + '<div class="fc-deficit" style="color:' + (color || FC.ink) + '">' + value + '</div>'
+          + '</div></div>';
+      }
+
+      function fcSection(text) {
+        return '<div class="fc-section">' + text + '</div>';
+      }
+
+      function fcList(items) {
+        return '<div class="fc-list">' + items + '</div>';
+      }
+
+      function fcItem(name, val, opts) {
+        opts = opts || {};
+        var cls = 'fc-item';
+        if (opts.op) cls += ' fc-item--op';
+        if (opts.result) cls += ' fc-item--result';
+        var nameStyle = opts.nameColor ? ' style="color:' + opts.nameColor + '"' : '';
+        var valStyle = opts.valColor ? ' style="color:' + opts.valColor + '"' : '';
+        var valWrap = opts.valWrap ? ' style="font-size:11px;color:' + FC.ink2 + ';max-width:160px;white-space:normal;line-height:1.3;text-align:right"' : '';
+        var finalValStyle = valWrap || valStyle;
+        return '<div class="' + cls + '">'
+          + '<div class="fc-item-name"' + nameStyle + '>' + name + '</div>'
+          + (val !== undefined ? '<div class="fc-item-val"' + finalValStyle + '>' + val + '</div>' : '')
+          + '</div>';
+      }
+
+      function fcResultPill(label, caption, val) {
+        return '<div class="fc-usable"><div>'
+          + '<div class="fc-usable-label">' + label + '</div>'
+          + (caption ? '<div class="fc-usable-caption">' + caption + '</div>' : '')
+          + '</div><div class="fc-usable-val">' + val + '</div></div>';
+      }
+
+      function fcActionBox(title, body) {
+        return '<div class="fc-command"><strong>' + title + '</strong>' + body + '</div>';
+      }
+
+      function fcFootnote(text, opts) {
+        var cls = 'fc-footnote';
+        if (opts && opts.right) cls += ' fc-footnote--right';
+        return '<div class="' + cls + '">' + text + '</div>';
+      }
+
+      function fcDivider() {
+        return '<hr class="fc-divider">';
+      }
+
+      function fcCategoryRow(dotColor, name, val, pct) {
+        return '<div class="fc-item">'
+          + '<div class="fc-item-name"><span class="fc-dot" style="background:' + dotColor + '"></span>' + name + '</div>'
+          + '<div class="fc-cat-vals"><div class="fc-item-val">' + val + '</div>'
+          + '<div class="fc-item-pct">' + pct + '</div></div>'
+          + '</div>';
+      }
+
+      function fcCompareBar(label1, val1, danger1, label2, val2, danger2, safePct, dangerPct) {
+        return '<div class="fc-compare-row"><span>' + label1 + '</span><span class="' + (danger1 ? 'fc-compare-val--danger' : 'fc-compare-val--safe') + '">' + val1 + '</span></div>'
+          + '<div class="fc-compare-row"><span>' + label2 + '</span><span class="' + (danger2 ? 'fc-compare-val--danger' : 'fc-compare-val--safe') + '">' + val2 + '</span></div>'
+          + '<div class="fc-bar-track"><div class="fc-bar-fill--safe" style="width:' + safePct + '%"></div><div class="fc-bar-fill--danger" style="width:' + dangerPct + '%"></div></div>';
+      }
+
       // ── Table ───────────────────────────────────────────────────────
       function ftRenderTable() {
         const vis = ftColOrder.filter(c => ftColVis[c]);
@@ -7431,23 +7509,57 @@
                 + '</td>';
               if (c === 'nw') {
                 const roc = ftGlobals.roc;
-                const nwColor = r.nw < 0 ? '#dc2626' : 'var(--ink)';
+                const nwColor = r.nw < 0 ? FC.red : FC.ink;
                 const totalNWFmt = ftFmt(r.nw);
                 let nwCardHtml;
                 if (r.isHistory) {
-                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Historical record — click to enter or update.</div></div></div></div>`;
+                  // ── Card 1: NW History ──
+                  nwCardHtml = fcCard(
+                    fcHeader('\u{1F4CA}', 'Net Worth', totalNWFmt, nwColor)
+                    + fcList(fcItem('Historical record — click to enter or update.'))
+                  );
                 } else if (r.hasNwOv) {
+                  // ── Card 2: NW Override ──
                   const organicTotal = (r.organicLiquid || r.liquidNW || 0) + r.retirementBal + Math.round(r.realEstateEquity);
-                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>\u{1F4CA}</span> Net Worth (Override)</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Manual override active</div><div class="fc-item-val">${totalNWFmt}</div></div><div class="fc-item"><div class="fc-item-name" style="color:var(--ink2)">Organic model: ${ftFmt(organicTotal)}</div></div></div><div class="fc-command" style="background:rgba(95,70,200,0.05);border-left-color:var(--f)"><strong style="color:var(--f)">CLICK TO EDIT</strong>Double-click cell to clear override.</div></div>`;
+                  nwCardHtml = fcCard(
+                    fcHeader('\u{1F4CA}', 'Net Worth (Override)', totalNWFmt, nwColor)
+                    + fcList(
+                      fcItem('Manual override active', totalNWFmt)
+                      + fcItem('Organic model: ' + ftFmt(organicTotal))
+                    )
+                    + fcActionBox('Click to Edit', 'Double-click cell to clear override.')
+                  );
                 } else {
+                  // ── Card 3: NW Breakdown ──
                   const prevFmt = ftFmt(r.prevLiquid || 0);
                   const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
-                  const liqSection = `<div class="fc-section" style="margin-top:0;border:none;padding-top:0;margin-bottom:10px">Liquid Portfolio</div>`;
-                  const retLine = (r.contrib401k > 0 || r.retirementBal > 0) ? `<div class="fc-section">401k / Retirement</div><div class="fc-list">` + (r.contrib401k > 0 ? `<div class="fc-item fc-item--op"><div class="fc-item-name">+ 401k contribution</div><div class="fc-item-val">+${ftFmt(r.contrib401k)}</div></div><div class="fc-item fc-item--result"><div class="fc-item-name">Retirement balance (total)</div><div class="fc-item-val">${ftFmt(r.retirementBal)}</div></div>` : `<div class="fc-item"><div class="fc-item-name">Retirement balance (total)</div><div class="fc-item-val">${ftFmt(r.retirementBal)}</div></div>`) + `</div>` : '';
-                  const reLine = Math.round(r.realEstateEquity) > 0 ? `<div class="fc-section">Real Estate</div><div class="fc-list"><div class="fc-item"><div class="fc-item-name">Equity (all properties)</div><div class="fc-item-val">${ftFmt(Math.round(r.realEstateEquity))}</div></div></div>` : '';
+                  const liqBody = fcList(
+                    fcItem('Previous balance', prevFmt)
+                    + fcItem('+ Market return (' + roc + '%)', growthFmt, {op: true})
+                    + fcItem('+ Net savings', ftFmt(r.netSavings), {op: true})
+                  ) + fcResultPill('= New liquid NW', null, ftFmt(r.organicLiquid));
+                  let retBody = '';
+                  if (r.contrib401k > 0 || r.retirementBal > 0) {
+                    retBody = fcDivider() + fcSection('401k / Retirement') + fcList(
+                      r.contrib401k > 0
+                        ? fcItem('+ 401k contribution', '+' + ftFmt(r.contrib401k), {op: true})
+                          + fcItem('Retirement balance (total)', ftFmt(r.retirementBal), {result: true})
+                        : fcItem('Retirement balance (total)', ftFmt(r.retirementBal))
+                    );
+                  }
+                  let reBody = '';
+                  if (Math.round(r.realEstateEquity) > 0) {
+                    reBody = fcDivider() + fcSection('Real Estate')
+                      + fcList(fcItem('Equity (all properties)', ftFmt(Math.round(r.realEstateEquity))));
+                  }
                   const usableCaption = r.isRetiredForCalc ? 'Liquid + Inv Properties + Retirement' : 'Liquid + Inv Properties (Retirement locked)';
-                  const usableLineHtml = `<div class="fc-section">Usable Wealth</div><div class="fc-usable"><div><div class="fc-usable-label">Usable net worth</div><div class="fc-usable-caption">${usableCaption}</div></div><div class="fc-usable-val">${ftFmt(Math.round(r.investableNW))}</div></div>`;
-                  nwCardHtml = `<div class="forensic-card"><div class="fc-header"><div><div class="fc-title"><span>📊</span> Net Worth Breakdown</div><div class="fc-deficit" style="color:${nwColor}">${totalNWFmt}</div></div></div>${liqSection}<div class="fc-list"><div class="fc-item"><div class="fc-item-name">Previous balance</div><div class="fc-item-val">${prevFmt}</div></div><div class="fc-item fc-item--op"><div class="fc-item-name">+ Market return (${roc}%)</div><div class="fc-item-val">${growthFmt}</div></div><div class="fc-item fc-item--op"><div class="fc-item-name">+ Net savings</div><div class="fc-item-val">${ftFmt(r.netSavings)}</div></div><div class="fc-item fc-item--result"><div class="fc-item-name">= New liquid NW</div><div class="fc-item-val">${ftFmt(r.organicLiquid)}</div></div></div>${retLine}${reLine}${usableLineHtml}</div>`;
+                  const usableBody = fcDivider()
+                    + fcResultPill('Usable net worth', usableCaption, ftFmt(Math.round(r.investableNW)));
+                  nwCardHtml = fcCard(
+                    fcHeader('\u{1F4CA}', 'Net Worth Breakdown', totalNWFmt, nwColor)
+                    + fcSection('Liquid Portfolio')
+                    + liqBody + retBody + reBody + usableBody
+                  );
                 }
                 return '<td class="ft-editable ' + (r.nw < 0 ? 'neg' : '') + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'nw\')" style="cursor:pointer"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nwCardHtml + MT(ftFmt(r.nw), 'future') + '</span></td>';
               }
@@ -7462,120 +7574,75 @@
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 
                 if (r.isRetired) {
-                  // In retirement freeSpend is the pure spending budget (4% or inheritance withdrawal).
-                  // Living expenses are shown independently in their own column.
-                  return '<td style="color:#16a34a;font-family:var(--mono)" title="' + tip + '">'
+                  return '<td style="color:' + FC.green + ';font-family:' + FC.mono + '" title="' + tip + '">'
                     + ftFmt(r.freeSpend) + '/mo</td>';
                 }
 
                 if (r.freeSpend < livingMo) {
+                  // ── Card 4: Diagnostic Alert ──
                   const deficit = livingMo - r.freeSpend;
                   const housingMo = Math.round(r.housing / 12);
                   const reqSavMo = Math.round(r.requiredSavings / 12);
                   const incomeForPct = Math.max(1, (r.totalIncome || (r.income + r.partner)) / 12);
 
                   const drains = [
-                    { name: 'Housing', val: housingMo, color: '#3B82F6' },
+                    { name: 'Housing', val: housingMo, color: FC.blue },
                     { name: 'Living', val: livingMo, color: '#10B981' },
-                    { name: 'Required Savings' + (r.bindingGoal ? ` (${r.bindingGoal})` : ''), val: reqSavMo, color: '#F59E0B', isGoal: !!r.bindingGoal }
+                    { name: 'Required Savings' + (r.bindingGoal ? ' (' + r.bindingGoal + ')' : ''), val: reqSavMo, color: '#F59E0B', isGoal: !!r.bindingGoal }
                   ].sort((a, b) => b.val - a.val);
 
-                  const blameHtml = drains.map(d => `
-                    <div class="fc-item">
-                      <div class="fc-item-name">
-                        <span style="width:8px;height:8px;border-radius:2px;background:${d.color};display:inline-block"></span>
-                        ${d.name}
-                      </div>
-                      <div style="display:flex;align-items:center">
-                        <div class="fc-item-val">${ftFmt(d.val)}</div>
-                        <div class="fc-item-pct">${Math.round(d.val / incomeForPct * 100)}%</div>
-                      </div>
-                    </div>
-                  `).join('');
+                  const blameHtml = drains.map(d =>
+                    fcCategoryRow(d.color, d.name, ftFmt(d.val), Math.round(d.val / incomeForPct * 100) + '%')
+                  ).join('');
 
                   const primaryDrain = drains[0];
-                  const actionSubject = primaryDrain.isGoal ? `Required Savings for "${r.bindingGoal}"` : primaryDrain.name;
+                  const actionSubject = primaryDrain.isGoal ? 'Required Savings for "' + r.bindingGoal + '"' : primaryDrain.name;
+                  const deficitFmt = '$' + deficit.toLocaleString('en-US');
 
-                  const cardHtml = `
-                    <div class="forensic-card">
-                      <div class="fc-header">
-                        <div>
-                          <div class="fc-title"><span>🚨</span> Diagnostic Alert</div>
-                          <div class="fc-deficit">-$${deficit.toLocaleString('en-US')}/mo shortfall</div>
-                        </div>
-                      </div>
+                  const safePct = Math.min(100, (r.freeSpend / livingMo) * 100);
+                  const dangerPct = Math.min(100, (deficit / livingMo) * 100);
 
-                      <div class="fc-section" style="margin-bottom:8px">Visual Comparison</div>
-                      <div style="padding:0 12px 12px">
-                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:4px">
-                          <span>Actual Spending</span>
-                          <span style="color:var(--rose);font-weight:600">${ftFmt(livingMo)}/mo</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:8px">
-                          <span>Safe Spending Limit</span>
-                          <span style="color:var(--teal);font-weight:600">${ftFmt(r.freeSpend)}/mo</span>
-                        </div>
-                        <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;display:flex">
-                          <div style="width:${Math.min(100, (r.freeSpend / livingMo) * 100)}%;background:var(--teal)"></div>
-                          <div style="width:${Math.min(100, (deficit / livingMo) * 100)}%;background:var(--rose)"></div>
-                        </div>
-                      </div>
+                  const cardHtml = fcCard(
+                    fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red)
+                    + fcSection('Visual Comparison')
+                    + fcCompareBar(
+                        'Actual Spending', ftFmt(livingMo) + '/mo', true,
+                        'Safe Spending Limit', ftFmt(r.freeSpend) + '/mo', false,
+                        safePct, dangerPct)
+                    + fcDivider()
+                    + fcSection('Top Category Drains')
+                    + fcList(blameHtml)
+                    + fcActionBox('Required Action',
+                        'Reduce ' + actionSubject + ' by ' + deficitFmt + ' OR increase income by ' + deficitFmt + ' to stop wealth decay.')
+                  );
 
-                      <div class="fc-section">Top Category Drains</div>
-                      <div class="fc-list">${blameHtml}</div>
-                      <div class="fc-command">
-                        <strong>Required Action</strong>
-                        Reduce ${actionSubject} by $${deficit.toLocaleString('en-US')} OR increase income by $${deficit.toLocaleString('en-US')} to stop wealth decay.
-                      </div>
-                    </div>
-                  `;
-
-                  return '<td style="color:#dc2626;font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">⚠ ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
+                  return '<td style="color:' + FC.red + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u26A0 ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                 } else {
-                  const color = r.freeSpend > 0 ? '#16a34a' : 'var(--ink)';
-                  const netHHMo = Math.round((r.income + r.partner + (r.netSavings - (r.income + r.partner) + (r.living + r.housing + Math.round(r.kids) + Math.round(r.healthcare)))) / 12);
-                  // Reconstruct netHH from available row data: netHH = netSavings + living + fixedCosts - ot
+                  // ── Card 5: Free to Spend ──
+                  const color = r.freeSpend > 0 ? FC.green : FC.ink;
                   const rowFixedCosts = r.housing + Math.round(r.kids) + Math.round(r.healthcare);
                   const rowNetHH = r.netSavings + r.living + rowFixedCosts - (r.ot || 0);
                   const rowNetHHMo = Math.round(rowNetHH / 12);
                   const fixedMo = Math.round(rowFixedCosts / 12);
                   const reqSavMo2 = Math.round(r.requiredSavings / 12);
-                  const rawMo = rowNetHHMo - fixedMo - reqSavMo2;
                   const surplusLabel = r.noGoals
-                    ? 'No upcoming goals — all targets funded by compounding.'
+                    ? 'No upcoming goals \u2014 all targets funded by compounding.'
                     : r.bindingGoal
-                      ? `Surplus after saving for: ${r.bindingGoal}`
+                      ? 'Surplus after saving for: ' + r.bindingGoal
                       : 'Surplus after all goals and obligations.';
-                  const freeCardHtml = `
-                    <div class="forensic-card">
-                      <div class="fc-header">
-                        <div>
-                          <div class="fc-title"><span>💰</span> Free to Spend</div>
-                          <div class="fc-deficit" style="color:#16a34a">+${ftFmt(r.freeSpend)}/mo</div>
-                        </div>
-                      </div>
-                      <div class="fc-list">
-                        <div class="fc-item">
-                          <div class="fc-item-name">Take-home income</div>
-                          <div class="fc-item-val">${ftFmt(rowNetHHMo)}/mo</div>
-                        </div>
-                        <div class="fc-item fc-item--op">
-                          <div class="fc-item-name">&minus; Fixed costs (housing + kids + healthcare)</div>
-                          <div class="fc-item-val">&minus;${ftFmt(fixedMo)}/mo</div>
-                        </div>
-                        <div class="fc-item fc-item--op">
-                          <div class="fc-item-name">&minus; Required goal savings</div>
-                          <div class="fc-item-val">&minus;${ftFmt(reqSavMo2)}/mo</div>
-                        </div>
-                        <div class="fc-item fc-item--result">
-                          <div class="fc-item-name">= Free to spend</div>
-                          <div class="fc-item-val" style="color:#16a34a">+${ftFmt(r.freeSpend)}/mo</div>
-                        </div>
-                      </div>
-                      <div class="fc-footnote">${surplusLabel}</div>
-                    </div>
-                  `;
-                  return '<td style="color:' + color + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
+
+                  const freeCardHtml = fcCard(
+                    fcHeader('\u{1F4B0}', 'Free to Spend', '+' + ftFmt(r.freeSpend) + '/mo', FC.green)
+                    + fcList(
+                      fcItem('Take-home income', ftFmt(rowNetHHMo) + '/mo')
+                      + fcItem('\u2212 Fixed costs (housing + kids + healthcare)', '\u2212' + ftFmt(fixedMo) + '/mo', {op: true})
+                      + fcItem('\u2212 Required goal savings', '\u2212' + ftFmt(reqSavMo2) + '/mo', {op: true})
+                      + fcItem('= Free to spend', '+' + ftFmt(r.freeSpend) + '/mo', {result: true, valColor: FC.green})
+                    )
+                    + fcFootnote(surplusLabel)
+                  );
+
+                  return '<td style="color:' + color + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
                 }
               }
               if (c === 'monthlySurplus') {
@@ -7587,83 +7654,55 @@
                   + (r.monthlySurplus >= 0 ? '+' : '') + ftFmt(r.monthlySurplus) + '/mo</td>';
               }
               if (c === 'reqSavings') {
-                if (r.isHistory) return '<td style="color:var(--ink3)">—</td>';
+                if (r.isHistory) return '<td style="color:' + FC.ink3 + '">\u2014</td>';
                 const reqMo = Math.round(r.reqSavings / 12);
                 if (r.reqSavings === 0) {
+                  // ── Card 6: Required Savings — Zero ──
                   const isOnTrack = !r.noGoals && (r.fundedGoals || []).length > 0;
-                  const zeroColor = r.noGoals ? 'var(--ink3)' : '#16a34a';
-                  const headerColor = r.noGoals ? 'var(--ink2)' : '#16a34a';
+                  const zeroColor = r.noGoals ? FC.ink3 : FC.green;
+                  const headerColor = r.noGoals ? FC.ink2 : FC.green;
                   const zeroReason = r.noGoals
-                    ? 'No goals set — add a property, retirement target, or large purchase.'
+                    ? 'No goals set \u2014 add a property, retirement target, or large purchase.'
                     : 'All goals are fully funded by compounding. No extra savings needed.';
                   const goalLines = isOnTrack
                     ? (r.fundedGoals || []).map(g =>
-                        '<div class="fc-item" style="border-top:1px solid var(--border-subtle);padding-top:8px">'
-                        + '<div class="fc-item-name"><span style="color:#4ade80">✓</span> ' + g.label + '</div>'
-                        + '<div class="fc-item-val" style="color:var(--ink3)">proj. ' + ftFmt(g.projectedNW) + '</div>'
-                        + '</div>'
+                        fcItem('\u2713 ' + g.label, 'proj. ' + ftFmt(g.projectedNW), {valColor: FC.ink3})
                       ).join('')
                     : '';
-                  const zeroCard = `
-                    <div class="forensic-card">
-                      <div class="fc-header">
-                        <div>
-                          <div class="fc-title"><span>🎯</span> Required Savings</div>
-                          <div class="fc-deficit" style="color:${headerColor}">$0 / mo required</div>
-                        </div>
-                      </div>
-                      <div class="fc-list">
-                        <div class="fc-item"><div class="fc-item-name">${zeroReason}</div></div>
-                        ${goalLines}
-                      </div>
-                    </div>
-                  `;
-                  return '<td style="color:' + zeroColor + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '$0</span></td>';
+                  const zeroCard = fcCard(
+                    fcHeader('\u{1F3AF}', 'Required Savings', '$0 / mo required', headerColor)
+                    + fcList(
+                      fcItem(zeroReason)
+                      + goalLines
+                    )
+                  );
+                  return '<td style="color:' + zeroColor + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + zeroCard + '$0</span></td>';
                 }
-                // Parse downstream shortfall warnings from discTooltip
+                // ── Card 7: Required Savings — Nonzero ──
                 const rawDisc = r.discTooltip || '';
                 const shortfallMatch = rawDisc.match(/Warning: Nearest-goal savings rate causes shortfall for: (.+)/);
                 const shortfallList = shortfallMatch ? shortfallMatch[1].split(', ') : [];
                 const shortfallHtml = shortfallList.length > 0
-                  ? shortfallList.map(s => `<div class="fc-item"><div class="fc-item-name" style="color:#d97706">⚠ ${s} may fall short at current savings rate</div></div>`).join('')
+                  ? shortfallList.map(s =>
+                      fcItem('\u26A0 ' + s + ' may fall short at current savings rate', undefined, {nameColor: FC.amber})
+                    ).join('')
                   : '';
-                // Reconstruct key numbers from row data
                 const rowFixedCosts2 = r.housing + Math.round(r.kids) + Math.round(r.healthcare);
                 const rowNetHH2 = r.netSavings + r.living + rowFixedCosts2 - (r.ot || 0);
                 const bindingLabel = r.bindingGoal || 'savings target';
                 const isDeficit = r.monthlySurplus < 0;
-                const reqColor = isDeficit ? '#dc2626' : 'var(--ink)';
-                const reqMoColor = isDeficit ? '#dc2626' : 'var(--ink)';
-                const reqCard = `
-                  <div class="forensic-card">
-                    <div class="fc-header">
-                      <div>
-                        <div class="fc-title"><span>🎯</span> Required Savings</div>
-                        <div class="fc-deficit" style="color:${reqColor}">${ftFmt(reqMo)}/mo needed</div>
-                      </div>
-                    </div>
-                    <div class="fc-list">
-                      <div class="fc-item">
-                        <div class="fc-item-name">Binding goal</div>
-                        <div class="fc-item-val" style="font-size:11px;color:var(--ink2);max-width:160px;white-space:normal;line-height:1.3;text-align:right">${bindingLabel}</div>
-                      </div>
-                      <div class="fc-item">
-                        <div class="fc-item-name">Annual savings required</div>
-                        <div class="fc-item-val">${ftFmt(r.reqSavings)}/yr</div>
-                      </div>
-                      <div class="fc-item fc-item--result">
-                        <div class="fc-item-name">Monthly equivalent</div>
-                        <div class="fc-item-val" style="color:${reqMoColor}">${ftFmt(reqMo)}/mo</div>
-                      </div>
-                      <div class="fc-item">
-                        <div class="fc-item-name">Take-home available</div>
-                        <div class="fc-item-val">${ftFmt(Math.round(rowNetHH2 / 12))}/mo</div>
-                      </div>
-                    </div>
-                    ${shortfallHtml ? '<div class="fc-section">Downstream Risks</div><div class="fc-list">' + shortfallHtml + '</div>' : ''}
-                  </div>
-                `;
-                return '<td style="color:' + reqColor + ';font-family:var(--mono)"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
+                const reqColor = isDeficit ? FC.red : FC.ink;
+                const reqCard = fcCard(
+                  fcHeader('\u{1F3AF}', 'Required Savings', ftFmt(reqMo) + '/mo needed', reqColor)
+                  + fcList(
+                    fcItem('Binding goal', bindingLabel, {valWrap: true})
+                    + fcItem('Annual savings required', ftFmt(r.reqSavings) + '/yr')
+                  )
+                  + fcResultPill('Required monthly savings', null, ftFmt(reqMo) + '/mo')
+                  + fcFootnote('Take-home available: ' + ftFmt(Math.round(rowNetHH2 / 12)) + '/mo', {right: true})
+                  + (shortfallHtml ? fcDivider() + fcSection('Downstream Risks') + fcList(shortfallHtml) : '')
+                );
+                return '<td style="color:' + reqColor + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + reqCard + ftFmt(r.reqSavings) + '</span></td>';
               }
               // Generic fallback for all other keys (living, housing, kids, totalIncome, etc.)
               const val = r[c];
