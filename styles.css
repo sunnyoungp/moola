@@ -698,7 +698,7 @@ textarea {
 .fc-command {
   margin-top: 24px;
   padding: 14px 16px;
-  background: #EBF3FD;
+  background: #FEF2F2;
   border-radius: 6px;
   font-size: 12.5px;
   line-height: 1.5;
@@ -777,6 +777,7 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 160px;
 }
 
 /* Category drain row value+pct wrapper */
