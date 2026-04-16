@@ -721,7 +721,7 @@ textarea {
 
 /* Result row (=): pill with background */
 .fc-item--result {
-  background: var(--s1);
+  background: var(--s2);
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 6px;
@@ -779,7 +779,7 @@ textarea {
 }
 
 /* Category drain row value+pct wrapper */
-.fc-cat-vals {
+.fc-cat-right {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -802,7 +802,7 @@ textarea {
 
 /* Usable Wealth summary block — modal conclusion row */
 .fc-usable {
-  background: var(--s1);
+  background: var(--s2);
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 8px;
