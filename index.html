@@ -6448,10 +6448,13 @@
           } else {
             const maxAllowance = netHH - fixedCosts;
             const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
+            const livingMoCalc = living / 12;
 
-            // Safe draw: if income doesn't cover obligations, check trajectory
-            // against the nearest goal. Works in both 'rate' and 'goal' discMode.
-            if (!isHistory && rawFreeSpend < 0 && invPool > 0) {
+            // Safe draw: if free-to-spend can't cover living expenses, check
+            // trajectory against the nearest goal and draw from invPool.
+            // Condition: rawFreeSpend < livingMo (not just < 0) — the user can't
+            // maintain their living standard from income alone.
+            if (!isHistory && rawFreeSpend < livingMoCalc && invPool > 0) {
               // Find the nearest future goal for trajectory check.
               // Use binding goal from goal-mode if available, otherwise scan all goals.
               let drawGoalType = topGoalType, drawGoalAge = topGoalTargetAge, drawGoalNW = topGoalTargetNW;
@@ -6479,15 +6482,19 @@
                 }
               }
               if (drawGoalType) {
-                const shortfall = Math.abs(rawFreeSpend * 12);
+                const shortfall = Math.round((livingMoCalc - rawFreeSpend) * 12);
                 const goalYears = drawGoalAge - age;
                 if (goalYears > 0) {
                   // Trajectory check: project NW forward and compare to target.
-                  // For retirement goals, include retirementBal (accessible at retirement).
-                  // For all other goals, use liquidNW only (retirement locked).
+                  // Use invPool + max(0,cashPool) as the liquid base — a temporarily negative
+                  // cashPool (e.g. from a house purchase spike) is transient and will recover
+                  // from future income. The trajectory should assess investable assets, not
+                  // penalize for a one-time cash overdraft.
+                  // For retirement goals, also include retirementBal (accessible at retirement).
+                  const drawableLiquid = Math.max(0, cashPool) + invPool;
                   const trajectoryBase = drawGoalType === 'retirement'
-                    ? (liquidNW + retirementBal)
-                    : liquidNW;
+                    ? (drawableLiquid + retirementBal)
+                    : drawableLiquid;
                   const projectedNW = trajectoryBase * Math.pow(1 + roc, goalYears);
                   const surplus = projectedNW - drawGoalNW;
                   if (surplus > 0) {
