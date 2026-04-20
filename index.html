@@ -7775,31 +7775,13 @@
 
                   if (isNwFunded) {
                     // ── Card 4a: NW-Funded Gap (orange) ──
-                    // Income gap partially/fully covered by drawing from investments.
-                    const grossDraw = r.safeDraw;
-                    // Derive income gap before draw: freeSpend already includes safeDraw,
-                    // so income-only freeSpend = freeSpend - safeDraw/12
-                    const incomeOnlyFree = r.freeSpend - Math.round(grossDraw / 12);
-                    const incomeGapMo = Math.abs(Math.min(0, incomeOnlyFree));
-                    const drawSection = fcDivider()
-                      + fcSection('NW Buffer Draw')
-                      + fcList(
-                        fcItem('Income gap (before draw)', ftFmt(incomeGapMo) + '/mo', {nameColor: FC.ink3})
-                        + fcItem('Gross draw from investments', ftFmt(Math.round(grossDraw)) + '/yr')
-                        + fcItem('Tax on gains', '$0 (not yet applied)')
-                        + fcItem('Net draw applied', '+' + ftFmt(Math.round(grossDraw)) + '/yr', {result: true, valColor: FC.green})
-                      )
-                      + fcList(fcItem('Inv pool after draw', ftFmt(r.invPool || 0), {nameColor: FC.ink3}));
                     const cardHtml = fcCard(
                       fcHeader('\u{1F4B6}', 'Drawing from Investments', 'NW ahead of trajectory', FC.amber)
                       + fcList(
                         fcItem('Free to spend (after draw)', '+' + ftFmt(r.freeSpend) + '/mo', {valColor: FC.green})
-                        + fcItem('Remaining gap vs living', deficit > 0 ? '\u2212' + ftFmt(deficit) + '/mo' : 'fully covered', {valColor: deficit > 0 ? FC.red : FC.green})
+                        + fcItem('Draw ' + ftFmt(Math.round(r.safeDraw)) + ' from investments this year', undefined, {nameColor: FC.amber})
+                        + (deficit > 0 ? fcItem('Remaining gap vs living', '\u2212' + ftFmt(deficit) + '/mo', {valColor: FC.red}) : '')
                       )
-                      + drawSection
-                      + fcDivider()
-                      + fcSection('Expense Breakdown')
-                      + fcList(blameHtml)
                       + efDiagNote
                     );
                     return '<td style="color:' + FC.amber + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u{1F4B6} ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
@@ -7853,22 +7835,11 @@
                     : '';
                   const safeDrawMo = Math.round((r.safeDraw || 0) / 12);
                   const safeDrawLine = safeDrawMo > 0
-                    ? fcItem('+ Safe draw from investments', '+' + ftFmt(safeDrawMo) + '/mo', {op: true, nameColor: FC.amber})
+                    ? fcItem('+ Draw from investments', '+' + ftFmt(safeDrawMo) + '/mo', {op: true, nameColor: FC.amber})
                     : '';
-                  // NW Buffer Draw section for Card 5
-                  let drawFreeSection = '';
-                  if (isDrawing) {
-                    const grossDraw = r.safeDraw;
-                    drawFreeSection = fcDivider()
-                      + fcSection('NW Buffer Draw')
-                      + fcList(
-                        fcItem('NW ahead of goal trajectory', '\u2713 on track', {valColor: FC.green})
-                        + fcItem('Gross draw from investments', ftFmt(Math.round(grossDraw)) + '/yr')
-                        + fcItem('Tax on gains', '$0 (not yet applied)')
-                        + fcItem('Net draw applied', '+' + ftFmt(Math.round(grossDraw)) + '/yr', {result: true, valColor: FC.green})
-                      )
-                      + fcList(fcItem('Inv pool after draw', ftFmt(r.invPool || 0), {nameColor: FC.ink3}));
-                  }
+                  const drawFreeSection = isDrawing
+                    ? fcDivider() + fcList(fcItem('Draw ' + ftFmt(Math.round(r.safeDraw)) + ' from investments this year', undefined, {nameColor: FC.amber}))
+                    : '';
                   const headerTitle = isDrawing ? 'Drawing from Investments' : 'Free to Spend';
                   const headerEmoji = isDrawing ? '\u{1F4B6}' : '\u{1F4B0}';
                   const headerSubtitle = isDrawing
