@@ -2401,6 +2401,18 @@
           .filter(a => { const b = ftGetAcctBucket(a); return (b === 'cash' || b === 'restricted' || b === 'investments') && String(a.type) !== 'emergency'; })
           .reduce((s, a) => s + getAcctUSD(a), 0);
       }
+      function ftGetCashPool() {
+        const state = getFilteredState();
+        return state.accounts
+          .filter(a => { const b = ftGetAcctBucket(a); return (b === 'cash' || b === 'restricted') && String(a.type) !== 'emergency'; })
+          .reduce((s, a) => s + getAcctUSD(a), 0);
+      }
+      function ftGetInvPool() {
+        const state = getFilteredState();
+        return state.accounts
+          .filter(a => ftGetAcctBucket(a) === 'investments')
+          .reduce((s, a) => s + getAcctUSD(a), 0);
+      }
       function ftGetEmergencyFundTotal() {
         const state = getFilteredState();
         return state.accounts
@@ -6122,6 +6134,11 @@
         const todayNW = ftGetTodayNW();
         const liquidSeed = ftNwTodayOv !== null ? ftNwTodayOv : ftGetLiquidNW();
         let liquidNW = liquidSeed; // liquid accounts only — re-anchored at projectionStartingAge
+        // Sub-pool tracking: cash (cash+restricted buckets) and inv (investments bucket)
+        const cashPoolSeed = ftNwTodayOv !== null ? ftNwTodayOv : ftGetCashPool();
+        const invPoolSeed = ftGetInvPool();
+        let cashPool = cashPoolSeed;
+        let invPool = invPoolSeed;
         let retirementBal = ftGetRetirementBal();
         let cumSav = 0;
         let out = [];
@@ -6129,6 +6146,9 @@
         for (let age = startAge; age <= endAge; age++) {
           const isHistory = age < curAge;
           let topGoalLabel = '';
+          let topGoalType = ''; // 'retirement', 'property', 'oneTime', 'college'
+          let topGoalTargetAge = 0;
+          let topGoalTargetNW = 0;
 
           const married = ftLifeEvents.some(e => e.type === 'partner' && age >= e.age);
           const partner = ftGetPartnerIncome(age);
@@ -6300,7 +6320,7 @@
               const adjustedRetireGoal = Math.max(0, ftGlobals.retireNW - Math.round(futureInvPropEquity));
               const r = requiredSavingsForGoal(retirementGoalBase, adjustedRetireGoal, ftGlobals.retireAge, age, roc);
               if (r > 0) {
-                pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false });
+                pmts.push({ label: 'retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, req: r, targetAge: ftGlobals.retireAge, targetNW: ftGlobals.retireNW, goalBase: retirementGoalBase, useInvestable: false, goalType: 'retirement' });
               } else {
                 const projectedNW = Math.round(retirementGoalBase * Math.pow(1 + roc, ftGlobals.retireAge - age)) + Math.round(futureInvPropEquity);
                 fundedGoals.push({ label: 'Retirement ' + ftFmt(ftGlobals.retireNW) + ' at age ' + ftGlobals.retireAge, targetNW: ftGlobals.retireNW, projectedNW });
@@ -6313,7 +6333,7 @@
                 const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, dc, p.purchaseAge, age, roc);
                 if (r > 0) {
-                  pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false });
+                  pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false, goalType: 'property' });
                 } else {
                   const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, p.purchaseAge - age));
                   fundedGoals.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, targetNW: dc, projectedNW });
@@ -6327,7 +6347,7 @@
                 const cost = Math.abs(oe.amount);
                 const r = requiredSavingsForGoal(effectiveLiquidNW, cost, oe.age, age, roc);
                 if (r > 0) {
-                  pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r, targetAge: oe.age, targetNW: cost, useInvestable: false });
+                  pmts.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, req: r, targetAge: oe.age, targetNW: cost, useInvestable: false, goalType: 'oneTime' });
                 } else {
                   const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, oe.age - age));
                   fundedGoals.push({ label: '"' + (oe.label || 'large purchase') + '" ' + ftFmt(cost) + ' at age ' + oe.age, targetNW: cost, projectedNW });
@@ -6344,7 +6364,7 @@
                     const totalCost = st.annual * (st.childAgeEnd - st.childAgeStart);
                     const r = requiredSavingsForGoal(effectiveLiquidNW, totalCost, parentAgeAtCollege, age, roc);
                     if (r > 0) {
-                      pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r, targetAge: parentAgeAtCollege, targetNW: totalCost, useInvestable: false });
+                      pmts.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, req: r, targetAge: parentAgeAtCollege, targetNW: totalCost, useInvestable: false, goalType: 'college' });
                     } else {
                       const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, parentAgeAtCollege - age));
                       fundedGoals.push({ label: 'college ' + ftFmt(totalCost) + ' at age ' + parentAgeAtCollege, targetNW: totalCost, projectedNW });
@@ -6358,6 +6378,9 @@
               const top = pmts[0];
               requiredSavings = top.req;
               topGoalLabel = top.label;
+              topGoalType = top.goalType || '';
+              topGoalTargetAge = top.targetAge;
+              topGoalTargetNW = top.targetNW;
               discTooltip = 'goal-based minimum: ' + ftFmt(Math.round(top.req)) + ' · binding: ' + top.label;
 
               const shortfalls = [];
@@ -6390,6 +6413,11 @@
             }
           }
 
+          // ── Safe draw from liquid NW buffer ──────────────────────────
+          // When income doesn't cover expenses + required savings, check if
+          // projected NW is ahead of goal trajectory. If so, draw the shortfall
+          // from the investments pool (invPool) to boost free-to-spend.
+          let safeDraw = 0, safeDrawTip = '';
           let freeSpend, monthlySurplus, budgetTip, surplusTip;
           const isRetired = !isHistory && age > ftGlobals.retireAge;
           if (isRetired) {
@@ -6417,14 +6445,39 @@
           } else {
             const maxAllowance = netHH - fixedCosts;
             const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
-            freeSpend = Math.max(0, Math.round(rawFreeSpend));
+
+            // Safe draw: if income doesn't cover obligations AND we have a binding goal
+            if (!isHistory && rawFreeSpend < 0 && topGoalType && invPool > 0) {
+              const shortfall = Math.abs(rawFreeSpend * 12);
+              const goalYears = topGoalTargetAge - age;
+              if (goalYears > 0) {
+                // Trajectory check: project NW forward and compare to target.
+                // For retirement goals, include retirementBal (accessible at retirement).
+                // For all other goals, use liquidNW only (retirement locked).
+                const trajectoryBase = topGoalType === 'retirement'
+                  ? (liquidNW + retirementBal)
+                  : liquidNW;
+                const projectedNW = trajectoryBase * Math.pow(1 + roc, goalYears);
+                const surplus = projectedNW - topGoalTargetNW;
+                if (surplus > 0) {
+                  safeDraw = Math.min(shortfall, surplus);
+                  safeDrawTip = 'Drawing ' + ftFmt(Math.round(safeDraw)) + ' from investments (NW ahead of ' + topGoalLabel + ' trajectory by ' + ftFmt(Math.round(surplus)) + ')';
+                } else {
+                  safeDrawTip = 'Shortfall: NW behind goal trajectory — cannot draw from investments';
+                }
+              }
+            }
+
+            const adjustedFreeSpend = (rawFreeSpend * 12 + safeDraw) / 12;
+            freeSpend = Math.max(0, Math.round(adjustedFreeSpend));
             const availableCash = netHH - living - fixedCosts;
-            monthlySurplus = Math.round((availableCash - requiredSavings) / 12);
+            monthlySurplus = Math.round((availableCash - requiredSavings + safeDraw) / 12);
             budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo'
               + '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts / 12)) + '/mo'
               + '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo'
+              + (safeDraw > 0 ? '\n + Safe draw from investments: +' + ftFmt(Math.round(safeDraw / 12)) + '/mo' : '')
               + '\n = Max Allowance: ' + ftFmt(freeSpend) + '/mo';
-            surplusTip = 'Calculation:\nMax Allowance: ' + ftFmt(Math.round(rawFreeSpend)) + '/mo'
+            surplusTip = 'Calculation:\nMax Allowance: ' + ftFmt(Math.round(adjustedFreeSpend)) + '/mo'
               + '\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo'
               + '\n = Surplus: ' + (monthlySurplus >= 0 ? '+' : '') + ftFmt(monthlySurplus) + '/mo';
           }
@@ -6435,28 +6488,35 @@
             (ot !== 0 ? '\n ' + (ot > 0 ? '+' : '-') + ' One-time events: ' + ftFmt(Math.abs(ot)) : '') +
             '\n = Added wealth: ' + ftFmt(netSavings) + '/yr';
 
-          // NW: liquid compounds + actual surplus (netSavings)
-          // For history rows, we don't compound. NW is only shown if it has an override.
+          // ── Sub-pool accumulation ─────────────────────────────────────
+          // Cash pool: grows at RoC, receives net savings and absorbs extra mortgage payments.
+          // Inv pool: grows at RoC independently. Safe draws deducted from invPool.
           const prevLiq = isHistory ? 0 : (liquidNW || 0);
-          const growth = prevLiq * roc;
-          const organicNewLiq = Math.round(prevLiq + growth + netSavings - extraPmt);
+          const prevCash = isHistory ? 0 : cashPool;
+          const prevInv = isHistory ? 0 : invPool;
+          const cashGrowth = prevCash * roc;
+          const invGrowth = prevInv * roc;
+          const organicCash = Math.round(prevCash + cashGrowth + netSavings - extraPmt);
+          const organicInv = Math.round(prevInv + invGrowth - safeDraw);
+          const organicNewLiq = organicCash + organicInv;
+          const growth = prevLiq * roc; // kept for tooltip compat
           const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
           const organicTotalNW = organicNewLiq + Math.round(retirementBal) + Math.round(realEstateEquity);
           const nwTip = isHistory
             ? 'Historical year: manual Net Worth entry only.'
             : hasNwOvForTip
               ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicTotalNW)
-              : 'Liquid NW:\n  Previous balance: ' + ftFmt(prevLiq) +
-                '\n  + Market return (' + (roc * 100).toFixed(0) + '%): ' + ftFmt(Math.round(growth)) +
-                '\n  + Net savings: ' + ftFmt(netSavings) +
-                (extraPmt !== 0 ? '\n  - Extra mortgage pmt: ' + ftFmt(extraPmt) : '') +
-                '\n  = New liquid NW: ' + ftFmt(organicNewLiq) +
+              : 'Liquid NW:\n  Cash pool: ' + ftFmt(prevCash) + ' + return ' + ftFmt(Math.round(cashGrowth)) + ' + savings ' + ftFmt(netSavings) + (extraPmt !== 0 ? ' - extra pmt ' + ftFmt(extraPmt) : '') + ' = ' + ftFmt(organicCash) +
+                '\n  Inv pool: ' + ftFmt(prevInv) + ' + return ' + ftFmt(Math.round(invGrowth)) + (safeDraw > 0 ? ' - draw ' + ftFmt(Math.round(safeDraw)) : '') + ' = ' + ftFmt(organicInv) +
+                '\n  Total liquid: ' + ftFmt(organicNewLiq) +
                 (contrib401k > 0 ? '\n\n401k:\n  + Contribution this year: ' + ftFmt(contrib401k) : '') +
                 (Math.round(retirementBal) > 0 ? '\n  Retirement balance (total): ' + ftFmt(Math.round(retirementBal)) : '') +
                 (Math.round(realEstateEquity) > 0 ? '\n\nReal estate equity: ' + ftFmt(Math.round(realEstateEquity)) : '') +
                 '\n\nTOTAL NW: ' + ftFmt(organicTotalNW);
 
           let newLiq = organicNewLiq;
+          let newCash = organicCash;
+          let newInv = organicInv;
           const nwOv = ftOvMap[age]?.nw;
           // nwOv is the total NW the user typed (what the NW column shows).
           // Derive liquidNW = totalNW - retirement - realEstate so that
@@ -6465,16 +6525,26 @@
 
           if (isHistory) {
             newLiq = (nwOvLiq !== undefined) ? nwOvLiq : null;
+            newCash = newLiq !== null ? Math.round(newLiq * (prevLiq > 0 ? prevCash / prevLiq : 1)) : null;
+            newInv = newLiq !== null ? newLiq - newCash : null;
           } else if (age === curAge) {
-            // Anchor to liquid accounts only
+            // Anchor to actual account balances
             newLiq = (nwOvLiq !== undefined) ? nwOvLiq : liquidSeed;
+            newCash = (nwOvLiq !== undefined) ? Math.round(nwOvLiq * (liquidSeed > 0 ? cashPoolSeed / liquidSeed : 1)) : cashPoolSeed;
+            newInv = (nwOvLiq !== undefined) ? nwOvLiq - newCash : invPoolSeed;
           } else if (nwOvLiq !== undefined) {
             newLiq = nwOvLiq;
+            // Split override into sub-pools using current organic ratio
+            const totalOrganic = Math.abs(organicCash) + Math.abs(organicInv);
+            newCash = totalOrganic > 0 ? Math.round(nwOvLiq * Math.abs(organicCash) / totalOrganic) : nwOvLiq;
+            newInv = nwOvLiq - newCash;
           }
 
           let displayLiq = newLiq;
 
           liquidNW = isHistory ? liquidNW : newLiq;
+          cashPool = isHistory ? cashPool : (newCash !== null ? newCash : cashPool);
+          invPool = isHistory ? invPool : (newInv !== null ? newInv : invPool);
           const nw = (displayLiq || 0) + Math.round(retirementBal) + Math.round(realEstateEquity);
           const dcTip = ''; // Moved to housing
           cumSav = isHistory ? cumSav : cumSav + Math.max(0, netSavings);
@@ -6509,7 +6579,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + bills + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined, cashPool: newCash, invPool: newInv, safeDraw: Math.round(safeDraw), safeDrawTip });
         }
         return out;
       }
@@ -7614,11 +7684,19 @@
                   // ── Card 3: NW Breakdown ──
                   const prevFmt = ftFmt(r.prevLiquid || 0);
                   const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
-                  const liqBody = fcList(
-                    fcItem('Previous balance', prevFmt)
-                    + fcItem('+ Market return (' + roc + '%)', growthFmt, {op: true})
-                    + fcItem('+ Net savings', ftFmt(r.netSavings), {op: true})
-                  ) + fcResultPill('= New liquid NW', null, ftFmt(r.organicLiquid));
+                  const hasPools = r.cashPool !== null && r.cashPool !== undefined;
+                  const liqBody = hasPools
+                    ? fcSection('Cash Pool') + fcList(
+                        fcItem('Balance', ftFmt(r.cashPool || 0))
+                      ) + fcSection('Investment Pool') + fcList(
+                        fcItem('Balance', ftFmt(r.invPool || 0))
+                        + (r.safeDraw > 0 ? fcItem('Safe draw this year', '\u2212' + ftFmt(r.safeDraw), {op: true, nameColor: FC.amber}) : '')
+                      ) + fcResultPill('= Total liquid NW', null, ftFmt(r.organicLiquid))
+                    : fcList(
+                        fcItem('Previous balance', prevFmt)
+                        + fcItem('+ Market return (' + roc + '%)', growthFmt, {op: true})
+                        + fcItem('+ Net savings', ftFmt(r.netSavings), {op: true})
+                      ) + fcResultPill('= New liquid NW', null, ftFmt(r.organicLiquid));
                   let retBody = '';
                   if (r.contrib401k > 0 || r.retirementBal > 0) {
                     retBody = fcDivider() + fcSection('401k / Retirement') + fcList(
@@ -7693,6 +7771,9 @@
                   const efDiagNote = efTotalDiag > 0
                     ? fcDivider() + fcList(fcItem('Emergency Fund (' + ftFmt(efTotalDiag) + ') excluded from drawable buffer', undefined, {nameColor: FC.amber}))
                     : '';
+                  const drawDiagNote = r.safeDrawTip
+                    ? fcDivider() + fcList(fcItem(r.safeDrawTip, undefined, {nameColor: r.safeDraw > 0 ? FC.amber : FC.red}))
+                    : '';
                   const cardHtml = fcCard(
                     fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red)
                     + fcSection('Visual Comparison')
@@ -7704,6 +7785,7 @@
                     + fcSection('Top Category Drains')
                     + fcList(blameHtml)
                     + efDiagNote
+                    + drawDiagNote
                     + fcActionBox('Required Action',
                         'Reduce ' + actionSubject + ' by ' + deficitFmt + ' OR increase income by ' + deficitFmt + ' to stop wealth decay.')
                   );
@@ -7727,15 +7809,21 @@
                   const efFootnote = efTotalFree > 0
                     ? '\nEmergency Fund (' + ftFmt(efTotalFree) + ') excluded from liquid NW and drawable buffer.'
                     : '';
+                  const safeDrawMo = Math.round((r.safeDraw || 0) / 12);
+                  const safeDrawLine = safeDrawMo > 0
+                    ? fcItem('+ Safe draw from investments', '+' + ftFmt(safeDrawMo) + '/mo', {op: true, nameColor: FC.amber})
+                    : '';
+                  const safeDrawNote = r.safeDrawTip ? '\n' + r.safeDrawTip : '';
                   const freeCardHtml = fcCard(
                     fcHeader('\u{1F4B0}', 'Free to Spend', '+' + ftFmt(r.freeSpend) + '/mo', FC.green)
                     + fcList(
                       fcItem('Take-home income', ftFmt(rowNetHHMo) + '/mo')
                       + fcItem('\u2212 Fixed costs (housing + kids + healthcare)', '\u2212' + ftFmt(fixedMo) + '/mo', {op: true})
                       + fcItem('\u2212 Required goal savings', '\u2212' + ftFmt(reqSavMo2) + '/mo', {op: true})
+                      + safeDrawLine
                       + fcItem('= Free to spend', '+' + ftFmt(r.freeSpend) + '/mo', {result: true, valColor: FC.green})
                     )
-                    + fcFootnote(surplusLabel + efFootnote)
+                    + fcFootnote(surplusLabel + efFootnote + safeDrawNote)
                   );
 
                   return '<td style="color:' + color + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
