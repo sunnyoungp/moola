@@ -5652,7 +5652,8 @@
         ssEnabled: false, ssBenefit: 2500, ssClaimAge: 67,
         rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15,
         retireTaxEnabled: false, numFormat: 'compact',
-        retireSpendMode: '4pct', inheritanceTarget: 0
+        retireSpendMode: '4pct', inheritanceTarget: 0,
+        defaultGainPct: 40
       };
       // Income streams (replaces single Job event)
       let ftIncomeStreams = [];
@@ -6417,7 +6418,9 @@
           // When income doesn't cover expenses + required savings, check if
           // projected NW is ahead of goal trajectory. If so, draw the shortfall
           // from the investments pool (invPool) to boost free-to-spend.
-          let safeDraw = 0, safeDrawTip = '';
+          // Tax: 15% LTCG on gains portion only. grossDraw leaves invPool,
+          // netDraw (after tax) is added to free-to-spend.
+          let safeDraw = 0, safeDrawTip = '', grossDraw = 0, drawTax = 0;
           let freeSpend, monthlySurplus, budgetTip, surplusTip;
           const isRetired = !isHistory && age > ftGlobals.retireAge;
           if (isRetired) {
@@ -6460,8 +6463,17 @@
                 const projectedNW = trajectoryBase * Math.pow(1 + roc, goalYears);
                 const surplus = projectedNW - topGoalTargetNW;
                 if (surplus > 0) {
-                  safeDraw = Math.min(shortfall, surplus);
-                  safeDrawTip = 'Drawing ' + ftFmt(Math.round(safeDraw)) + ' from investments (NW ahead of ' + topGoalLabel + ' trajectory by ' + ftFmt(Math.round(surplus)) + ')';
+                  // Net draw needed = shortfall (capped by surplus).
+                  // Gross draw = net / (1 - gainPct * capGainsRate) to account for tax.
+                  const netNeeded = Math.min(shortfall, surplus);
+                  const gainPct = (ftGlobals.defaultGainPct || 40) / 100;
+                  const taxRate = (ftGlobals.capGainsRate || 15) / 100;
+                  const taxFactor = 1 - gainPct * taxRate;
+                  const rawGross = netNeeded / taxFactor;
+                  grossDraw = Math.min(rawGross, invPool); // can't draw more than pool
+                  drawTax = Math.round(grossDraw * gainPct * taxRate);
+                  safeDraw = Math.round(grossDraw - drawTax); // net after tax
+                  safeDrawTip = 'Draw ' + ftFmt(Math.round(grossDraw)) + ' from investments · Tax ' + ftFmt(drawTax) + ' (' + Math.round(gainPct * 100) + '% gains × ' + Math.round(taxRate * 100) + '% LTCG) · Net ' + ftFmt(safeDraw);
                 } else {
                   safeDrawTip = 'Shortfall: NW behind goal trajectory — cannot draw from investments';
                 }
@@ -6497,7 +6509,7 @@
           const cashGrowth = prevCash * roc;
           const invGrowth = prevInv * roc;
           const organicCash = Math.round(prevCash + cashGrowth + netSavings - extraPmt);
-          const organicInv = Math.round(prevInv + invGrowth - safeDraw);
+          const organicInv = Math.round(prevInv + invGrowth - grossDraw);
           const organicNewLiq = organicCash + organicInv;
           const growth = prevLiq * roc; // kept for tooltip compat
           const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
@@ -6579,7 +6591,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + bills + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined, cashPool: newCash, invPool: newInv, safeDraw: Math.round(safeDraw), safeDrawTip });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined, cashPool: newCash, invPool: newInv, safeDraw: Math.round(safeDraw), grossDraw: Math.round(grossDraw), drawTax, safeDrawTip });
         }
         return out;
       }
@@ -7252,6 +7264,7 @@
               + '</div>')
             + ftEdField('401k tax rate (%)', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.k401TaxRate || 25) + '" oninput="ftGlobals.k401TaxRate=+this.value;ftSaveScenario();ftRecalc()">')
             + ftEdField('Capital gains rate (%)', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.capGainsRate || 15) + '" oninput="ftGlobals.capGainsRate=+this.value;ftSaveScenario();ftRecalc()">')
+            + ftEdField('Est. gains portion (%)', '<input class="ft-ed-inp" type="number" value="' + (ftGlobals.defaultGainPct || 40) + '" oninput="ftGlobals.defaultGainPct=+this.value;ftSaveScenario();ftRecalc()" title="Percentage of brokerage balance assumed to be capital gains (vs cost basis)">')
           : '';
 
         // Social Security fields
@@ -7775,11 +7788,15 @@
 
                   if (isNwFunded) {
                     // ── Card 4a: NW-Funded Gap (orange) ──
+                    const hasTax4 = (r.drawTax || 0) > 0;
+                    const drawItems4 = fcItem('Gross draw from investments', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
+                      + (hasTax4 ? fcItem('\u2212 LTCG tax on gains', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
+                      + (hasTax4 ? fcItem('Net draw applied', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '');
                     const cardHtml = fcCard(
                       fcHeader('\u{1F4B6}', 'Drawing from Investments', 'NW ahead of trajectory', FC.amber)
                       + fcList(
                         fcItem('Free to spend (after draw)', '+' + ftFmt(r.freeSpend) + '/mo', {valColor: FC.green})
-                        + fcItem('Draw ' + ftFmt(Math.round(r.safeDraw)) + ' from investments this year', undefined, {nameColor: FC.amber})
+                        + drawItems4
                         + (deficit > 0 ? fcItem('Remaining gap vs living', '\u2212' + ftFmt(deficit) + '/mo', {valColor: FC.red}) : '')
                       )
                       + efDiagNote
@@ -7837,9 +7854,15 @@
                   const safeDrawLine = safeDrawMo > 0
                     ? fcItem('+ Draw from investments', '+' + ftFmt(safeDrawMo) + '/mo', {op: true, nameColor: FC.amber})
                     : '';
-                  const drawFreeSection = isDrawing
-                    ? fcDivider() + fcList(fcItem('Draw ' + ftFmt(Math.round(r.safeDraw)) + ' from investments this year', undefined, {nameColor: FC.amber}))
-                    : '';
+                  let drawFreeSection = '';
+                  if (isDrawing) {
+                    const hasTax5 = (r.drawTax || 0) > 0;
+                    drawFreeSection = fcDivider() + fcList(
+                      fcItem('Gross draw from investments', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
+                      + (hasTax5 ? fcItem('\u2212 LTCG tax on gains', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
+                      + (hasTax5 ? fcItem('Net draw applied', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '')
+                    );
+                  }
                   const headerTitle = isDrawing ? 'Drawing from Investments' : 'Free to Spend';
                   const headerEmoji = isDrawing ? '\u{1F4B6}' : '\u{1F4B0}';
                   const headerSubtitle = isDrawing
@@ -8183,7 +8206,7 @@
         ftIncomeStreams = [];
         ftProperties = [];
         ftLifeEvents = [];
-        Object.assign(ftGlobals, { f401k: 23000, roc: 5, taxMode: 'auto', taxFlat: 35, state: 'CA', discMode: 'rate', savingsRate: 25, retireAge: 60, retireNW: 3000000, projectionStartingAge: 25, expInflation: 2.5, ssEnabled: false, ssBenefit: 2500, ssClaimAge: 67, rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15, retireTaxEnabled: false, numFormat: 'compact' });
+        Object.assign(ftGlobals, { f401k: 23000, roc: 5, taxMode: 'auto', taxFlat: 35, state: 'CA', discMode: 'rate', savingsRate: 25, retireAge: 60, retireNW: 3000000, projectionStartingAge: 25, expInflation: 2.5, ssEnabled: false, ssBenefit: 2500, ssClaimAge: 67, rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15, retireTaxEnabled: false, numFormat: 'compact', defaultGainPct: 40 });
         if (S?.future_scenarios?.length) {
           ftScenarios = JSON.parse(JSON.stringify(S.future_scenarios));
           ftActiveScenarioId = S.future_active_scenario || ftScenarios[0].id;
