@@ -1957,6 +1957,7 @@
             { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
             { id: 'subscription', name: '청약계좌', categoryId: 'cash', bucketId: 'restricted', isInvestment: false },
             { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'emergency', name: 'Emergency Fund', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
             { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments', bucketId: 'investments', isInvestment: true },
             { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
             { id: 'pension', name: 'Pension / 연금', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
@@ -2008,6 +2009,7 @@
             { id: 'savings', name: 'Savings / HYSA', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
             { id: 'subscription', name: '청약계좌', categoryId: 'cash', bucketId: 'restricted', isInvestment: false },
             { id: 'other-cash', name: 'Other (Cash)', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
+            { id: 'emergency', name: 'Emergency Fund', categoryId: 'cash', bucketId: 'cash', isInvestment: false },
             { id: 'brokerage-taxable', name: 'Brokerage (Taxable)', categoryId: 'investments', bucketId: 'investments', isInvestment: true },
             { id: 'brokerage-roth', name: 'Roth IRA', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
             { id: 'pension', name: 'Pension / 연금', categoryId: 'investments', bucketId: 'retirement', isInvestment: true },
@@ -2030,6 +2032,11 @@
           });
         }
         if (!S.portAcctToggles) S.portAcctToggles = {};
+
+        // Migration: add Emergency Fund account type if missing
+        if (S.accountTypes && !S.accountTypes.find(t => t.id === 'emergency')) {
+          S.accountTypes.push({ id: 'emergency', name: 'Emergency Fund', categoryId: 'cash', bucketId: 'cash', isInvestment: false });
+        }
 
         // Migrate legacy account types to new system
         const legacyMap = {
@@ -2391,7 +2398,13 @@
       function ftGetLiquidNW() {
         const state = getFilteredState();
         return state.accounts
-          .filter(a => { const b = ftGetAcctBucket(a); return b === 'cash' || b === 'restricted' || b === 'investments'; })
+          .filter(a => { const b = ftGetAcctBucket(a); return (b === 'cash' || b === 'restricted' || b === 'investments') && String(a.type) !== 'emergency'; })
+          .reduce((s, a) => s + getAcctUSD(a), 0);
+      }
+      function ftGetEmergencyFundTotal() {
+        const state = getFilteredState();
+        return state.accounts
+          .filter(a => String(a.type) === 'emergency')
           .reduce((s, a) => s + getAcctUSD(a), 0);
       }
       function ftGetRetirementBal() {
@@ -7620,13 +7633,19 @@
                     reBody = fcDivider() + fcSection('Real Estate')
                       + fcList(fcItem('Equity (all properties)', ftFmt(Math.round(r.realEstateEquity))));
                   }
+                  const efTotal = ftGetEmergencyFundTotal();
+                  let efBody = '';
+                  if (efTotal > 0) {
+                    efBody = fcDivider() + fcSection('Emergency Fund (excluded)')
+                      + fcList(fcItem('Reserved \u2014 not counted in liquid NW', ftFmt(efTotal), {nameColor: FC.amber}));
+                  }
                   const usableCaption = r.isRetiredForCalc ? 'Liquid + Inv Properties + Retirement' : 'Liquid + Inv Properties (Retirement locked)';
                   const usableBody = fcDivider()
                     + fcResultPill('Usable net worth', usableCaption, ftFmt(Math.round(r.investableNW)));
                   nwCardHtml = fcCard(
                     fcHeader('\u{1F4CA}', 'Net Worth Breakdown', totalNWFmt, nwColor)
                     + fcSection('Liquid Portfolio')
-                    + liqBody + retBody + reBody + usableBody
+                    + liqBody + retBody + reBody + efBody + usableBody
                   );
                 }
                 return '<td class="ft-editable ' + (r.nw < 0 ? 'neg' : '') + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'nw\')" style="cursor:pointer"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nwCardHtml + MT(ftFmt(r.nw), 'future') + '</span></td>';
@@ -7670,6 +7689,10 @@
                   const safePct = Math.min(100, (r.freeSpend / livingMo) * 100);
                   const dangerPct = Math.min(100, (deficit / livingMo) * 100);
 
+                  const efTotalDiag = ftGetEmergencyFundTotal();
+                  const efDiagNote = efTotalDiag > 0
+                    ? fcDivider() + fcList(fcItem('Emergency Fund (' + ftFmt(efTotalDiag) + ') excluded from drawable buffer', undefined, {nameColor: FC.amber}))
+                    : '';
                   const cardHtml = fcCard(
                     fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red)
                     + fcSection('Visual Comparison')
@@ -7680,6 +7703,7 @@
                     + fcDivider()
                     + fcSection('Top Category Drains')
                     + fcList(blameHtml)
+                    + efDiagNote
                     + fcActionBox('Required Action',
                         'Reduce ' + actionSubject + ' by ' + deficitFmt + ' OR increase income by ' + deficitFmt + ' to stop wealth decay.')
                   );
@@ -7699,6 +7723,10 @@
                       ? 'Surplus after saving for: ' + r.bindingGoal
                       : 'Surplus after all goals and obligations.';
 
+                  const efTotalFree = ftGetEmergencyFundTotal();
+                  const efFootnote = efTotalFree > 0
+                    ? '\nEmergency Fund (' + ftFmt(efTotalFree) + ') excluded from liquid NW and drawable buffer.'
+                    : '';
                   const freeCardHtml = fcCard(
                     fcHeader('\u{1F4B0}', 'Free to Spend', '+' + ftFmt(r.freeSpend) + '/mo', FC.green)
                     + fcList(
@@ -7707,7 +7735,7 @@
                       + fcItem('\u2212 Required goal savings', '\u2212' + ftFmt(reqSavMo2) + '/mo', {op: true})
                       + fcItem('= Free to spend', '+' + ftFmt(r.freeSpend) + '/mo', {result: true, valColor: FC.green})
                     )
-                    + fcFootnote(surplusLabel)
+                    + fcFootnote(surplusLabel + efFootnote)
                   );
 
                   return '<td style="color:' + color + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + freeCardHtml + (r.freeSpend > 0 ? '+' : '') + ftFmt(r.freeSpend) + '/mo</span></td>';
