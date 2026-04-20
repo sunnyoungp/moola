@@ -7848,56 +7848,22 @@
                     return '<td style="color:' + FC.amber + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u{1F4B6} ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                   } else {
                     // ── Card 4b: True Shortfall (red) ──
-                    let drawDiagSection = '';
+                    let drawLine = '';
                     const drawTip = r.safeDrawTip || '';
                     if (drawTip) {
-                      // Build depletion history from prior rows
-                      let depletionParts = [];
                       const drawRows = ftRows.filter(pr => pr.age < r.age && (pr.grossDraw || 0) > 0);
+                      let depletedBy = '';
                       if (drawRows.length) {
-                        const firstDraw = drawRows[0].age, lastDraw = drawRows[drawRows.length - 1].age;
-                        depletionParts.push('investment draws (ages ' + firstDraw + '\u2013' + lastDraw + ')');
+                        depletedBy = ' \u2014 depleted by draws (ages ' + drawRows[0].age + '\u2013' + drawRows[drawRows.length - 1].age + ')';
                       }
-                      // Check if a house purchase preceded this age
-                      for (const pr of ftRows) {
-                        if (pr.age < r.age && pr.isBuy) {
-                          const buyLabel = (pr.ms || []).find(m => m !== 'retirement') || 'house purchase';
-                          depletionParts.push(buyLabel + ' (age ' + pr.age + ')');
-                        }
-                      }
-                      const depletionSummary = depletionParts.length
-                        ? 'Depleted by: ' + depletionParts.join(' + ')
-                        : '';
-
-                      let reason = '';
-                      if (drawTip === 'invpool-depleted') reason = 'Investment accounts fully depleted';
-                      else if (drawTip === 'no-goal') reason = 'No goal to check trajectory against';
-                      else reason = 'NW behind goal trajectory';
-
-                      drawDiagSection = fcDivider()
-                        + fcSection('Drawing from Investments — Failed')
-                        + fcList(
-                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
-                          + fcItem('Reason', reason, {nameColor: FC.red})
-                          + fcItem('Investment accounts balance', ftFmt(r.invPool || 0))
-                          + (depletionSummary ? fcItem(depletionSummary, undefined, {nameColor: FC.ink3}) : '')
-                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
-                        );
+                      drawLine = fcItem('Liquid investments: ' + ftFmt(r.invPool || 0) + depletedBy, undefined, {nameColor: FC.ink3});
                     }
                     const cardHtml = fcCard(
                       fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red)
-                      + fcSection('Visual Comparison')
-                      + fcCompareBar(
-                          'Actual Spending', ftFmt(livingMo) + '/mo', true,
-                          'Safe Spending Limit', ftFmt(r.freeSpend) + '/mo', false,
-                          safePct, dangerPct)
-                      + fcDivider()
+                      + (drawLine ? fcList(drawLine) : '')
                       + fcSection('Top Category Drains')
                       + fcList(blameHtml)
                       + efDiagNote
-                      + drawDiagSection
-                      + fcActionBox('Required Action',
-                          'Reduce ' + actionSubject + ' by ' + deficitFmt + ' OR increase income by ' + deficitFmt + ' to stop wealth decay.')
                     );
                     return '<td style="color:' + FC.red + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u26A0 ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                   }
