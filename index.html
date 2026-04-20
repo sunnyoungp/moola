@@ -6454,7 +6454,10 @@
             // trajectory against the nearest goal and draw from invPool.
             // Condition: rawFreeSpend < livingMo (not just < 0) — the user can't
             // maintain their living standard from income alone.
-            if (!isHistory && rawFreeSpend < livingMoCalc && invPool > 0) {
+            if (!isHistory && rawFreeSpend < livingMoCalc) {
+              if (invPool <= 0) {
+                safeDrawTip = 'invpool-depleted';
+              } else {
               // Find the nearest future goal for trajectory check.
               // Use binding goal from goal-mode if available, otherwise scan all goals.
               let drawGoalType = topGoalType, drawGoalAge = topGoalTargetAge, drawGoalNW = topGoalTargetNW;
@@ -6481,10 +6484,14 @@
                   drawGoalNW = candidates[0].nw;
                 }
               }
-              if (drawGoalType) {
+              if (!drawGoalType) {
+                safeDrawTip = 'no-goal';
+              } else {
                 const shortfall = Math.round((livingMoCalc - rawFreeSpend) * 12);
                 const goalYears = drawGoalAge - age;
-                if (goalYears > 0) {
+                if (goalYears <= 0) {
+                  safeDrawTip = 'no-goal';
+                } else {
                   // Trajectory check: project NW forward and compare to target.
                   // Use invPool + max(0,cashPool) as the liquid base — a temporarily negative
                   // cashPool (e.g. from a house purchase spike) is transient and will recover
@@ -6514,6 +6521,7 @@
                   }
                 }
               }
+              } // end invPool > 0
             }
 
             const adjustedFreeSpend = (rawFreeSpend * 12 + safeDraw) / 12;
@@ -7840,14 +7848,35 @@
                     return '<td style="color:' + FC.amber + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u{1F4B6} ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                   } else {
                     // ── Card 4b: True Shortfall (red) ──
-                    // Behind trajectory or no investments to draw from.
+                    // Behind trajectory, invPool depleted, or no goal to check against.
                     let drawDiagSection = '';
-                    if (r.safeDrawTip) {
+                    const drawTip = r.safeDrawTip || '';
+                    if (drawTip === 'invpool-depleted') {
                       drawDiagSection = fcDivider()
-                        + fcSection('NW Buffer Draw')
+                        + fcSection('NW Buffer Draw — Failed')
                         + fcList(
-                          fcItem('NW behind goal trajectory', '\u2717 cannot draw', {valColor: FC.red})
-                          + fcItem('Investment pool balance', ftFmt(r.invPool || 0), {nameColor: FC.ink3})
+                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
+                          + fcItem('Reason', 'Investment pool depleted', {nameColor: FC.red})
+                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
+                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
+                        );
+                    } else if (drawTip === 'no-goal') {
+                      drawDiagSection = fcDivider()
+                        + fcSection('NW Buffer Draw — Failed')
+                        + fcList(
+                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
+                          + fcItem('Reason', 'No goal to check trajectory against', {nameColor: FC.red})
+                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
+                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
+                        );
+                    } else if (drawTip && drawTip.startsWith('Shortfall:')) {
+                      drawDiagSection = fcDivider()
+                        + fcSection('NW Buffer Draw — Failed')
+                        + fcList(
+                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
+                          + fcItem('Reason', 'NW behind goal trajectory', {nameColor: FC.red})
+                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
+                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
                         );
                     }
                     const cardHtml = fcCard(
