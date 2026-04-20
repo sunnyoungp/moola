@@ -6227,13 +6227,15 @@
             }
           }
 
-          // Add down-payment / closing spikes to housing
-          let acqLabels = [];
+          // Down payment + closing costs are drawn directly from liquid NW (sub-pools),
+          // NOT added to housing/fixedCosts. This keeps free-to-spend sane in the
+          // purchase year. The draw happens in the sub-pool accumulation section below.
+          let downPaymentDraw = 0;
           for (const { p } of propScheds) {
             if (p.purchaseAge === age) {
               const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
-              housing += dc;
-              housingBreakdown.push(p.name + ' purchase (down+closing): ' + ftFmt(dc));
+              downPaymentDraw += dc;
+              housingBreakdown.push(p.name + ' purchase (down+closing from NW): ' + ftFmt(dc));
             }
           }
           const housingTip = 'Housing Outflow Breakdown:\n' + housingBreakdown.join('\n');
@@ -6328,19 +6330,8 @@
               }
             }
 
-            // Property down payments
-            for (const { p } of propScheds) {
-              if (p.purchaseAge > age) {
-                const dc = Math.round(p.price * p.downPct / 100 + p.price * 0.03);
-                const r = requiredSavingsForGoal(effectiveLiquidNW, dc, p.purchaseAge, age, roc);
-                if (r > 0) {
-                  pmts.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, req: r, targetAge: p.purchaseAge, targetNW: dc, useInvestable: false, goalType: 'property' });
-                } else {
-                  const projectedNW = Math.round(effectiveLiquidNW * Math.pow(1 + roc, p.purchaseAge - age));
-                  fundedGoals.push({ label: '"' + p.name + '" down+closing ' + ftFmt(dc) + ' at age ' + p.purchaseAge, targetNW: dc, projectedNW });
-                }
-              }
-            }
+            // Property down payments — drawn directly from liquid NW at purchase age,
+            // no longer tracked as a savings goal. Removed from pmts array.
 
             // One-time expenses
             for (const oe of oneTimeEvs) {
@@ -6467,11 +6458,7 @@
                 if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
                   candidates.push({ type: 'retirement', age: ftGlobals.retireAge, nw: ftGlobals.retireNW });
                 }
-                for (const { p } of propScheds) {
-                  if (p.purchaseAge > age) {
-                    candidates.push({ type: 'property', age: p.purchaseAge, nw: Math.round(p.price * p.downPct / 100 + p.price * 0.03) });
-                  }
-                }
+                // Property down payments removed — drawn directly from NW at purchase age
                 for (const oe of oneTimeEvs) {
                   if (oe.age > age && (oe.amount || 0) < 0) {
                     candidates.push({ type: 'oneTime', age: oe.age, nw: Math.abs(oe.amount) });
@@ -6547,13 +6534,30 @@
           // ── Sub-pool accumulation ─────────────────────────────────────
           // Cash pool: grows at RoC, receives net savings and absorbs extra mortgage payments.
           // Inv pool: grows at RoC independently. Safe draws deducted from invPool.
+          // Down payment draws: taken from cash first, then inv (with LTCG tax) for remainder.
           const prevLiq = isHistory ? 0 : (liquidNW || 0);
           const prevCash = isHistory ? 0 : cashPool;
           const prevInv = isHistory ? 0 : invPool;
           const cashGrowth = prevCash * roc;
           const invGrowth = prevInv * roc;
-          const organicCash = Math.round(prevCash + cashGrowth + netSavings - extraPmt);
-          const organicInv = Math.round(prevInv + invGrowth - grossDraw);
+          // Apply down payment draw: cash-first, then inv with capital gains tax
+          let dpFromCash = 0, dpFromInv = 0, dpInvTax = 0;
+          if (downPaymentDraw > 0 && !isHistory) {
+            const cashAvail = Math.max(0, prevCash + cashGrowth + netSavings - extraPmt);
+            dpFromCash = Math.min(cashAvail, downPaymentDraw);
+            const dpRemaining = downPaymentDraw - dpFromCash;
+            if (dpRemaining > 0 && prevInv + invGrowth > 0) {
+              const gainPct = (ftGlobals.defaultGainPct || 40) / 100;
+              const taxRate = (ftGlobals.capGainsRate || 15) / 100;
+              // Need to sell enough to cover dpRemaining after tax on gains
+              const rawGross = dpRemaining / (1 - gainPct * taxRate);
+              const invAvail = prevInv + invGrowth - grossDraw;
+              dpFromInv = Math.min(rawGross, Math.max(0, invAvail));
+              dpInvTax = Math.round(dpFromInv * gainPct * taxRate);
+            }
+          }
+          const organicCash = Math.round(prevCash + cashGrowth + netSavings - extraPmt - dpFromCash);
+          const organicInv = Math.round(prevInv + invGrowth - grossDraw - dpFromInv);
           const organicNewLiq = organicCash + organicInv;
           const growth = prevLiq * roc; // kept for tooltip compat
           const hasNwOvForTip = ftOvMap[age]?.nw !== undefined;
@@ -6562,8 +6566,8 @@
             ? 'Historical year: manual Net Worth entry only.'
             : hasNwOvForTip
               ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicTotalNW)
-              : 'Liquid NW:\n  Cash pool: ' + ftFmt(prevCash) + ' + return ' + ftFmt(Math.round(cashGrowth)) + ' + savings ' + ftFmt(netSavings) + (extraPmt !== 0 ? ' - extra pmt ' + ftFmt(extraPmt) : '') + ' = ' + ftFmt(organicCash) +
-                '\n  Investments: ' + ftFmt(prevInv) + ' + return ' + ftFmt(Math.round(invGrowth)) + (safeDraw > 0 ? ' - draw ' + ftFmt(Math.round(safeDraw)) : '') + ' = ' + ftFmt(organicInv) +
+              : 'Liquid NW:\n  Cash: ' + ftFmt(prevCash) + ' + return ' + ftFmt(Math.round(cashGrowth)) + ' + savings ' + ftFmt(netSavings) + (extraPmt !== 0 ? ' - extra pmt ' + ftFmt(extraPmt) : '') + (dpFromCash > 0 ? ' - down pmt ' + ftFmt(dpFromCash) : '') + ' = ' + ftFmt(organicCash) +
+                '\n  Investments: ' + ftFmt(prevInv) + ' + return ' + ftFmt(Math.round(invGrowth)) + (grossDraw > 0 ? ' - draw ' + ftFmt(Math.round(grossDraw)) : '') + (dpFromInv > 0 ? ' - down pmt ' + ftFmt(Math.round(dpFromInv)) + ' (tax ' + ftFmt(dpInvTax) + ')' : '') + ' = ' + ftFmt(organicInv) +
                 '\n  Total liquid: ' + ftFmt(organicNewLiq) +
                 (contrib401k > 0 ? '\n\n401k:\n  + Contribution this year: ' + ftFmt(contrib401k) : '') +
                 (Math.round(retirementBal) > 0 ? '\n  Retirement balance (total): ' + ftFmt(Math.round(retirementBal)) : '') +
@@ -6635,7 +6639,7 @@
           const rowTotalIncome = income + partner;
           const rowTotalExpenses = living + housing + kids + healthcare + bills + (ot < 0 ? Math.abs(ot) : 0);
           const isHighlight = isBuy || ms.length > 0;
-          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined, cashPool: newCash, invPool: newInv, safeDraw: Math.round(safeDraw), grossDraw: Math.round(grossDraw), drawTax, safeDrawTip });
+          out.push({ age, income, partner, living, housing, kids: Math.round(kids), healthcare: Math.round(healthcare), bills: Math.round(bills), requiredSavings: Math.round(requiredSavings), netSavings: Math.round(netSavings), freeSpend, monthlySurplus, nw, liquidNW: displayLiq, realEstateEquity: Math.round(realEstateEquity), investableNW, isRetiredForCalc, cumSav: Math.round(cumSav), ms, msDots, isBuy, isHistory, isRetired, isHighlight, ot: ot + extraPmt, retirementBal: Math.round(retirementBal), taxTip, budgetTip, surplusTip, netSavTip, nwTip, incomeTip, housingTip, discTooltip, noGoals, fundedGoals, bindingGoal: topGoalLabel, totalIncome: Math.round(rowTotalIncome), totalExpenses: Math.round(rowTotalExpenses), reqSavings: Math.round(requiredSavings), lifeEventTypes, prevLiquid: isHistory ? 0 : prevLiq, liquidGrowth: isHistory ? 0 : growth, contrib401k, organicLiquid: organicNewLiq, hasNwOv: ftOvMap[age]?.nw !== undefined, cashPool: newCash, invPool: newInv, safeDraw: Math.round(safeDraw), grossDraw: Math.round(grossDraw), drawTax, safeDrawTip, downPaymentDraw, dpFromCash: Math.round(dpFromCash), dpFromInv: Math.round(dpFromInv), dpInvTax });
         }
         return out;
       }
@@ -7742,13 +7746,19 @@
                   const prevFmt = ftFmt(r.prevLiquid || 0);
                   const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
                   const hasPools = r.cashPool !== null && r.cashPool !== undefined;
+                  const dpLine = (r.downPaymentDraw || 0) > 0
+                    ? fcDivider() + fcSection('Down Payment (from NW)') + fcList(
+                        fcItem('From cash & savings', '\u2212' + ftFmt(r.dpFromCash || 0), {op: true})
+                        + ((r.dpFromInv || 0) > 0 ? fcItem('From investment accounts', '\u2212' + ftFmt(r.dpFromInv) + ((r.dpInvTax || 0) > 0 ? ' (tax ' + ftFmt(r.dpInvTax) + ')' : ''), {op: true}) : '')
+                      )
+                    : '';
                   const liqBody = hasPools
                     ? fcSection('Cash & Savings') + fcList(
                         fcItem('Balance', ftFmt(r.cashPool || 0))
                       ) + fcSection('Investment Accounts') + fcList(
                         fcItem('Balance', ftFmt(r.invPool || 0))
                         + (r.safeDraw > 0 ? fcItem('Draw from investments this year', '\u2212' + ftFmt(r.safeDraw), {op: true, nameColor: FC.amber}) : '')
-                      ) + fcResultPill('= Total liquid NW', null, ftFmt(r.organicLiquid))
+                      ) + dpLine + fcResultPill('= Total liquid NW', null, ftFmt(r.organicLiquid))
                     : fcList(
                         fcItem('Previous balance', prevFmt)
                         + fcItem('+ Market return (' + roc + '%)', growthFmt, {op: true})
@@ -8027,7 +8037,7 @@
       function ftRemovePropExtra(propId, pi) { const p = ftProperties.find(x => x.id === propId); if (p?.extraPayments) { p.extraPayments.splice(pi, 1); ftRenderPanel(); ftRecalc(); } }
       function ftUpdatePropExtra(propId, pi, field, val) { const p = ftProperties.find(x => x.id === propId); if (p?.extraPayments?.[pi]) { p.extraPayments[pi][field] = val; ftRecalc(); } }
       function ftAddProperty() {
-        ftProperties.push({ id: ftUid(), name: 'New property', purchaseAge: 35, price: 1200000, downPct: 20, mrate: 6.5, termYrs: 30, propType: 'primary', appreciation: 4, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: true });
+        ftProperties.push({ id: ftUid(), name: 'New property', purchaseAge: 35, price: 1200000, downPct: 20, mrate: 6.5, termYrs: 30, propType: 'primary', appreciation: 3, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: true });
         ftRenderPanel(); ftRecalc();
       }
 
