@@ -6449,33 +6449,62 @@
             const maxAllowance = netHH - fixedCosts;
             const rawFreeSpend = (maxAllowance - requiredSavings) / 12;
 
-            // Safe draw: if income doesn't cover obligations AND we have a binding goal
-            if (!isHistory && rawFreeSpend < 0 && topGoalType && invPool > 0) {
-              const shortfall = Math.abs(rawFreeSpend * 12);
-              const goalYears = topGoalTargetAge - age;
-              if (goalYears > 0) {
-                // Trajectory check: project NW forward and compare to target.
-                // For retirement goals, include retirementBal (accessible at retirement).
-                // For all other goals, use liquidNW only (retirement locked).
-                const trajectoryBase = topGoalType === 'retirement'
-                  ? (liquidNW + retirementBal)
-                  : liquidNW;
-                const projectedNW = trajectoryBase * Math.pow(1 + roc, goalYears);
-                const surplus = projectedNW - topGoalTargetNW;
-                if (surplus > 0) {
-                  // Net draw needed = shortfall (capped by surplus).
-                  // Gross draw = net / (1 - gainPct * capGainsRate) to account for tax.
-                  const netNeeded = Math.min(shortfall, surplus);
-                  const gainPct = (ftGlobals.defaultGainPct || 40) / 100;
-                  const taxRate = (ftGlobals.capGainsRate || 15) / 100;
-                  const taxFactor = 1 - gainPct * taxRate;
-                  const rawGross = netNeeded / taxFactor;
-                  grossDraw = Math.min(rawGross, invPool); // can't draw more than pool
-                  drawTax = Math.round(grossDraw * gainPct * taxRate);
-                  safeDraw = Math.round(grossDraw - drawTax); // net after tax
-                  safeDrawTip = 'Draw ' + ftFmt(Math.round(grossDraw)) + ' from investments · Tax ' + ftFmt(drawTax) + ' (' + Math.round(gainPct * 100) + '% gains × ' + Math.round(taxRate * 100) + '% LTCG) · Net ' + ftFmt(safeDraw);
-                } else {
-                  safeDrawTip = 'Shortfall: NW behind goal trajectory — cannot draw from investments';
+            // Safe draw: if income doesn't cover obligations, check trajectory
+            // against the nearest goal. Works in both 'rate' and 'goal' discMode.
+            if (!isHistory && rawFreeSpend < 0 && invPool > 0) {
+              // Find the nearest future goal for trajectory check.
+              // Use binding goal from goal-mode if available, otherwise scan all goals.
+              let drawGoalType = topGoalType, drawGoalAge = topGoalTargetAge, drawGoalNW = topGoalTargetNW;
+              if (!drawGoalType) {
+                // Rate mode or no binding goal — find nearest goal ourselves
+                const candidates = [];
+                if (ftGlobals.retireAge > age && ftGlobals.retireNW > 0) {
+                  candidates.push({ type: 'retirement', age: ftGlobals.retireAge, nw: ftGlobals.retireNW });
+                }
+                for (const { p } of propScheds) {
+                  if (p.purchaseAge > age) {
+                    candidates.push({ type: 'property', age: p.purchaseAge, nw: Math.round(p.price * p.downPct / 100 + p.price * 0.03) });
+                  }
+                }
+                for (const oe of oneTimeEvs) {
+                  if (oe.age > age && (oe.amount || 0) < 0) {
+                    candidates.push({ type: 'oneTime', age: oe.age, nw: Math.abs(oe.amount) });
+                  }
+                }
+                candidates.sort((a, b) => a.age - b.age);
+                if (candidates.length) {
+                  drawGoalType = candidates[0].type;
+                  drawGoalAge = candidates[0].age;
+                  drawGoalNW = candidates[0].nw;
+                }
+              }
+              if (drawGoalType) {
+                const shortfall = Math.abs(rawFreeSpend * 12);
+                const goalYears = drawGoalAge - age;
+                if (goalYears > 0) {
+                  // Trajectory check: project NW forward and compare to target.
+                  // For retirement goals, include retirementBal (accessible at retirement).
+                  // For all other goals, use liquidNW only (retirement locked).
+                  const trajectoryBase = drawGoalType === 'retirement'
+                    ? (liquidNW + retirementBal)
+                    : liquidNW;
+                  const projectedNW = trajectoryBase * Math.pow(1 + roc, goalYears);
+                  const surplus = projectedNW - drawGoalNW;
+                  if (surplus > 0) {
+                    // Net draw needed = shortfall (capped by surplus).
+                    // Gross draw = net / (1 - gainPct * capGainsRate) to account for tax.
+                    const netNeeded = Math.min(shortfall, surplus);
+                    const gainPct = (ftGlobals.defaultGainPct || 40) / 100;
+                    const taxRate = (ftGlobals.capGainsRate || 15) / 100;
+                    const taxFactor = 1 - gainPct * taxRate;
+                    const rawGross = netNeeded / taxFactor;
+                    grossDraw = Math.min(rawGross, invPool);
+                    drawTax = Math.round(grossDraw * gainPct * taxRate);
+                    safeDraw = Math.round(grossDraw - drawTax);
+                    safeDrawTip = 'Draw ' + ftFmt(Math.round(grossDraw)) + ' from investments · Tax ' + ftFmt(drawTax) + ' (' + Math.round(gainPct * 100) + '% gains × ' + Math.round(taxRate * 100) + '% LTCG) · Net ' + ftFmt(safeDraw);
+                  } else {
+                    safeDrawTip = 'Shortfall: NW behind goal trajectory — cannot draw from investments';
+                  }
                 }
               }
             }
