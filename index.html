@@ -6531,7 +6531,7 @@
             budgetTip = 'Calculation:\nNet Take-home: ' + ftFmt(Math.round(netHH / 12)) + '/mo'
               + '\n - Fixed Obligations: ' + ftFmt(Math.round(fixedCosts / 12)) + '/mo'
               + '\n - Required Goal Savings: ' + ftFmt(Math.round(requiredSavings / 12)) + '/mo'
-              + (safeDraw > 0 ? '\n + Safe draw from investments: +' + ftFmt(Math.round(safeDraw / 12)) + '/mo' : '')
+              + (safeDraw > 0 ? '\n + Draw from investment accounts: +' + ftFmt(Math.round(safeDraw / 12)) + '/mo' : '')
               + '\n = Max Allowance: ' + ftFmt(freeSpend) + '/mo';
             surplusTip = 'Calculation:\nMax Allowance: ' + ftFmt(Math.round(adjustedFreeSpend)) + '/mo'
               + '\n - Actual Living: ' + ftFmt(Math.round(living / 12)) + '/mo'
@@ -6563,7 +6563,7 @@
             : hasNwOvForTip
               ? 'NW override: ' + ftFmt(ftOvMap[age].nw) + '\nOrganic calc would be: ' + ftFmt(organicTotalNW)
               : 'Liquid NW:\n  Cash pool: ' + ftFmt(prevCash) + ' + return ' + ftFmt(Math.round(cashGrowth)) + ' + savings ' + ftFmt(netSavings) + (extraPmt !== 0 ? ' - extra pmt ' + ftFmt(extraPmt) : '') + ' = ' + ftFmt(organicCash) +
-                '\n  Inv pool: ' + ftFmt(prevInv) + ' + return ' + ftFmt(Math.round(invGrowth)) + (safeDraw > 0 ? ' - draw ' + ftFmt(Math.round(safeDraw)) : '') + ' = ' + ftFmt(organicInv) +
+                '\n  Investments: ' + ftFmt(prevInv) + ' + return ' + ftFmt(Math.round(invGrowth)) + (safeDraw > 0 ? ' - draw ' + ftFmt(Math.round(safeDraw)) : '') + ' = ' + ftFmt(organicInv) +
                 '\n  Total liquid: ' + ftFmt(organicNewLiq) +
                 (contrib401k > 0 ? '\n\n401k:\n  + Contribution this year: ' + ftFmt(contrib401k) : '') +
                 (Math.round(retirementBal) > 0 ? '\n  Retirement balance (total): ' + ftFmt(Math.round(retirementBal)) : '') +
@@ -7743,11 +7743,11 @@
                   const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
                   const hasPools = r.cashPool !== null && r.cashPool !== undefined;
                   const liqBody = hasPools
-                    ? fcSection('Cash Pool') + fcList(
+                    ? fcSection('Cash & Savings') + fcList(
                         fcItem('Balance', ftFmt(r.cashPool || 0))
-                      ) + fcSection('Investment Pool') + fcList(
+                      ) + fcSection('Investment Accounts') + fcList(
                         fcItem('Balance', ftFmt(r.invPool || 0))
-                        + (r.safeDraw > 0 ? fcItem('Safe draw this year', '\u2212' + ftFmt(r.safeDraw), {op: true, nameColor: FC.amber}) : '')
+                        + (r.safeDraw > 0 ? fcItem('Draw from investments this year', '\u2212' + ftFmt(r.safeDraw), {op: true, nameColor: FC.amber}) : '')
                       ) + fcResultPill('= Total liquid NW', null, ftFmt(r.organicLiquid))
                     : fcList(
                         fcItem('Previous balance', prevFmt)
@@ -7833,9 +7833,9 @@
                   if (isNwFunded) {
                     // ── Card 4a: NW-Funded Gap (orange) ──
                     const hasTax4 = (r.drawTax || 0) > 0;
-                    const drawItems4 = fcItem('Gross draw from investments', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
-                      + (hasTax4 ? fcItem('\u2212 LTCG tax on gains', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
-                      + (hasTax4 ? fcItem('Net draw applied', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '');
+                    const drawItems4 = fcItem('Draw from investment accounts', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
+                      + (hasTax4 ? fcItem('\u2212 Capital gains tax', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
+                      + (hasTax4 ? fcItem('Net after tax', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '');
                     const cardHtml = fcCard(
                       fcHeader('\u{1F4B6}', 'Drawing from Investments', 'NW ahead of trajectory', FC.amber)
                       + fcList(
@@ -7848,34 +7848,39 @@
                     return '<td style="color:' + FC.amber + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u{1F4B6} ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                   } else {
                     // ── Card 4b: True Shortfall (red) ──
-                    // Behind trajectory, invPool depleted, or no goal to check against.
                     let drawDiagSection = '';
                     const drawTip = r.safeDrawTip || '';
-                    if (drawTip === 'invpool-depleted') {
+                    if (drawTip) {
+                      // Build depletion history from prior rows
+                      let depletionParts = [];
+                      const drawRows = ftRows.filter(pr => pr.age < r.age && (pr.grossDraw || 0) > 0);
+                      if (drawRows.length) {
+                        const firstDraw = drawRows[0].age, lastDraw = drawRows[drawRows.length - 1].age;
+                        depletionParts.push('investment draws (ages ' + firstDraw + '\u2013' + lastDraw + ')');
+                      }
+                      // Check if a house purchase preceded this age
+                      for (const pr of ftRows) {
+                        if (pr.age < r.age && pr.isBuy) {
+                          const buyLabel = (pr.ms || []).find(m => m !== 'retirement') || 'house purchase';
+                          depletionParts.push(buyLabel + ' (age ' + pr.age + ')');
+                        }
+                      }
+                      const depletionSummary = depletionParts.length
+                        ? 'Depleted by: ' + depletionParts.join(' + ')
+                        : '';
+
+                      let reason = '';
+                      if (drawTip === 'invpool-depleted') reason = 'Investment accounts fully depleted';
+                      else if (drawTip === 'no-goal') reason = 'No goal to check trajectory against';
+                      else reason = 'NW behind goal trajectory';
+
                       drawDiagSection = fcDivider()
-                        + fcSection('NW Buffer Draw — Failed')
+                        + fcSection('Drawing from Investments — Failed')
                         + fcList(
                           fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
-                          + fcItem('Reason', 'Investment pool depleted', {nameColor: FC.red})
-                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
-                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
-                        );
-                    } else if (drawTip === 'no-goal') {
-                      drawDiagSection = fcDivider()
-                        + fcSection('NW Buffer Draw — Failed')
-                        + fcList(
-                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
-                          + fcItem('Reason', 'No goal to check trajectory against', {nameColor: FC.red})
-                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
-                          + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
-                        );
-                    } else if (drawTip && drawTip.startsWith('Shortfall:')) {
-                      drawDiagSection = fcDivider()
-                        + fcSection('NW Buffer Draw — Failed')
-                        + fcList(
-                          fcItem('Draw attempted', '\u2717 cannot draw', {valColor: FC.red})
-                          + fcItem('Reason', 'NW behind goal trajectory', {nameColor: FC.red})
-                          + fcItem('Inv pool balance', ftFmt(r.invPool || 0))
+                          + fcItem('Reason', reason, {nameColor: FC.red})
+                          + fcItem('Investment accounts balance', ftFmt(r.invPool || 0))
+                          + (depletionSummary ? fcItem(depletionSummary, undefined, {nameColor: FC.ink3}) : '')
                           + fcItem('Shortfall after failed draw', ftFmt(deficit) + '/mo', {nameColor: FC.red})
                         );
                     }
@@ -7923,9 +7928,9 @@
                   if (isDrawing) {
                     const hasTax5 = (r.drawTax || 0) > 0;
                     drawFreeSection = fcDivider() + fcList(
-                      fcItem('Gross draw from investments', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
-                      + (hasTax5 ? fcItem('\u2212 LTCG tax on gains', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
-                      + (hasTax5 ? fcItem('Net draw applied', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '')
+                      fcItem('Draw from investment accounts', ftFmt(r.grossDraw || 0) + '/yr', {nameColor: FC.amber})
+                      + (hasTax5 ? fcItem('\u2212 Capital gains tax', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
+                      + (hasTax5 ? fcItem('Net after tax', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '')
                     );
                   }
                   const headerTitle = isDrawing ? 'Drawing from Investments' : 'Free to Spend';
