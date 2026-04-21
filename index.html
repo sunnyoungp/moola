@@ -491,9 +491,6 @@
         </div>
         <div style="height:20px"></div>
         <div class="flex gmd mb-3" style="flex-wrap:wrap;gap:10px;align-items:flex-start">
-          <div class="atab-group" id="rebal-acct-tabs">
-            <button class="atab on" onclick="setRAcct('all',this)" data-racct="all">All</button>
-          </div>
           <div class="atab-group" id="rebal-mode-tabs">
             <button class="atab on" onclick="setRMode('contribution',this)">Contribution only</button>
             <button class="atab" onclick="setRMode('combined',this)">Contribution + rebalance</button>
@@ -1443,27 +1440,12 @@
             </svg></button></div>
         <div class="fr"><label>Ticker</label><input class="inp" id="f-tkr"></div>
         <div class="fr"><label>Name</label><input class="inp" id="f-name"></div>
-        <div class="fr"><label>Account</label><select class="inp" id="f-acct"
-            onchange="updateFundModalForAcct()"></select>
-          <div id="f-acct-hint" style="font-size:11px;color:var(--ink3);margin-top:3px"></div>
-        </div>
-        <div class="fr">
-          <label>Shares held <span style="font-size:10px;color:var(--ink3);font-weight:400">— calculates value on
-              sync</span></label>
-          <input class="inp inpm" id="f-shares" type="number" step="0.001" placeholder="e.g. 12.5"
-            oninput="updateFundValHint(parseFloat(this.value)||null, S.funds.find(x=>x.id===S.editFundId)?.lastPrice||null)">
-        </div>
-        <div class="fr">
-          <label>Current value <span id="f-val-sym" style="font-size:12px;font-weight:600">($)</span> <span
-              style="font-size:10px;color:var(--ink3);font-weight:400">— set manually, or computed from
-              shares</span></label>
-          <input class="inp inpm" id="f-val" type="text" placeholder="0.00" oninput="handleBalInput(this)"
-            onblur="formatBalInput(this)">
-          <div id="f-val-hint" style="display:none;font-size:11px;color:var(--fm);margin-top:4px;font-weight:500"></div>
+        <div id="f-acct-rows" style="margin-bottom:12px">
+          <label style="font-size:12px;font-weight:600;color:var(--ink2);display:block;margin-bottom:6px">Holdings by account <span style="font-size:10px;color:var(--ink3);font-weight:400">— enter shares where held; value computed on sync</span></label>
         </div>
         <div class="fr" id="f-tgt-row">
           <label>Target allocation % <span style="font-size:10px;color:var(--ink3);font-weight:400">— leave 0 for
-              hands-off accounts (e.g. foreign stocks you're not actively rebalancing)</span></label>
+              hands-off (e.g. foreign stocks you're not actively rebalancing)</span></label>
           <input class="inp inpm" id="f-tgt" type="number" step="0.1" placeholder="0">
         </div>
         <div class="fr"><label>Expected return (%)</label><input class="inp inpm" id="f-ret" type="number" step="0.1"
@@ -2004,7 +1986,7 @@
           ssCols: ['Age', 'Year', 'NW', 'Income KR', 'Income US', 'Spouse', 'Expenses', 'Housing', 'Kids', 'Note'],
           ssMeta: {},
           ssData: mkSS(),
-          portView: 'all', rMode: 'contribution', rAcct: 'all', scenario: 'base',
+          portView: 'all', rMode: 'contribution', scenario: 'base',
           chartGroupingMode: 'bucket', tableGroupingMode: 'category',
           buckets: [
             { id: 'cash', name: 'Cash', order: 0 },
@@ -2165,30 +2147,32 @@
           }
         });
 
-        // De-duplicate funds: same ticker + same acct = accidental duplicate.
-        // Keep the entry that has shares (live-synced); otherwise keep the higher value.
-        const seen = new Map();
-        const toRemove = new Set();
-        S.funds.forEach((f, i) => {
-          const key = `${(f.ticker || '').toUpperCase()}|${f.acct}`;
-          if (!seen.has(key)) { seen.set(key, i); return; }
-          const prevIdx = seen.get(key);
-          const prev = S.funds[prevIdx];
-          const curHasShares = f.shares > 0;
-          const prevHasShares = prev.shares > 0;
-          if (curHasShares && !prevHasShares) {
-            toRemove.add(prevIdx); seen.set(key, i);
-          } else if (!curHasShares && prevHasShares) {
-            toRemove.add(i);
-          } else {
-            // Both or neither have shares — keep higher value
-            if ((f.value || 0) > (prev.value || 0)) { toRemove.add(prevIdx); seen.set(key, i); }
-            else toRemove.add(i);
-          }
-        });
-        if (toRemove.size > 0) {
-          S.funds = S.funds.filter((_, i) => !toRemove.has(i));
-          console.log('[moola] Removed', toRemove.size, 'duplicate fund(s)');
+        // Migrate old per-account fund entries to ticker-level with accounts map.
+        // Old model: { ticker, acct, value, shares, ... }
+        // New model: { ticker, accounts: { [acctId]: { shares, value } }, ... }
+        if (S.funds.length > 0 && S.funds[0].acct !== undefined && !S.funds[0].accounts) {
+          const grouped = new Map();
+          S.funds.forEach(f => {
+            const tk = (f.ticker || '').toUpperCase();
+            if (!grouped.has(tk)) {
+              grouped.set(tk, {
+                id: f.id, ticker: tk, name: f.name,
+                targetPct: f.targetPct || 0, retPct: f.retPct || 10,
+                lastPrice: f.lastPrice || null, lastChange: f.lastChange ?? null,
+                accounts: {}
+              });
+            }
+            const entry = grouped.get(tk);
+            const acctId = String(f.acct);
+            entry.accounts[acctId] = { shares: f.shares || null, value: f.value || 0 };
+            // Keep highest targetPct and retPct across duplicates
+            if ((f.targetPct || 0) > entry.targetPct) entry.targetPct = f.targetPct;
+            if (f.lastPrice && !entry.lastPrice) { entry.lastPrice = f.lastPrice; entry.lastChange = f.lastChange; }
+          });
+          S.funds = Array.from(grouped.values());
+          // Re-assign sequential IDs
+          S.funds.forEach((f, i) => f.id = i + 1);
+          console.log('[moola] Migrated', S.funds.length, 'fund(s) to ticker-level model');
         }
 
         // Set portAcctToggles defaults: investment accounts default ON
@@ -2442,7 +2426,9 @@
       // ══════════════════════════════════════════════════════════════
       // HELPERS
       function getAcctUSD(a) { return a.currency === 'KRW' ? a.balance / getFX() : (a.balance || 0); }
-      function getFundUSD(f) { const state = getFilteredState(); const a = state.accounts.find(x => String(x.id) === String(f.acct)); return a && a.currency === 'KRW' ? f.value / getFX() : (f.value || 0); }
+      function getFundValue(f) { return Object.values(f.accounts).reduce((s, a) => s + (a.value || 0), 0); }
+      function getFundUSD(f) { let t = 0; for (const [id, held] of Object.entries(f.accounts)) { const a = S.accounts.find(x => String(x.id) === id); t += a && a.currency === 'KRW' ? (held.value || 0) / getFX() : (held.value || 0); } return t; }
+      function getFundAcctValue(f, acctId) { return f.accounts[String(acctId)]?.value || 0; }
       function nwTotal() {
         const state = getFilteredState();
         const accountsTotal = state.accounts.reduce((s, a) => s + getAcctUSD(a), 0);
@@ -2540,19 +2526,12 @@
         closeMobTray();
       }
       function syncAccountsFromPortfolio() {
-        // Resolve each fund's acct to a canonical account object, then accumulate.
-        // Using a Map keyed on the account object prevents multiple string aliases
-        // (e.g. 'ROTH' and numeric 1) from overwriting each other.
         const acctTotals = new Map();
         S.funds.forEach(f => {
-          const key = String(f.acct);
-          let acct = S.accounts.find(a => String(a.id) === key);
-          if (!acct) {
-            if (key === 'ROTH') acct = S.accounts.find(a => a.type === 'brokerage-roth');
-            if (key === 'TAXABLE') acct = S.accounts.find(a => a.type === 'brokerage-taxable');
-            if (!acct) acct = S.accounts.find(a => a.type === key);
+          for (const [acctId, held] of Object.entries(f.accounts)) {
+            const acct = S.accounts.find(a => String(a.id) === acctId);
+            if (acct && !acct.syncDisabled) acctTotals.set(acct, (acctTotals.get(acct) || 0) + (held.value || 0));
           }
-          if (acct && !acct.syncDisabled) acctTotals.set(acct, (acctTotals.get(acct) || 0) + (f.value || 0));
         });
 
         // Zero every investment account first — accounts with no linked funds go to $0
@@ -2574,7 +2553,6 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        if (id === 'rebalance') renderRebalAcctTabs();
         ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, settings: renderSettings })[id]?.();
       }
 
@@ -3138,9 +3116,9 @@
           if (el.id === 'a-bal') {
             const curEl = document.getElementById('a-cur');
             isKRW = curEl ? curEl.value === 'KRW' : el.dataset.krw === 'true';
-          } else if (el.id === 'f-val') {
-            const fundAcctId = document.getElementById('f-acct')?.value;
-            const acct = S.accounts.find(a => String(a.id) === String(fundAcctId));
+          } else if (el.classList.contains('f-acct-value')) {
+            const row = el.closest('.f-acct-row');
+            const acct = row ? S.accounts.find(a => String(a.id) === row.dataset.acctId) : null;
             isKRW = acct?.currency === 'KRW';
           }
           el.value = v.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
@@ -3528,26 +3506,23 @@
 
       function togglePortAcct(id) {
         S.portAcctToggles[id] = !(S.portAcctToggles[id] !== false);
-        ps(S); renderPortfolio(); renderRebalAcctTabs();
+        ps(S); renderPortfolio();
       }
 
       function toggleAllPortAccts(state) {
         S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.portAcctToggles[a.id] = state);
-        ps(S); renderPortfolio(); renderRebalAcctTabs();
+        ps(S); renderPortfolio();
       }
 
 
 
       function getFunds(filterAcctId) {
         // filterAcctId: 'all' = use portAcctToggles, or a specific account ID string
-        let funds;
         if (filterAcctId === 'all') {
           const toggledIds = getToggledAcctIds();
-          funds = S.funds.filter(f => toggledIds.includes(String(f.acct)));
-        } else {
-          funds = S.funds.filter(f => String(f.acct) === String(filterAcctId));
+          return S.funds.filter(f => Object.keys(f.accounts).some(id => toggledIds.includes(id)));
         }
-        return funds;
+        return S.funds.filter(f => f.accounts[String(filterAcctId)]);
       }
       function renderPortfolio() {
         renderPortAcctToggles();
@@ -3558,14 +3533,13 @@
         const handOffFunds = funds.filter(f => !f.targetPct || f.targetPct === 0);
         const tgtSum = rebalFunds.reduce((s, f) => s + f.targetPct, 0) || 100;
         const rebalTot = rebalFunds.reduce((s, f) => s + getFundUSD(f), 0);
-        // Build drift table (rebalanced funds only)
+        // Build drift table — one row per ticker
         let driftRows = rebalFunds.map(f => {
           const cur = (getFundUSD(f) / rebalTot) * 100;
           const tgt = f.targetPct * (100 / tgtSum);
           const d = cur - tgt;
-          const acctName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
           return `<tr>
-            <td style="font-weight:600">${f.ticker} <span style="font-size:10px;color:var(--ink3);font-weight:400">${acctName}</span></td>
+            <td style="font-weight:600">${f.ticker}</td>
             <td class="mo">${pct(cur)}</td><td class="mo">${pct(tgt)}</td>
             <td class="mo" style="${Math.abs(d) > 2 ? d > 0 ? 'color:var(--fm)' : 'color:var(--red)' : 'color:var(--ink3)'}">${d >= 0 ? '+' : ''}${d.toFixed(1)}%</td>
             <td><span class="tag ${Math.abs(d) <= 1 ? 'tg' : Math.abs(d) <= 3 ? 'tgld' : 'tr'}">${Math.abs(d) <= 1 ? 'On target' : d > 0 ? 'Overweight' : 'Underweight'}</span></td>
@@ -3573,15 +3547,14 @@
         }).join('');
         if (handOffFunds.length > 0) {
           driftRows += handOffFunds.map(f => {
-            const acctName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct;
             return `<tr style="opacity:.65">
-              <td style="font-weight:600">${f.ticker} <span style="font-size:10px;color:var(--ink3);font-weight:400">${acctName}</span></td>
+              <td style="font-weight:600">${f.ticker}</td>
               <td class="mo" colspan="3" style="color:var(--ink3);font-size:11px">Hands-off — no target set</td>
               <td><span class="tag tb">No target</span></td>
             </tr>`;
           }).join('');
         }
-        document.getElementById('drift-tbl-wrap').innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Fund / Account</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table></div>`;
+        document.getElementById('drift-tbl-wrap').innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Fund</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table></div>`;
         const isDark = document.documentElement.classList.contains('dark');
         const colors = getThemeColors();
         const chartData = funds.map((f, i) => ({
@@ -3628,48 +3601,75 @@
               <div style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${pct((x.value / totalAlloc) * 100)}</div>
             </div>`).join('');
         }
-        document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Acct</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
+        document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Accounts</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
           const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
-          const sharesHint = f.shares ? `<span style="font-size:10px;color:var(--ink3)"> · ${f.shares} sh</span>` : '';
-          const parentAcct = S.accounts.find(a => String(a.id) === String(f.acct));
-          const acctLabel = parentAcct?.name || f.acct;
+          const totalShares = Object.values(f.accounts).reduce((s, h) => s + (h.shares || 0), 0);
+          const sharesHint = totalShares > 0 ? `<span style="font-size:10px;color:var(--ink3)"> · ${totalShares.toFixed(3).replace(/\.?0+$/, '')} sh</span>` : '';
+          const acctChips = Object.entries(f.accounts).map(([id, held]) => {
+            const a = S.accounts.find(x => String(x.id) === id);
+            const name = a?.name || id;
+            const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
+            return `<span class="tag tb" style="font-size:10px">${name}: ${valFmt}</span>`;
+          }).join(' ');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${acctLabel}</span>${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
       }
-      function populateFundAcctSelect(selectedAcct) {
-        const sel = document.getElementById('f-acct');
-        if (!sel) return;
-        // List all investment accounts
+      function renderFundAcctRows(fundAccounts, lastPrice) {
+        const container = document.getElementById('f-acct-rows');
+        if (!container) return;
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
-        sel.innerHTML = invAccts.map(a =>
-          `<option value="${a.id}" ${String(a.id) === String(selectedAcct) ? 'selected' : ''}>${a.name}</option>`
-        ).join('');
-        if (!invAccts.length) sel.innerHTML = '<option value="">— Add an investment account first —</option>';
-        updateFundModalForAcct();
+        if (!invAccts.length) {
+          container.innerHTML = '<div style="font-size:12px;color:var(--ink3);padding:8px 0">Add an investment account first (Assets tab → Add account).</div>';
+          return;
+        }
+        const label = container.querySelector('label');
+        let html = label ? label.outerHTML : '';
+        invAccts.forEach(a => {
+          const held = fundAccounts?.[String(a.id)] || {};
+          const sharesVal = held.shares || '';
+          const isKRW = a.currency === 'KRW';
+          const sym = isKRW ? '₩' : '$';
+          let valHint = '';
+          if (sharesVal && lastPrice) {
+            const computed = isKRW ? Math.round(sharesVal * lastPrice) : (sharesVal * lastPrice).toFixed(2);
+            const computedFmt = parseFloat(computed).toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+            valHint = `<span style="font-size:11px;color:var(--fm);font-family:var(--mono)">${sym}${computedFmt}</span>`;
+          } else if (held.value && !sharesVal) {
+            const valFmt = held.value.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+            valHint = `<span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">${sym}${valFmt} (manual)</span>`;
+          }
+          html += `<div class="f-acct-row" data-acct-id="${a.id}" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;font-weight:500;color:var(--ink2);min-width:100px;flex-shrink:0">${a.name}</span>
+            <input class="inp inpm f-acct-shares" type="number" step="0.001" placeholder="shares" value="${sharesVal}" style="width:90px;flex-shrink:0" oninput="updateFundAcctRowHint(this)">
+            <input class="inp inpm f-acct-value" type="text" placeholder="${sym}0" value="${held.value && !sharesVal ? held.value.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 }) : ''}" style="width:90px;flex-shrink:0;${sharesVal ? 'opacity:.5' : ''}" oninput="handleBalInput(this)" onblur="formatBalInput(this)">
+            <span class="f-acct-hint">${valHint}</span>
+          </div>`;
+        });
+        container.innerHTML = html;
       }
 
-      function updateFundModalForAcct() {
-        const sel = document.getElementById('f-acct');
-        const hint = document.getElementById('f-acct-hint');
-        if (!sel || !hint) return;
-        const acct = S.accounts.find(a => String(a.id) === String(sel.value));
-        if (acct) {
-          const typeName = getAcctTypeName(acct.type);
-          hint.textContent = `Type: ${typeName}`;
-          // Set symbols accurately depending on parent account selection
-          const sym = acct.currency === 'KRW' ? '₩' : '$';
-          document.getElementById('f-val-sym').textContent = `(${sym})`;
-        } else {
-          hint.textContent = '';
-        }
-
-        // Re-hint the values
-        const shares = parseFloat(document.getElementById('f-shares').value) || null;
+      function updateFundAcctRowHint(sharesInput) {
+        const row = sharesInput.closest('.f-acct-row');
+        const acctId = row.dataset.acctId;
+        const acct = S.accounts.find(a => String(a.id) === acctId);
+        const isKRW = acct?.currency === 'KRW';
+        const sym = isKRW ? '₩' : '$';
+        const shares = parseFloat(sharesInput.value) || 0;
         const lastPrice = S.funds.find(x => x.id === S.editFundId)?.lastPrice || null;
-        updateFundValHint(shares, lastPrice);
+        const hint = row.querySelector('.f-acct-hint');
+        const valInput = row.querySelector('.f-acct-value');
+        if (shares && lastPrice) {
+          const computed = isKRW ? Math.round(shares * lastPrice) : (shares * lastPrice).toFixed(2);
+          const computedFmt = parseFloat(computed).toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
+          hint.innerHTML = `<span style="font-size:11px;color:var(--fm);font-family:var(--mono)">${sym}${computedFmt}</span>`;
+          valInput.style.opacity = '.5';
+        } else {
+          hint.innerHTML = '';
+          valInput.style.opacity = '1';
+        }
       }
 
       function openFundModal(id) {
@@ -3679,84 +3679,50 @@
           document.getElementById('m-fund-title').textContent = 'Edit fund';
           document.getElementById('f-tkr').value = f.ticker;
           document.getElementById('f-name').value = f.name;
-
-          populateFundAcctSelect(f.acct); // Populates the select and sym
-
-          const acct = S.accounts.find(a => String(a.id) === String(f.acct));
-          const fmtVal = f.value !== undefined ? f.value.toLocaleString('en-US', { maximumFractionDigits: acct?.currency === 'KRW' ? 0 : 2 }) : '';
-          document.getElementById('f-val').value = fmtVal;
-          document.getElementById('f-shares').value = f.shares || '';
           document.getElementById('f-tgt').value = f.targetPct || '';
           document.getElementById('f-ret').value = f.retPct;
-
-          updateFundValHint(f.shares, f.lastPrice);
+          renderFundAcctRows(f.accounts, f.lastPrice);
         } else {
           document.getElementById('m-fund-title').textContent = 'Add fund';
-          ['f-tkr', 'f-name', 'f-val', 'f-shares', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = '');
-          // Default to first toggled investment account
-          const firstAcct = S.accounts.find(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false)
-            || S.accounts.find(a => isInvestmentAcct(a));
-          populateFundAcctSelect(firstAcct?.id || '');
-          updateFundValHint(null, null);
+          ['f-tkr', 'f-name', 'f-tgt', 'f-ret'].forEach(i => document.getElementById(i).value = '');
+          renderFundAcctRows(null, null);
         }
         openModal('m-fund');
       }
 
-      function updateFundValHint(shares, lastPrice) {
-        const hint = document.getElementById('f-val-hint');
-        const valInput = document.getElementById('f-val');
-        if (!hint) return;
-
-        const sel = document.getElementById('f-acct');
-        const acct = S.accounts.find(a => String(a.id) === String(sel?.value));
-        const isKRW = acct?.currency === 'KRW';
-        const sym = isKRW ? '₩' : '$';
-
-        if (shares && lastPrice) {
-          const computed = isKRW ? Math.round(shares * lastPrice) : (shares * lastPrice).toFixed(2);
-          const computedFmt = parseFloat(computed).toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
-          const priceFmt = lastPrice.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 });
-          hint.textContent = `Computed: ${shares} shares × ${sym}${priceFmt} = ${sym}${computedFmt}`;
-          hint.style.display = 'block';
-          valInput.style.opacity = '.5';
-          valInput.title = 'Overridden by shares × live price';
-        } else if (shares) {
-          hint.textContent = 'Value will be set after next price sync';
-          hint.style.display = 'block';
-          valInput.style.opacity = '.5';
-        } else {
-          hint.textContent = '';
-          hint.style.display = 'none';
-          valInput.style.opacity = '1';
-          valInput.title = '';
-        }
-      }
       function saveFund() {
         const ticker = document.getElementById('f-tkr').value.trim().toUpperCase();
         const name = document.getElementById('f-name').value.trim() || ticker;
-        const rawAcct = document.getElementById('f-acct').value;
-        const acct = (rawAcct !== '' && !isNaN(parseInt(rawAcct))) ? parseInt(rawAcct) : rawAcct;
-        const shares = parseFloat(document.getElementById('f-shares').value) || null;
         const targetPct = parseFloat(document.getElementById('f-tgt').value) || 0;
         const retPct = parseFloat(document.getElementById('f-ret').value) || 10;
         if (!ticker) return;
-        if (rawAcct === '' || rawAcct == null) { alert('Please add an investment account first (Assets tab → Add account).'); return; }
 
-        let value;
-        const manualVal = parseFloat(document.getElementById('f-val').value.replace(/,/g, '')) || 0;
-        if (shares) {
-          const existing = S.funds.find(x => String(x.id) === String(S.editFundId));
-          const knownPrice = existing?.lastPrice || null;
-          // value is strictly stored in its parent account's native currency mathematically
-          value = knownPrice ? Math.round(shares * knownPrice * 100) / 100 : manualVal;
-        } else {
-          value = manualVal;
-        }
+        const existing = S.funds.find(x => String(x.id) === String(S.editFundId));
+        const lastPrice = existing?.lastPrice || null;
+
+        // Collect per-account data from rows
+        const accounts = {};
+        document.querySelectorAll('.f-acct-row').forEach(row => {
+          const acctId = row.dataset.acctId;
+          const shares = parseFloat(row.querySelector('.f-acct-shares').value) || null;
+          const manualVal = parseFloat((row.querySelector('.f-acct-value').value || '').replace(/,/g, '')) || 0;
+          let value;
+          if (shares) {
+            value = lastPrice ? Math.round(shares * lastPrice * 100) / 100 : manualVal;
+          } else {
+            value = manualVal;
+          }
+          if (shares || value > 0) {
+            accounts[acctId] = { shares, value };
+          }
+        });
+
+        if (!Object.keys(accounts).length) { alert('Enter shares or value in at least one account.'); return; }
 
         if (S.editFundId) {
-          Object.assign(S.funds.find(x => String(x.id) === String(S.editFundId)), { ticker, name, acct, value, shares, targetPct, retPct });
+          Object.assign(existing, { ticker, name, targetPct, retPct, accounts });
         } else {
-          S.funds.push({ id: nextId(S.funds), ticker, name, acct, value, shares, targetPct, retPct });
+          S.funds.push({ id: nextId(S.funds), ticker, name, targetPct, retPct, accounts, lastPrice: null, lastChange: null });
         }
         syncAccountsFromPortfolio();
         ps(S); closeModal('m-fund'); renderPortfolio();
@@ -3765,23 +3731,7 @@
 
       // ══════════════════════════════════════════════════════════════
       // REBALANCE
-      let rMode = 'contribution', rAcct = 'all';
-
-      function renderRebalAcctTabs() {
-        const wrap = document.getElementById('rebal-acct-tabs');
-        if (!wrap) return;
-        // "All" tab + one tab per toggled investment account
-        const toggledAccts = S.accounts.filter(a => isInvestmentAcct(a) && S.portAcctToggles[a.id] !== false);
-        wrap.innerHTML = `<button class="atab ${rAcct === 'all' ? 'on' : ''}" onclick="setRAcct('all',this)" data-racct="all">All toggled</button>`
-          + toggledAccts.map(a =>
-            `<button class="atab ${String(rAcct) === String(a.id) ? 'on' : ''}" onclick="setRAcct('${a.id}',this)" data-racct="${a.id}">${a.name}</button>`
-          ).join('');
-        // If current rAcct is no longer valid (account removed/untoggled), reset to all
-        if (rAcct !== 'all') {
-          const still = toggledAccts.find(a => String(a.id) === String(rAcct));
-          if (!still) { rAcct = 'all'; renderRebalAcctTabs(); }
-        }
-      }
+      let rMode = 'contribution';
 
       function setRMode(v, el) {
         rMode = v;
@@ -3789,38 +3739,18 @@
         el.classList.add('on');
         const contribRow = document.getElementById('contrib-input-row');
         if (contribRow) contribRow.style.display = v === 'full' ? 'none' : 'flex';
-        // Update contribution label context
-        const lbl = document.getElementById('r-contrib-label');
-        if (lbl) {
-          const acct = rAcct !== 'all' ? S.accounts.find(a => String(a.id) === String(rAcct)) : null;
-          lbl.textContent = acct ? `Amount to invest into ${acct.name} ($)` : 'Amount to invest ($)';
-        }
-        calcRebal();
-      }
-      function setRAcct(v, el) {
-        rAcct = v;
-        document.querySelectorAll('#rebal-acct-tabs .atab').forEach(t => t.classList.remove('on'));
-        el.classList.add('on');
-        // Update contribution label to reflect account context
-        const lbl = document.getElementById('r-contrib-label');
-        if (lbl) {
-          const acct = v !== 'all' ? S.accounts.find(a => String(a.id) === String(v)) : null;
-          lbl.textContent = acct ? `Amount to invest into ${acct.name} ($)` : 'Amount to invest ($)';
-        }
         calcRebal();
       }
       function calcRebal() {
-        renderRebalAcctTabs();
+        // Hide legacy account tabs if present
+        const acctTabsEl = document.getElementById('rebal-acct-tabs');
+        if (acctTabsEl) acctTabsEl.style.display = 'none';
+
         const monthly = parseFloat(document.getElementById('r-contrib')?.value) || 0;
 
-        // Get funds for this view — skip hands-off funds (targetPct === 0)
-        let rawFunds;
-        if (rAcct === 'all') {
-          const toggledIds = getToggledAcctIds();
-          rawFunds = S.funds.filter(f => toggledIds.includes(String(f.acct)));
-        } else {
-          rawFunds = S.funds.filter(f => String(f.acct) === String(rAcct));
-        }
+        // All funds with holdings in toggled accounts — ticker level
+        const toggledIds = getToggledAcctIds();
+        const rawFunds = S.funds.filter(f => Object.keys(f.accounts).some(id => toggledIds.includes(id)));
         const funds = rawFunds.filter(f => f.targetPct > 0);
         const handsOffFunds = rawFunds.filter(f => !f.targetPct || f.targetPct === 0);
 
@@ -3828,7 +3758,7 @@
         const noteEl = document.getElementById('rebal-note');
 
         if (!rawFunds.length) {
-          bodyEl.innerHTML = '<div class="mut" style="padding:20px 0;text-align:center">No funds in this account. Toggle accounts on in Portfolio, then add funds.</div>';
+          bodyEl.innerHTML = '<div class="mut" style="padding:20px 0;text-align:center">No funds found. Toggle accounts on in Portfolio, then add funds.</div>';
           noteEl.textContent = '';
           document.getElementById('rebal-totals').style.display = 'none';
           document.getElementById('rebal-acct-ctx').textContent = '';
@@ -3839,10 +3769,7 @@
         let handsOffNote = '';
         if (handsOffFunds.length > 0) {
           handsOffNote = `<div style="padding:8px 10px;background:var(--sky-l);border-radius:var(--rs);font-size:11.5px;color:var(--sky);margin-bottom:12px">
-            <strong>Hands-off:</strong> ${handsOffFunds.map(f => {
-            const a = S.accounts.find(a => String(a.id) === String(f.acct));
-            return `${f.ticker}${a ? ' (' + a.name + ')' : ''}`;
-          }).join(', ')} — ${handsOffFunds.length === 1 ? 'this fund has' : 'these funds have'} no target set and ${handsOffFunds.length === 1 ? 'is' : 'are'} excluded from rebalance math. ${MT(fmt(handsOffFunds.reduce((s, f) => s + f.value, 0)), 'rebalance')} total value held passively.
+            <strong>Hands-off:</strong> ${handsOffFunds.map(f => f.ticker).join(', ')} — ${handsOffFunds.length === 1 ? 'this fund has' : 'these funds have'} no target set and ${handsOffFunds.length === 1 ? 'is' : 'are'} excluded from rebalance math. ${MT(fmt(handsOffFunds.reduce((s, f) => s + getFundUSD(f), 0)), 'rebalance')} total value held passively.
           </div>`;
         }
 
@@ -3853,12 +3780,10 @@
           return;
         }
 
-        const tot = funds.reduce((s, f) => s + f.value, 0);
-        // Normalize targets so they sum to 100% within the filtered view
+        const tot = funds.reduce((s, f) => s + getFundUSD(f), 0);
+        // Normalize targets so they sum to 100%
         const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
-        const nFunds = funds.map(f => ({ ...f, normTgt: (f.targetPct / tgtSum) * 100 }));
-
-        const acctName = rAcct !== 'all' ? (S.accounts.find(a => String(a.id) === String(rAcct))?.name || rAcct) : null;
+        const nFunds = funds.map(f => ({ ...f, _val: getFundUSD(f), normTgt: (f.targetPct / tgtSum) * 100 }));
 
         // ── Row renderer ──────────────────────────────────────────────
         const rowHtml = (f, allocUSD, tag, tagCls, driftBefore, driftAfter) => {
@@ -3866,12 +3791,11 @@
           const barW = Math.min(100, Math.abs(allocUSD) / barMax * 100);
           const barCol = allocUSD >= 0 ? 'var(--fm)' : 'var(--rose)';
           const driftColor = Math.abs(driftBefore) > 3 ? (driftBefore > 0 ? 'color:var(--gold)' : 'color:var(--rose)') : 'color:var(--ink3)';
-          const fundAcctName = rAcct === 'all' ? (S.accounts.find(a => String(a.id) === String(f.acct))?.name || '') : '';
           return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
             <div style="min-width:130px;flex-shrink:0">
-              <div style="font-size:13px;font-weight:600">${MT(f.ticker, 'rebalance')}${fundAcctName ? `<span style="font-size:10px;color:var(--ink3);margin-left:5px;font-weight:400">${fundAcctName}</span>` : ''}</div>
+              <div style="font-size:13px;font-weight:600">${MT(f.ticker, 'rebalance')}</div>
               <div style="font-size:10.5px;margin-top:2px;color:var(--ink3)">
-                Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of this account
+                Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of portfolio
               </div>
               <div style="font-size:10px;margin-top:1px">
                 <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
@@ -3890,15 +3814,8 @@
         let html = handsOffNote, noteHtml = '';
 
         if (rMode === 'contribution') {
-          // ── Contribution mode ─────────────────────────────────────
-          // Allocate `monthly` into this account only. No selling.
-          // Strategy: prioritize underweight funds first.
-          // Why VOO might not get the full contribution even if underweight:
-          // The math distributes based on the gap to target in the NEW total
-          // (current + contribution). If multiple funds are underweight, the
-          // one with the biggest $ shortfall gets priority.
           const newTot = tot + monthly;
-          const shortfalls = nFunds.map(f => Math.max(0, (f.normTgt / 100) * newTot - f.value));
+          const shortfalls = nFunds.map(f => Math.max(0, (f.normTgt / 100) * newTot - f._val));
           const totalShortfall = shortfalls.reduce((s, x) => s + x, 0);
 
           let allocs;
@@ -3908,37 +3825,31 @@
             const remainder = monthly - totalShortfall;
             allocs = nFunds.map((f, i) => shortfalls[i] + remainder * (f.normTgt / 100));
           } else {
-            // Not enough to fill all shortfalls — prioritize by shortfall size
             allocs = nFunds.map((f, i) => (shortfalls[i] / totalShortfall) * monthly);
           }
 
           const rows = nFunds.map((f, i) => {
             const alloc = allocs[i];
-            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
-            const newPct = newTot > 0 ? ((f.value + alloc) / newTot) * 100 : 0;
+            const curPct = tot > 0 ? (f._val / tot) * 100 : 0;
+            const newPct = newTot > 0 ? ((f._val + alloc) / newTot) * 100 : 0;
             return rowHtml(f, alloc, 'BUY', 'tg', curPct - f.normTgt, newPct - f.normTgt);
           });
           html += rows.join('');
           document.getElementById('rebal-totals').style.display = 'none';
           document.getElementById('rebal-mode-desc').textContent = monthly > 0
-            ? `Investing ${fmtUSD(monthly, 0)} into ${acctName || 'selected accounts'} — no selling. Most underweight funds get priority.`
-            : `Enter how much you're contributing to ${acctName || 'this account'} above.`;
+            ? `Investing ${fmtUSD(monthly, 0)} — no selling. Most underweight funds get priority. You choose which account to execute in.`
+            : 'Enter how much you\'re contributing above.';
           noteHtml = monthly > 0
-            ? `All ${fmtUSD(monthly, 0)} stays in this account. Funds furthest below their target get the most. "Drift after" shows what the allocation will look like once the trade settles.`
+            ? `Funds furthest below their target get the most. "Drift after" shows what the allocation will look like once the trade settles. Execute buys in whichever account you prefer.`
             : '';
 
         } else if (rMode === 'combined') {
-          // ── Contribution + rebalance ──────────────────────────────
-          // Use new contribution PLUS strategic sells within this account
-          // to hit exact targets. Each fund's target = normTgt% of (tot + monthly).
-          // Net cash = what you wire from your bank AFTER sells settle.
-          // (Sell proceeds stay inside the account and fund the buys.)
           const newTot = tot + monthly;
           let buyTotal = 0, sellTotal = 0;
           const rows = nFunds.map(f => {
             const targetVal = (f.normTgt / 100) * newTot;
-            const diff = targetVal - f.value;
-            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+            const diff = targetVal - f._val;
+            const curPct = tot > 0 ? (f._val / tot) * 100 : 0;
             if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
             return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
           });
@@ -3949,18 +3860,15 @@
           document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
           document.getElementById('r-net-cash').innerHTML = MT(fmtUSD(netCash, 0), 'rebalance');
           document.getElementById('rebal-mode-desc').textContent =
-            `Contribute ${fmtUSD(monthly, 0)} into ${acctName || 'this account'} + strategic sells to hit exact targets.`;
-          noteHtml = `Sell proceeds (${fmtUSD(sellTotal, 0)}) stay inside the account and fund the buys. Net cash (${fmtUSD(netCash, 0)}) = what you actually transfer from your bank. "Drift after" = 0 for all funds because this mode hits exact targets.`;
+            `Contribute ${fmtUSD(monthly, 0)} + strategic sells to hit exact targets.`;
+          noteHtml = `Sell proceeds (${fmtUSD(sellTotal, 0)}) fund the buys. Net cash (${fmtUSD(netCash, 0)}) = what you actually transfer. "Drift after" = 0 for all funds.`;
 
         } else {
-          // ── Full rebalance ────────────────────────────────────────
-          // Sell overweight, buy underweight — no new money.
-          // Everything stays within this single account.
           let buyTotal = 0, sellTotal = 0;
           const rows = nFunds.map(f => {
             const targetVal = (f.normTgt / 100) * tot;
-            const diff = targetVal - f.value;
-            const curPct = tot > 0 ? (f.value / tot) * 100 : 0;
+            const diff = targetVal - f._val;
+            const curPct = tot > 0 ? (f._val / tot) * 100 : 0;
             if (diff > 0) buyTotal += diff; else sellTotal += Math.abs(diff);
             return rowHtml(f, diff, diff >= 0 ? 'BUY' : 'SELL', diff >= 0 ? 'tg' : 'tr', curPct - f.normTgt, 0);
           });
@@ -3970,8 +3878,8 @@
           document.getElementById('r-sell-total').innerHTML = MT(fmtUSD(sellTotal, 0), 'rebalance');
           document.getElementById('r-net-cash').innerHTML = '$0';
           document.getElementById('rebal-mode-desc').textContent =
-            `Sell overweight positions in ${acctName || 'this account'} and buy underweight — no new money.`;
-          noteHtml = `Buy total ≈ Sell total (they net to zero — no cash needed). All trades happen within ${acctName || 'this account'}.`;
+            'Sell overweight positions and buy underweight — no new money.';
+          noteHtml = 'Buy total ≈ Sell total (they net to zero — no cash needed).';
         }
 
         bodyEl.innerHTML = html;
@@ -3980,11 +3888,9 @@
         const ctxEl = document.getElementById('rebal-acct-ctx');
         if (ctxEl) {
           const normalizeNote = tgtSum !== 100
-            ? ` · targets normalized from ${tgtSum.toFixed(0)}% to 100% within this view`
+            ? ` · targets normalized from ${tgtSum.toFixed(0)}% to 100%`
             : '';
-          ctxEl.textContent = acctName
-            ? `${acctName} · ${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total${normalizeNote}`
-            : `All toggled accounts · ${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total · targets normalized per account${normalizeNote}`;
+          ctxEl.textContent = `${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total${normalizeNote}`;
         }
 
         noteEl.innerHTML = noteHtml
@@ -4017,7 +3923,7 @@
         document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections'); document.getElementById('p-gains-real').textContent = fmt(rf - nwTotal() - tc) + ' real';
         dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }, { label: 'No investment', data: cashD.map(v => cvt(v)), borderColor: '#9CA3AF', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 4] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)), afterBody: items => { if (isTabHidden('projections') || !items.length) return ''; const i = items[0].dataIndex; const rv = realD[i], cv = cashD[i]; return 'Real market gains: ' + fmt(rv - cv); } } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
       }
-      function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
+      function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Accounts</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const acctChips = Object.keys(f.accounts).map(id => { const a = S.accounts.find(x => String(x.id) === id); return `<span class="tag tb" style="font-size:10px">${a?.name || id}</span>`; }).join(' '); return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
       function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(S); updateProj(); } }
       function renderStress() { document.getElementById('stress-list').innerHTML = S.stressEvents.map((e, i) => `<div class="fb" style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${e.name} <span class="mut">(${e.year})</span></span><div class="flex gsm"><span class="snum neg">${M('-' + fmtUSD(e.amount))}</span><button class="btn bsm bgh" style="color:var(--red)" onclick="delStress(${i})">✕</button></div></div>`).join('') || '<div class="mut" style="font-size:12px;margin-bottom:6px">None.</div>'; }
       function addStress() {
@@ -5638,9 +5544,11 @@
             if (!q?.price) { failedTickers.push(f.ticker); return; }
             f.lastPrice = q.price;
             f.lastChange = q.changePct;
-            if (f.shares && f.shares > 0) {
-              f.value = Math.round(f.shares * q.price * 100) / 100;
-              valueUpdates++;
+            for (const held of Object.values(f.accounts)) {
+              if (held.shares && held.shares > 0) {
+                held.value = Math.round(held.shares * q.price * 100) / 100;
+                valueUpdates++;
+              }
             }
           });
           syncAccountsFromPortfolio(); ps(S);
@@ -5660,7 +5568,7 @@
         window._lastQuotes = quotes;
         renderPriceChips(quotes);
 
-        const fundsWithShares = S.funds.filter(f => f.shares && f.shares > 0);
+        const fundsWithShares = S.funds.filter(f => Object.values(f.accounts).some(h => h.shares && h.shares > 0));
         const fundsUpdated = fundsWithShares.filter(f => quotes[f.ticker]?.price);
 
         if (Object.keys(quotes).length === 0) {
@@ -5690,15 +5598,12 @@
         if (activeId) renderTab(activeId);
         if (activeId !== 'overview') renderOverview();
 
-        // If fund modal is open, refresh the value hint with new prices
+        // If fund modal is open, refresh per-account value hints with new prices
         const fundModal = document.getElementById('m-fund');
         if (fundModal?.classList.contains('on')) {
           const editFund = S.funds.find(x => x.id === S.editFundId);
           if (editFund) {
-            if (editFund.shares && editFund.lastPrice) {
-              document.getElementById('f-val').value = editFund.value;
-            }
-            updateFundValHint(editFund.shares, editFund.lastPrice);
+            renderFundAcctRows(editFund.accounts, editFund.lastPrice);
           }
         }
 
