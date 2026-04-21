@@ -559,8 +559,9 @@
             <div class="mnum mt-1" id="p-contrib">&#8212;</div>
           </div>
           <div class="csm">
-            <div class="lbl">Market gains</div>
+            <div class="lbl">Nominal market gains</div>
             <div class="mnum pos mt-1" id="p-gains">&#8212;</div>
+            <div style="font-size:12px;color:var(--ink3);margin-top:2px" id="p-gains-real"></div>
           </div>
         </div>
         <div class="g2 mb-3">
@@ -599,6 +600,9 @@
                 <span style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink3)"><span
                     style="width:14px;height:2px;background:var(--rose);display:inline-block;border-radius:1px"></span>w/
                   events</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink3)"><span
+                    style="width:14px;height:2px;background:#9CA3AF;display:inline-block;border-radius:1px;border-top:1px dashed #9CA3AF"></span>No
+                  investment</span>
               </div>
             </div>
             <div class="chart-wrap" style="position:relative;flex-grow:1;min-height:0"><canvas id="projChart"></canvas>
@@ -3936,19 +3940,22 @@
         const off = SCEN[curScen] || 0, nr = blendRet(off), rr = (1 + nr) / (1 + inf) - 1;
         document.getElementById('lc').textContent = '$' + c.toLocaleString(); document.getElementById('lcg').textContent = (cg * 100).toFixed(1) + '%'; document.getElementById('linf').textContent = (inf * 100).toFixed(1) + '%'; document.getElementById('lyrs').textContent = yrs + ' yrs'; document.getElementById('lfx').textContent = Math.round(fx).toLocaleString();
         const chqA = S.accounts.find(a => a.type === 'subscription')?.balance || 333; const usfrA = S.accounts.find(a => a.name === 'USFR (Fidelity)')?.balance || 6721; const cashB = totCash() - usfrA - chqA;
-        const labels = [], nomD = [], realD = [], stD = []; const stByYr = {}; S.stressEvents.forEach(e => { if (!stByYr[e.year]) stByYr[e.year] = []; stByYr[e.year].push(e.amount); });
+        const labels = [], nomD = [], realD = [], stD = [], cashD = []; const stByYr = {}; S.stressEvents.forEach(e => { if (!stByYr[e.year]) stByYr[e.year] = []; stByYr[e.year].push(e.amount); });
         let stNW = nwTotal();
+        const nw0 = nwTotal();
         for (let y = 0; y <= yrs; y++) {
           const yr = NY + y, co = c * Math.pow(1 + cg, y);
           nomD.push(Math.round(fvCalc(totPort(), nr, y, co) + fvCalc(usfrA, usfrY, y, 0) + chqFV(chqA, .045, 250000 / fx, 22, y) + cashB));
           realD.push(Math.round(fvCalc(totPort(), rr, y, co) + fvCalc(usfrA, usfrY, y, 0) + chqFV(chqA, .045, 250000 / fx, 22, y) + cashB));
+          const cumContrib = y === 0 ? 0 : (cg === 0 ? c * y : c * (Math.pow(1 + cg, y) - 1) / cg);
+          cashD.push(Math.round(nw0 + cumContrib));
           labels.push(y === 0 ? 'Now' : '' + yr);
           if (y > 0) { const ev = (stByYr[yr] || []).reduce((s, x) => s + x, 0); stNW = fvCalc(stNW, nr, 1, co) - ev; } else stNW = nomD[0];
           stD.push(Math.round(stNW));
         }
         const nf = nomD[yrs], rf = realD[yrs], tc = Array.from({ length: yrs }, (_, i) => c * Math.pow(1 + cg, i)).reduce((s, x) => s + x, 0);
-        document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections');
-        dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
+        document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections'); document.getElementById('p-gains-real').textContent = fmt(rf - tc) + ' real';
+        dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }, { label: 'No investment', data: cashD.map(v => cvt(v)), borderColor: '#9CA3AF', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 4] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
       }
       function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Account</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const aName = S.accounts.find(a => String(a.id) === String(f.acct))?.name || f.acct; return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td><span class="tag tb">${aName}</span></td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
       function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(S); updateProj(); } }
