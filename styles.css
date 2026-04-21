@@ -1588,8 +1588,11 @@ input[type=range] {
   background: var(--surface);
 }
 
-/* Forensic card: usable NW result pill */
+/* Forensic card: result rows & usable NW pill */
 .dark .fc-usable {
+  background: rgba(96, 165, 250, 0.10);
+}
+.dark .fc-item--result {
   background: rgba(96, 165, 250, 0.10);
 }
 
