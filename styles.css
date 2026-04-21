@@ -592,23 +592,74 @@ textarea {
   z-index: 999999;
 }
 
-/* Absolute clipping escape hatch for mobile */
+/* ── Mobile forensic portal (appended to body) ─────────── */
+.fc-portal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999999;
+  background: rgba(28, 27, 25, 0.18);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.fc-portal-card {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  border-radius: 16px 16px 0 0 !important;
+  padding: 22px 20px calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fc-portal-card::after,
+.fc-portal-card::before {
+  display: none !important;
+}
+
+.fc-portal-edit-btn,
+.fc-portal-clear-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--sans);
+  cursor: pointer;
+  border: none;
+  text-align: center;
+}
+
+.fc-portal-edit-btn {
+  background: var(--f);
+  color: white;
+}
+
+.fc-portal-clear-btn {
+  background: var(--rose-l, #FEE2E2);
+  color: var(--rose, #dc2626);
+}
+
+/* Hide inline forensic cards on mobile — portal handles display */
 @media (max-width: 768px) {
-  .forensic-card {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: calc(100vw - 32px) !important;
-    max-width: 340px !important;
-    margin: 0 !important;
-    z-index: 9999999 !important;
-    box-shadow: 0 16px 40px rgba(28, 27, 25, 0.16), 0 0 0 100vw rgba(28, 27, 25, 0.12) !important;
-    padding: 20px !important;
+  .forensic-trigger > .forensic-card {
+    display: none !important;
   }
 
-  .forensic-card::after,
-  .forensic-card::before {
+  .forensic-trigger > .forensic-card::after,
+  .forensic-trigger > .forensic-card::before {
     display: none !important;
   }
 }
@@ -4104,6 +4155,52 @@ body.sb-collapsed .priv-section {
   .ft-sec-hdr {
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  /* Settings panel: prevent inline flex rows from overflowing */
+  #ft-panel-body {
+    overflow-x: hidden;
+  }
+
+  .ft-ed-field > div[style*="display:flex"] {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ft-ed-field .ft-ed-inp {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Constrain inputs inside flex rows so buttons stay visible */
+  .ft-ed-field > div[style*="display:flex"] .ft-ed-inp {
+    flex: 1 1 80px;
+    min-width: 60px;
+    width: auto;
+  }
+
+  /* Chip button rows: allow wrapping */
+  .ft-ed-field > div[style*="display:flex"] .ft-chip {
+    flex: 0 1 auto;
+  }
+
+  /* Event card headers: allow text to wrap */
+  .ft-ev-card-hdr {
+    flex-wrap: wrap;
+  }
+
+  .ft-ev-summary {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  /* Event stage grids: 2-row layout on narrow screens */
+  .ft-ev-stage {
+    grid-template-columns: 1fr auto auto auto auto;
+  }
+
+  .ft-ev-stage input[type=number] {
+    width: 40px;
   }
 }
 

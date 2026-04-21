@@ -1668,6 +1668,7 @@
       let fcTimeout = null;
 
       function ftHandleLeave(el) {
+        if (window.innerWidth <= 768) return; // mobile uses portal dismiss
         fcTimeout = setTimeout(() => {
           const card = el.querySelector('.forensic-card');
           if (card) {
@@ -1675,6 +1676,61 @@
             card.classList.remove('fc-flip-up');
           }
         }, 150);
+      }
+
+      // ── Mobile forensic portal ──────────────────────────────────
+      let fcPortalEl = null;
+      function fcDismissPortal() {
+        if (fcPortalEl) { fcPortalEl.remove(); fcPortalEl = null; }
+      }
+      function fcShowPortal(triggerEl) {
+        fcDismissPortal();
+        const card = triggerEl.querySelector('.forensic-card');
+        if (!card) return;
+
+        // Build portal container
+        const portal = document.createElement('div');
+        portal.className = 'fc-portal-backdrop';
+        portal.addEventListener('click', e => { if (e.target === portal) fcDismissPortal(); });
+
+        const clone = card.cloneNode(true);
+        clone.style.display = 'block';
+        clone.classList.add('fc-portal-card');
+
+        // If this cell is editable, add an Edit button
+        const td = triggerEl.closest('td.ft-editable');
+        if (td) {
+          const onclickAttr = td.getAttribute('onclick') || '';
+          const m = onclickAttr.match(/ftStartEdit\(this,'(\w+)',(\d+)\)/);
+          if (m) {
+            const field = m[1], age = m[2];
+            const editBtn = document.createElement('button');
+            editBtn.className = 'fc-portal-edit-btn';
+            editBtn.textContent = 'Edit override';
+            editBtn.addEventListener('click', () => {
+              fcDismissPortal();
+              td._fcEditBypass = true;
+              ftStartEdit(td, field, parseInt(age));
+            });
+            clone.appendChild(editBtn);
+          }
+          // Add clear-override button if cell has an override
+          const ovMatch = (td.getAttribute('ondblclick') || '').match(/ftClearOverride\((\d+),'(\w+)'\)/);
+          if (ovMatch && td.classList.contains('ft-cell-ov')) {
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'fc-portal-clear-btn';
+            clearBtn.textContent = 'Clear override';
+            clearBtn.addEventListener('click', () => {
+              fcDismissPortal();
+              ftClearOverride(parseInt(ovMatch[1]), ovMatch[2]);
+            });
+            clone.appendChild(clearBtn);
+          }
+        }
+
+        portal.appendChild(clone);
+        document.body.appendChild(portal);
+        fcPortalEl = portal;
       }
 
       function ftHandleHover(el) {
@@ -1690,7 +1746,8 @@
         if (!card) return;
 
         if (window.innerWidth <= 768) {
-          card.style.display = 'block';
+          // On mobile, use portal instead of inline card
+          fcShowPortal(el);
           return;
         }
 
@@ -8102,6 +8159,10 @@
       }
 
       function ftStartEdit(td, field, age) {
+        // On mobile, if this cell has a forensic trigger, don't edit on tap —
+        // the forensic portal handles editing via its own Edit button.
+        if (window.innerWidth <= 768 && !td._fcEditBypass && td.querySelector('.forensic-trigger .forensic-card')) return;
+        td._fcEditBypass = false;
         const cur = ftRows.find(r => r.age === age);
         if (!cur) return;
         const curVal = cur[field] || 0;
