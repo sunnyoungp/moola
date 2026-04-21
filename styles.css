@@ -1501,6 +1501,9 @@ input[type=range] {
   --s3: #252838;
   --white: #1A1D2A;
 
+  /* Force dark color-scheme so native controls (select, scrollbar) render dark */
+  color-scheme: dark;
+
   /* Accent text: brighten for legibility on dark backgrounds */
   --gold: #EAB308;
   --rose: #F472B6;
@@ -1519,6 +1522,105 @@ input[type=range] {
   --fc-green: #4ADE80;
   --fc-amber: #FBBF24;
   --fc-blue: #60A5FA;
+}
+
+/* ── Dark mode: hardcoded-color overrides ────────────────── */
+
+/* Life Plan table: milestone/event rows */
+.dark #ft-tbl .ft-highlight-row td:first-child,
+.dark #ft-tbl .ft-house-row td:first-child,
+.dark #ft-tbl .ft-house-row td,
+.dark #ft-tbl tr.ft-highlight-row td {
+  background: rgba(234, 179, 8, 0.10) !important;
+  color: var(--ink) !important;
+}
+.dark #ft-tbl .ft-house-row td:first-child,
+.dark #ft-tbl tr.ft-highlight-row td:first-child {
+  color: var(--gold) !important;
+}
+.dark #ft-tbl .ft-disc-neg-row td:first-child,
+.dark #ft-tbl tbody tr.ft-disc-neg-row td {
+  background: rgba(248, 113, 113, 0.08) !important;
+}
+.dark #ft-tbl tbody tr.ft-disc-neg-row:hover td {
+  background: rgba(248, 113, 113, 0.14) !important;
+}
+.dark #ft-tbl .ft-history-row td:first-child,
+.dark #ft-tbl .ft-history-row td {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Spreadsheet: active cell, editor, ref highlight, range */
+.dark td.ss-active {
+  background: var(--surface) !important;
+}
+.dark #ss-editor {
+  background: var(--surface);
+  color: var(--ink);
+}
+.dark td.ss-ref-hl {
+  background: rgba(234, 179, 8, 0.15);
+  outline-color: var(--gold);
+}
+.dark td.ss-range {
+  background: rgba(96, 165, 250, 0.10);
+}
+.dark td.ss-mil {
+  background: rgba(52, 211, 153, 0.08);
+}
+.dark .ss-t td {
+  background: var(--surface);
+}
+.dark .ss-t th {
+  background: var(--s2) !important;
+}
+
+/* Spreadsheet: header bar and formula bar */
+.dark .ss-ref-box {
+  background: var(--s2);
+}
+.dark .ss-fbar {
+  background: var(--surface);
+}
+
+/* Forensic card: usable NW result pill */
+.dark .fc-usable {
+  background: rgba(96, 165, 250, 0.10);
+}
+
+/* Rebalance: context bar and hands-off note */
+.dark .ft-cell-ov {
+  background: rgba(52, 211, 153, 0.12) !important;
+  color: var(--f) !important;
+}
+
+/* Forensic card: action box */
+.dark .fc-command {
+  background: rgba(248, 113, 113, 0.10);
+}
+.dark .fc-command strong {
+  color: var(--fc-red);
+}
+
+/* Sidebar sign-out button */
+.sb-foot > button {
+  background: var(--s2);
+  color: var(--ink2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--rs);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+.sb-foot > button:hover {
+  background: var(--s3);
+  color: var(--ink);
+}
+
+/* Banner border fix */
+.dark .banner-amber {
+  border-color: rgba(234, 179, 8, 0.2);
 }
 
 /* Light mode forensic defaults */
