@@ -1494,6 +1494,41 @@ input[type=range] {
     background: rgba(255, 255, 255, 0.02);
   }
 
+/* ── Dark mode WCAG AA contrast fixes ────────────────────── */
+.dark {
+  /* Surfaces: remap light backgrounds to dark equivalents */
+  --s2: #1E2130;
+  --s3: #252838;
+  --white: #1A1D2A;
+
+  /* Accent text: brighten for legibility on dark backgrounds */
+  --gold: #EAB308;
+  --rose: #F472B6;
+  --teal: #2DD4BF;
+  --violet: #A78BFA;
+
+  /* Accent light backgrounds: darken for dark mode */
+  --gold-l: #2A2210;
+  --rose-l: #2D1525;
+  --sky-l: #142535;
+  --teal-l: #0D2626;
+  --violet-l: #1E1530;
+
+  /* Forensic / status colors */
+  --fc-red: #F87171;
+  --fc-green: #4ADE80;
+  --fc-amber: #FBBF24;
+  --fc-blue: #60A5FA;
+}
+
+/* Light mode forensic defaults */
+:root {
+  --fc-red: #dc2626;
+  --fc-green: #16a34a;
+  --fc-amber: #d97706;
+  --fc-blue: #3B82F6;
+}
+
   .ch {
     background: var(--page);
     position: sticky;
