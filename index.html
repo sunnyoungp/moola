@@ -7861,10 +7861,26 @@
               }
               if (c === 'netsav') {
                 const nsTip = ftGlobals.discMode === 'goal' && r.discTooltip ? r.discTooltip.replace(/"/g, '&quot;') : '';
-                return '<td class="' + (r.netSavings < 0 ? 'neg' : 'pos') + '"' + (nsTip ? ' title="' + nsTip + '" style="cursor:help"' : '') + '>' + (r.netSavings >= 0 ? '+' : '') + ftFmt(r.netSavings) + '</td>';
+                const nsValText = (r.netSavings >= 0 ? '+' : '') + ftFmt(r.netSavings);
+                if (nsTip) {
+                  const nsTipCard = fcCard(fcHeader('📊', 'Net Savings', nsValText, r.netSavings < 0 ? FC.red : FC.green) + fcList(fcItem('Goal constraint', nsTip, {valWrap: true})));
+                  return '<td class="' + (r.netSavings < 0 ? 'neg' : 'pos') + '" title="' + nsTip + '" style="cursor:help"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nsTipCard + nsValText + '</span></td>';
+                }
+                return '<td class="' + (r.netSavings < 0 ? 'neg' : 'pos') + '">' + nsValText + '</td>';
               }
-              if (c === 'income') return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'income\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'income\')" title="' + r.taxTip.replace(/"/g, '&quot;') + ' · click to override">' + (r.income ? ftFmt(r.income) : ftFmt(0)) + '</td>';
-              if (c === 'partner') return '<td class="ft-editable' + (ovPart ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'partner\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'partner\')" title="click to override · dblclick to clear">' + ftFmt(r.partner) + '</td>';
+              if (c === 'income') {
+                const incClearBtn = ovInc ? '<button class="ft-mob-clear" onclick="event.stopPropagation();ftClearOverride(' + r.age + ',\'income\')" aria-label="Clear override">✕</button>' : '';
+                const incTaxTip = r.taxTip ? r.taxTip.replace(/"/g, '&quot;') : '';
+                const incTipCard = incTaxTip ? fcCard(fcHeader('💰', 'Income Details', ftFmt(r.income), FC.ink) + fcList(fcItem('Tax info', incTaxTip, {valWrap: true}))) : '';
+                const incValHtml = incTipCard
+                  ? '<span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + incTipCard + (r.income ? ftFmt(r.income) : ftFmt(0)) + '</span>'
+                  : (r.income ? ftFmt(r.income) : ftFmt(0));
+                return '<td class="ft-editable' + (ovInc ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'income\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'income\')" title="' + incTaxTip + ' · click to override">' + incValHtml + incClearBtn + '</td>';
+              }
+              if (c === 'partner') {
+                const partClearBtn = ovPart ? '<button class="ft-mob-clear" onclick="event.stopPropagation();ftClearOverride(' + r.age + ',\'partner\')" aria-label="Clear override">✕</button>' : '';
+                return '<td class="ft-editable' + (ovPart ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'partner\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'partner\')" title="click to override · dblclick to clear">' + ftFmt(r.partner) + partClearBtn + '</td>';
+              }
               if (c === 'freeSpend') {
                 const livingMo = Math.round(r.living / 12);
                 const tip = (r.discTooltip || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
