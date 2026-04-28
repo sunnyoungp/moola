@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260421c">
+  <link rel="stylesheet" href="styles.css?v=20260428a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const { createClient } = supabase;
@@ -7715,35 +7715,20 @@
                   );
                 } else {
                   // ── Card 3: NW Breakdown ──
-                  const prevFmt = ftFmt(r.prevLiquid || 0);
-                  const growthFmt = ftFmt(Math.round(r.liquidGrowth || 0));
-                  const hasPools = r.cashPool !== null && r.cashPool !== undefined;
-                  const dpLine = (r.downPaymentDraw || 0) > 0
-                    ? fcDivider() + fcSection('Down Payment (from NW)') + fcList(
-                        fcItem('From cash & savings', '\u2212' + ftFmt(r.dpFromCash || 0), {op: true})
-                        + ((r.dpFromInv || 0) > 0 ? fcItem('From investment accounts', '\u2212' + ftFmt(r.dpFromInv) + ((r.dpInvTax || 0) > 0 ? ' (tax ' + ftFmt(r.dpInvTax) + ')' : ''), {op: true}) : '')
+                  const poolTotal = (r.cashPool || 0) + (r.invPool || 0);
+                  const liqIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M4 7v0M20 7v0M4 17v0M20 17v0"/></svg>';
+                  const lockIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+                  let liqBody = '<div class="fc-section" style="color:' + FC.green + '">' + liqIcon + ' LIQUID</div>'
+                    + fcList(
+                        fcItem('Cash & savings', ftFmt(r.cashPool || 0))
+                        + fcItem('Investments', ftFmt(r.invPool || 0))
                       )
-                    : '';
-                  const liqBody = hasPools
-                    ? fcSection('Cash & Savings') + fcList(
-                        fcItem('Balance', ftFmt(r.cashPool || 0))
-                      ) + fcSection('Investment Accounts') + fcList(
-                        fcItem('Balance', ftFmt(r.invPool || 0))
-                        + (r.safeDraw > 0 ? fcItem('Draw from investments this year', '\u2212' + ftFmt(r.safeDraw), {op: true, nameColor: FC.amber}) : '')
-                      ) + dpLine + fcResultPill('= Total liquid NW', null, ftFmt(r.organicLiquid))
-                    : fcList(
-                        fcItem('Previous balance', prevFmt)
-                        + fcItem('+ Market return (' + roc + '%)', growthFmt, {op: true})
-                        + fcItem('+ Net savings', ftFmt(r.netSavings), {op: true})
-                      ) + fcResultPill('= New liquid NW', null, ftFmt(r.organicLiquid));
-                  let retBody = '';
-                  if (r.contrib401k > 0 || r.retirementBal > 0) {
-                    retBody = fcDivider() + fcSection('401k / Retirement') + fcList(
-                      r.contrib401k > 0
-                        ? fcItem('+ 401k contribution', '+' + ftFmt(r.contrib401k), {op: true})
-                          + fcItem('Retirement balance (total)', ftFmt(r.retirementBal), {result: true})
-                        : fcItem('Retirement balance (total)', ftFmt(r.retirementBal))
-                    );
+                    + fcResultPill('Total liquid', null, ftFmt(poolTotal));
+                  let lockedBody = '';
+                  if (r.retirementBal > 0) {
+                    lockedBody = fcDivider()
+                      + '<div class="fc-section" style="color:' + FC.amber + '">' + lockIcon + ' LOCKED</div>'
+                      + fcList(fcItem('Retirement', ftFmt(r.retirementBal)));
                   }
                   let reBody = '';
                   if (Math.round(r.realEstateEquity) > 0) {
@@ -7756,13 +7741,10 @@
                     efBody = fcDivider() + fcSection('Emergency Fund (excluded)')
                       + fcList(fcItem('Reserved \u2014 not counted in liquid NW', ftFmt(efTotal), {nameColor: FC.amber}));
                   }
-                  const usableCaption = r.isRetiredForCalc ? 'Liquid + Inv Properties + Retirement' : 'Liquid + Inv Properties (Retirement locked)';
-                  const usableBody = fcDivider()
-                    + fcResultPill('Usable net worth', usableCaption, ftFmt(Math.round(r.investableNW)));
                   nwCardHtml = fcCard(
                     fcHeader('\u{1F4CA}', 'Net Worth Breakdown', totalNWFmt, nwColor)
-                    + fcSection('Liquid Portfolio')
-                    + liqBody + retBody + reBody + efBody + usableBody
+                    + fcDivider()
+                    + liqBody + lockedBody + reBody + efBody
                   );
                 }
                 return '<td class="ft-editable ' + (r.nw < 0 ? 'neg' : '') + (ovNw ? ' ft-cell-ov' : '') + '" onclick="ftStartEdit(this,\'nw\',' + r.age + ')" ondblclick="ftClearOverride(' + r.age + ',\'nw\')" style="cursor:pointer"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nwCardHtml + MT(ftFmt(r.nw), 'future') + '</span></td>';

@@ -728,6 +728,10 @@ textarea {
   margin-bottom: 10px;
   margin-top: 20px;
 }
+.fc-section > svg {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
 
 .fc-list {
   display: flex;
@@ -879,9 +883,9 @@ textarea {
   white-space: nowrap;
 }
 
-/* Usable Wealth summary block — modal conclusion row */
+/* Result pill — subtotal row inside forensic cards */
 .fc-usable {
-  background: #EBF3FD;
+  background: var(--s2, #EBF3FD);
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 8px;
@@ -1588,10 +1592,7 @@ input[type=range] {
   background: var(--surface);
 }
 
-/* Forensic card: result rows & usable NW pill */
-.dark .fc-usable {
-  background: rgba(96, 165, 250, 0.10);
-}
+/* Forensic card: result rows */
 .dark .fc-item--result {
   background: rgba(96, 165, 250, 0.10);
 }
