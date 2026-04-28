@@ -2386,7 +2386,7 @@
         let dlg = document.getElementById('mo-custom-dlg');
         if (!dlg) { dlg = document.createElement('div'); dlg.id = 'mo-custom-dlg'; document.body.appendChild(dlg); }
         dlg.style.cssText = 'position:fixed;inset:0;z-index:9999990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25)';
-        dlg.innerHTML = `<div style="background:var(--bg-primary,#fff);border:1px solid var(--border-strong,#ddd);border-radius:12px;padding:24px 24px 20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.18);font-family:var(--sans,sans-serif)">${html}</div>`;
+        dlg.innerHTML = `<div style="background:var(--surface,#fff);border:1px solid var(--border-strong);border-radius:12px;padding:24px 24px 20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);font-family:var(--sans,sans-serif)">${html}</div>`;
         onReady(dlg);
       }
       function _moDlgClose() { const d = document.getElementById('mo-custom-dlg'); if (d) d.remove(); }
@@ -2406,7 +2406,7 @@
       function moPrompt(msg, onOk, defaultVal) {
         _moDlg(
           `<p style="margin:0 0 10px;font-size:14px;line-height:1.5;color:var(--ink,#222)">${msg}</p>
-           <input id="_moDlgInp" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong,#ccc);border-radius:8px;font:inherit;font-size:14px;margin-bottom:16px;outline:none;color:var(--ink,#222);background:var(--bg-primary,#fff)">
+           <input id="_moDlgInp" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:14px;margin-bottom:16px;outline:none;color:var(--ink);background:var(--surface)">
            <div style="display:flex;gap:8px;justify-content:flex-end">
              <button id="_moDlgNo" class="btn">Cancel</button>
              <button id="_moDlgYes" class="btn bp">OK</button>
