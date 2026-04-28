@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260428a">
+  <link rel="stylesheet" href="styles.css?v=20260428b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const { createClient } = supabase;
@@ -7578,9 +7578,10 @@
         return '<div class="forensic-card">' + inner + '</div>';
       }
 
-      function fcHeader(emoji, title, value, color) {
+      function fcHeader(emoji, title, value, color, age) {
+        var ageBadge = age !== undefined ? '<span class="fc-age">Age ' + age + '</span>' : '';
         return '<div class="fc-header"><div>'
-          + '<div class="fc-title"><span>' + emoji + '</span> ' + title + '</div>'
+          + '<div class="fc-title"><span>' + emoji + '</span> ' + title + ageBadge + '</div>'
           + '<div class="fc-deficit" style="color:' + (color || FC.ink) + '">' + value + '</div>'
           + '</div></div>';
       }
@@ -7699,14 +7700,14 @@
                 if (r.isHistory) {
                   // ── Card 1: NW History ──
                   nwCardHtml = fcCard(
-                    fcHeader('\u{1F4CA}', 'Net Worth', totalNWFmt, nwColor)
+                    fcHeader('\u{1F4CA}', 'Net Worth', totalNWFmt, nwColor, r.age)
                     + fcList(fcItem('Historical record — click to enter or update.'))
                   );
                 } else if (r.hasNwOv) {
                   // ── Card 2: NW Override ──
                   const organicTotal = (r.organicLiquid || r.liquidNW || 0) + r.retirementBal + Math.round(r.realEstateEquity);
                   nwCardHtml = fcCard(
-                    fcHeader('\u{1F4CA}', 'Net Worth (Override)', totalNWFmt, nwColor)
+                    fcHeader('\u{1F4CA}', 'Net Worth (Override)', totalNWFmt, nwColor, r.age)
                     + fcList(
                       fcItem('Manual override active', totalNWFmt)
                       + fcItem('Organic model: ' + ftFmt(organicTotal))
@@ -7742,7 +7743,7 @@
                       + fcList(fcItem('Reserved \u2014 not counted in liquid NW', ftFmt(efTotal), {nameColor: FC.amber}));
                   }
                   nwCardHtml = fcCard(
-                    fcHeader('\u{1F4CA}', 'Net Worth Breakdown', totalNWFmt, nwColor)
+                    fcHeader('\u{1F4CA}', 'Net Worth Breakdown', totalNWFmt, nwColor, r.age)
                     + fcDivider()
                     + liqBody + lockedBody + reBody + efBody
                   );
@@ -7753,7 +7754,7 @@
                 const nsTip = ftGlobals.discMode === 'goal' && r.discTooltip ? r.discTooltip.replace(/"/g, '&quot;') : '';
                 const nsValText = (r.netSavings >= 0 ? '+' : '') + ftFmt(r.netSavings);
                 if (nsTip) {
-                  const nsTipCard = fcCard(fcHeader('📊', 'Net Savings', nsValText, r.netSavings < 0 ? FC.red : FC.green) + fcList(fcItem('Goal constraint', nsTip, {valWrap: true})));
+                  const nsTipCard = fcCard(fcHeader('📊', 'Net Savings', nsValText, r.netSavings < 0 ? FC.red : FC.green, r.age) + fcList(fcItem('Goal constraint', nsTip, {valWrap: true})));
                   return '<td class="' + (r.netSavings < 0 ? 'neg' : 'pos') + '" title="' + nsTip + '" style="cursor:help"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + nsTipCard + nsValText + '</span></td>';
                 }
                 return '<td class="' + (r.netSavings < 0 ? 'neg' : 'pos') + '">' + nsValText + '</td>';
@@ -7761,7 +7762,7 @@
               if (c === 'income') {
                 const incClearBtn = ovInc ? '<button class="ft-mob-clear" onclick="event.stopPropagation();ftClearOverride(' + r.age + ',\'income\')" aria-label="Clear override">✕</button>' : '';
                 const incTaxTip = r.taxTip ? r.taxTip.replace(/"/g, '&quot;') : '';
-                const incTipCard = incTaxTip ? fcCard(fcHeader('💰', 'Income Details', ftFmt(r.income), FC.ink) + fcList(fcItem('Tax info', incTaxTip, {valWrap: true}))) : '';
+                const incTipCard = incTaxTip ? fcCard(fcHeader('💰', 'Income Details', ftFmt(r.income), FC.ink, r.age) + fcList(fcItem('Tax info', incTaxTip, {valWrap: true}))) : '';
                 const incValHtml = incTipCard
                   ? '<span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">' + incTipCard + (r.income ? ftFmt(r.income) : ftFmt(0)) + '</span>'
                   : (r.income ? ftFmt(r.income) : ftFmt(0));
@@ -7817,7 +7818,7 @@
                       + (hasTax4 ? fcItem('\u2212 Capital gains tax', '\u2212' + ftFmt(r.drawTax) + '/yr', {op: true, nameColor: FC.red}) : '')
                       + (hasTax4 ? fcItem('Net after tax', '+' + ftFmt(r.safeDraw) + '/yr', {result: true, valColor: FC.green}) : '');
                     const cardHtml = fcCard(
-                      fcHeader('\u{1F4B6}', 'Drawing from Investments', 'NW ahead of trajectory', FC.amber)
+                      fcHeader('\u{1F4B6}', 'Drawing from Investments', 'NW ahead of trajectory', FC.amber, r.age)
                       + fcList(
                         fcItem('Free to spend (after draw)', '+' + ftFmt(r.freeSpend) + '/mo', {valColor: FC.green})
                         + drawItems4
@@ -7839,7 +7840,7 @@
                       drawLine = fcItem('Liquid investments: ' + ftFmt(r.invPool || 0) + depletedBy, undefined, {nameColor: FC.ink3});
                     }
                     const cardHtml = fcCard(
-                      fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red)
+                      fcHeader('\u{1F6A8}', 'Diagnostic Alert', '-' + deficitFmt + '/mo shortfall', FC.red, r.age)
                       + (drawLine ? fcList(drawLine) : '')
                       + fcSection('Top Category Drains')
                       + fcList(blameHtml)
@@ -7886,7 +7887,7 @@
                     : '+' + ftFmt(r.freeSpend) + '/mo';
                   const headerColor = isDrawing ? FC.amber : FC.green;
                   const freeCardHtml = fcCard(
-                    fcHeader(headerEmoji, headerTitle, headerSubtitle, headerColor)
+                    fcHeader(headerEmoji, headerTitle, headerSubtitle, headerColor, r.age)
                     + fcList(
                       fcItem('Take-home income', ftFmt(rowNetHHMo) + '/mo')
                       + fcItem('\u2212 Fixed costs (housing + kids + healthcare)', '\u2212' + ftFmt(fixedMo) + '/mo', {op: true})
@@ -7927,7 +7928,7 @@
                       ).join('')
                     : '';
                   const zeroCard = fcCard(
-                    fcHeader('\u{1F3AF}', 'Required Savings', '$0 / mo required', headerColor)
+                    fcHeader('\u{1F3AF}', 'Required Savings', '$0 / mo required', headerColor, r.age)
                     + fcList(
                       fcItem(zeroReason)
                       + goalLines
@@ -7950,7 +7951,7 @@
                 const isDeficit = r.monthlySurplus < 0;
                 const reqColor = isDeficit ? FC.red : FC.ink;
                 const reqCard = fcCard(
-                  fcHeader('\u{1F3AF}', 'Required Savings', ftFmt(reqMo) + '/mo needed', reqColor)
+                  fcHeader('\u{1F3AF}', 'Required Savings', ftFmt(reqMo) + '/mo needed', reqColor, r.age)
                   + fcList(
                     fcItem('Binding goal', bindingLabel, {valWrap: true})
                     + fcItem('Annual savings required', ftFmt(r.reqSavings) + '/yr')

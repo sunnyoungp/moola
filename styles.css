@@ -709,6 +709,15 @@ textarea {
   gap: 6px;
 }
 
+.fc-age {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--ink4);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .fc-deficit {
   font-size: 30px;
   font-weight: 800;
