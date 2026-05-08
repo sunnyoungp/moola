@@ -4905,9 +4905,18 @@
         return bg ? isDarkColor(bg) : false;
       }
 
+      function snapshotCurrentTheme() {
+        const t = {};
+        Object.keys(THEME_DEFAULT).forEach(k => {
+          t[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+        });
+        return t;
+      }
+
       function toggleDarkMode() {
         if (isDarkModeActive()) {
-          // Restore saved light theme
+          // Save current dark customizations, restore light
+          S.settings.darkTheme = snapshotCurrentTheme();
           const saved = S.settings.lightTheme;
           if (saved && Object.keys(saved).length) {
             applyThemeObject(saved);
@@ -4915,13 +4924,14 @@
             applyThemeObject(THEME_DEFAULT);
           }
         } else {
-          // Save current light theme, then go dark
-          const current = {};
-          Object.keys(THEME_DEFAULT).forEach(k => {
-            current[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim();
-          });
-          S.settings.lightTheme = current;
-          applyThemeObject(THEME_PRESETS[7].tokens);
+          // Save current light customizations, restore dark
+          S.settings.lightTheme = snapshotCurrentTheme();
+          const savedDark = S.settings.darkTheme;
+          if (savedDark && Object.keys(savedDark).length) {
+            applyThemeObject(savedDark);
+          } else {
+            applyThemeObject(THEME_PRESETS[7].tokens);
+          }
         }
         ps(S);
         syncDarkToggleIcons();
