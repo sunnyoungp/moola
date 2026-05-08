@@ -283,14 +283,6 @@
               </svg>
               Customize
             </button>
-            <button class="btn" onclick="openSnapModal(null)">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round">
-                <line x1="7" y1="2" x2="7" y2="12" />
-                <line x1="2" y1="7" x2="12" y2="7" />
-              </svg>
-              Log snapshot
-            </button>
           </div>
         </div>
         <div style="height:24px"></div>
@@ -2031,7 +2023,8 @@
         loadTheme();
         // Ensure investment account balances reflect current fund values on every load
         syncAccountsFromPortfolio();
-        // Auto-snapshot portfolio value for gains tracking
+        // Auto-snapshot: NW history + investment gains
+        nwAutoSnapshot();
         gainsAutoSnapshot();
         // rest of your existing init code:
         if (S.settings.currency === 'KRW') { dispCur = 'KRW'; }
@@ -2667,14 +2660,73 @@
         return { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, ...opts } };
       }
 
+      // ── NW auto-snapshot: silently record total NW on each app load ──
+      function nwAutoSnapshot() {
+        if (!S) return;
+        if (!S.snapshots) S.snapshots = [];
+        const today = todayStr();
+        const nw = nwTotal();
+        const idx = S.snapshots.findIndex(s => s.date === today);
+        if (idx >= 0) {
+          S.snapshots[idx].nw = nw;
+        } else {
+          S.snapshots.push({ date: today, nw, contributed: 0, note: '' });
+          S.snapshots.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        ps(S);
+      }
+
+      // ── Filter snapshots by selected period ──
+      let ovNwPeriod = 'ALL';
+      function ovFilterSnaps(snaps) {
+        if (!snaps.length) return [];
+        const now = new Date();
+        let cutoff;
+        switch (ovNwPeriod) {
+          case '1M': cutoff = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()); break;
+          case '3M': cutoff = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); break;
+          case 'YTD': cutoff = new Date(now.getFullYear(), 0, 1); break;
+          case '1Y': cutoff = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()); break;
+          default: return [...snaps]; // ALL
+        }
+        const cutStr = cutoff.toISOString().slice(0, 10);
+        return snaps.filter(s => s.date >= cutStr);
+      }
+
+      // ── Aggregate snapshots: daily for 1M, weekly for 3M, monthly for YTD/1Y/ALL ──
+      function ovAggregateSnaps(snaps) {
+        if (snaps.length <= 60) return snaps; // No aggregation needed if sparse
+        const mode = ovNwPeriod === '1M' ? 'day' : ovNwPeriod === '3M' ? 'week' : 'month';
+        if (mode === 'day') return snaps;
+        const buckets = new Map();
+        snaps.forEach(s => {
+          const d = new Date(s.date + 'T12:00:00');
+          let key;
+          if (mode === 'week') {
+            const day = d.getDay();
+            const mon = new Date(d); mon.setDate(d.getDate() - ((day + 6) % 7));
+            key = mon.toISOString().slice(0, 10);
+          } else {
+            key = s.date.slice(0, 7); // YYYY-MM
+          }
+          // Keep the latest snapshot in each bucket
+          if (!buckets.has(key) || s.date > buckets.get(key).date) {
+            buckets.set(key, s);
+          }
+        });
+        return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
+      }
+
       function renderOverview() {
         const state = getFilteredState();
         syncPrivacyUI();
         document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
-        const snaps = S.snapshots;
-        const tc = snaps.slice(1).reduce((s, sn) => s + (sn.contributed || 0), 0);
-        const gain = nwTotal() - (snaps[0]?.nw || nwTotal()) - tc;
-        document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(tc)} contributed since ${new Date(snaps[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` : `<span class="mut" style="font-size:11px">Log snapshots to track gains</span>`);
+        // Pull total contributed from gains contribution log
+        const totalContrib = (S.gainContribs || []).reduce((s, c) => s + (c.amount || 0), 0);
+        const snaps = S.snapshots || [];
+        const gain = snaps.length ? nwTotal() - (snaps[0]?.nw || nwTotal()) - totalContrib : 0;
+        const contribSince = snaps.length && snaps[0]?.date ? new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+        document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(totalContrib)} contributed${contribSince ? ' since ' + contribSince : ''}</span>` : `<span class="mut" style="font-size:11px">Snapshots are recorded automatically</span>`);
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) {
           const _nw = nwTotal(); const _cash = totByBucket('cash') + totByBucket('restricted'); const _inv = totByBucket('investments'); const _ret = totByBucket('retirement'); const _re = totRealEstateEquity();
@@ -2686,12 +2738,21 @@
           </div>
           <div class="g2 mb-2">
             <div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${state.funds.length} funds</div></div>
-            <div class="csm" style="cursor:pointer" onclick="openSnapModal(null)" title="Log snapshot"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Click to add'}</div></div>
+            <div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recorded on each visit'}</div></div>
           </div>`;
         }
         if (vis.history || vis.breakdown) {
           h += `<div class="g2 mb-2">`;
-          if (vis.history) h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><button onclick="openSnapModal(null)" style="font-size:10.5px;color:var(--f);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ Add</button></div>${snaps.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">' + snaps.slice(-6).map((s, si, arr) => { const ri = snaps.length - arr.length + si; const ds = new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }); return '<button onclick="openSnapModal(' + ri + ')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;font-family:var(--mono)">' + ds + '</button>'; }).join('') + '</div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Log 2+ snapshots to see chart</div>'}</div>`;
+          if (vis.history) {
+            // Period tabs for NW chart
+            const ptabs = ['1M', '3M', 'YTD', '1Y', 'ALL'].map(p =>
+              `<button class="atab${ovNwPeriod === p ? ' on' : ''}" style="padding:3px 10px;font-size:11px;border-bottom-width:1.5px" onclick="ovNwPeriod='${p}';renderOverview()">${p}</button>`
+            ).join('');
+            // Filter and aggregate snapshots by period
+            const filtered = ovFilterSnaps(snaps);
+            const agg = ovAggregateSnaps(filtered);
+            h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><div style="display:flex">${ptabs}</div></div>${agg.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Not enough data for this period yet</div>'}</div>`;
+          }
           if (vis.breakdown) {
             h += `<div class="card">
               <div class="sec">Asset breakdown</div>
@@ -2707,7 +2768,18 @@
         }
         if (vis.goals) h += `<div class="card"><div class="sec fb">Goal progress <button class="bgh btn bsm" onclick="toggleOvGoalsView()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button></div><div id="ov-goals"></div></div>`;
         document.getElementById('ov-widgets').innerHTML = h;
-        if (vis.history && snaps.length >= 2) { dC('snap'); const tc0 = getThemeColors()[0]; CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: { labels: snaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: snaps.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } }); }
+        if (vis.history) {
+          const filtered = ovFilterSnaps(snaps);
+          const agg = ovAggregateSnaps(filtered);
+          if (agg.length >= 2) {
+            dC('snap'); const tc0 = getThemeColors()[0];
+            const showDots = agg.length <= 60;
+            CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: {
+              labels: agg.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', ovNwPeriod === '1M' ? { month: 'short', day: 'numeric' } : { month: 'short', year: '2-digit' })),
+              datasets: [{ data: agg.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: showDots ? 3 : 0, borderWidth: 2 }]
+            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } });
+          }
+        }
         if (vis.breakdown) {
           const _thc = getThemeColors();
           const _reEq = totRealEstateEquity();
