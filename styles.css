@@ -2194,7 +2194,7 @@ hr {
 
 /* ═══ NW HERO ═══════════════════════════════════════════════ */
 .nw-hero {
-  background: linear-gradient(135deg, var(--th-sidebar-active-bg, #1C1B19) 0%, color-mix(in srgb, var(--th-primary) 40%, var(--th-sidebar-active-bg, #1C1B19)) 55%, color-mix(in srgb, var(--th-primary) 25%, #2A1830) 100%);
+  background: linear-gradient(135deg, var(--th-hero-bg, #1C1B19) 0%, color-mix(in srgb, var(--th-hero-bg, #1C1B19) 60%, var(--th-primary)) 55%, color-mix(in srgb, var(--th-hero-bg, #1C1B19) 70%, #2A1830) 100%);
   border: none;
   border-radius: var(--rxl);
   padding: 30px 36px;

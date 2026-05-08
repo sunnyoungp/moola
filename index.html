@@ -1268,6 +1268,15 @@
                 </div>
               </div>
               <div class="theme-row">
+                <label>Hero banner</label>
+                <div class="theme-swatch">
+                  <input type="color" id="tc-hero"
+                    oninput="applyThemeToken('--th-hero-bg',this.value);syncHex('tc-hero','thx-hero')">
+                  <input type="text" class="theme-hex" id="thx-hero" maxlength="7" placeholder="#1C1B19"
+                    oninput="hexInput('tc-hero','thx-hero','--th-hero-bg')" onblur="hexBlur('tc-hero','thx-hero','--th-hero-bg')">
+                </div>
+              </div>
+              <div class="theme-row">
                 <label>Text</label>
                 <div class="theme-swatch">
                   <input type="color" id="tc-txt"
@@ -4746,6 +4755,7 @@
         '--th-btn-fg': '#FFFFFF',
         '--th-tag-bg': '#ECEEF9',
         '--th-tag-fg': '#3D4E8A',
+        '--th-hero-bg': '#1C1B19',
         '--th-bg': '#F0EFEB',
         '--th-surface': '#FAFAF8',
         '--th-text': '#1C1B19',
@@ -4764,6 +4774,7 @@
             '--th-progress': '#0369A1', '--th-highlight': '#CFFAFE',
             '--th-btn-bg': '#0C1C2E', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#E0F2FE', '--th-tag-fg': '#0369A1',
+            '--th-hero-bg': '#0C1C2E',
             '--th-bg': '#EFF6FF', '--th-surface': '#F0F7FF', '--th-text': '#0C1C2E', '--th-text2': '#3A4A5A',
           }
         },
@@ -4777,6 +4788,7 @@
             '--th-progress': '#92400E', '--th-highlight': '#FEF3C7',
             '--th-btn-bg': '#2A1F14', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#FEF3C7', '--th-tag-fg': '#92400E',
+            '--th-hero-bg': '#2A1F14',
             '--th-bg': '#FDF8F0', '--th-surface': '#FFF9F0', '--th-text': '#1C1510', '--th-text2': '#5B4A38',
           }
         },
@@ -4790,6 +4802,7 @@
             '--th-progress': '#3F3F46', '--th-highlight': '#F4F4F5',
             '--th-btn-bg': '#111113', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#F4F4F5', '--th-tag-fg': '#3F3F46',
+            '--th-hero-bg': '#111113',
             '--th-bg': '#F4F4F5', '--th-surface': '#FAFAFA', '--th-text': '#111113', '--th-text2': '#52525B',
           }
         },
@@ -4803,6 +4816,7 @@
             '--th-progress': '#6D28D9', '--th-highlight': '#FCE7F3',
             '--th-btn-bg': '#1E1033', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#EDE9FE', '--th-tag-fg': '#6D28D9',
+            '--th-hero-bg': '#1E1033',
             '--th-bg': '#F3F0FF', '--th-surface': '#F8F5FF', '--th-text': '#1E1033', '--th-text2': '#4A3A66',
           }
         },
@@ -4816,6 +4830,7 @@
             '--th-progress': '#C2410C', '--th-highlight': '#FEF9C3',
             '--th-btn-bg': '#1C0A03', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#FFF7ED', '--th-tag-fg': '#C2410C',
+            '--th-hero-bg': '#1C0A03',
             '--th-bg': '#FFF5EB', '--th-surface': '#FFF9F2', '--th-text': '#1C0A03', '--th-text2': '#4A2A18',
           }
         },
@@ -4829,6 +4844,7 @@
             '--th-progress': '#334155', '--th-highlight': '#DBEAFE',
             '--th-btn-bg': '#0F172A', '--th-btn-fg': '#FFFFFF',
             '--th-tag-bg': '#F1F5F9', '--th-tag-fg': '#334155',
+            '--th-hero-bg': '#0F172A',
             '--th-bg': '#F1F5F9', '--th-surface': '#F8FAFC', '--th-text': '#0F172A', '--th-text2': '#475569',
           }
         },
@@ -4842,6 +4858,7 @@
             '--th-progress': '#34D399', '--th-highlight': '#064E3B',
             '--th-btn-bg': '#34D399', '--th-btn-fg': '#022C22',
             '--th-tag-bg': '#064E3B', '--th-tag-fg': '#34D399',
+            '--th-hero-bg': '#060810',
             '--th-bg': '#0C0E14', '--th-surface': '#161923', '--th-text': '#F1F0EB', '--th-text2': '#94A3B8',
           }
         },
@@ -4895,6 +4912,8 @@
       }
 
       function applyThemeObject(tokens) {
+        // Full theme replacement — reset in-memory state to match new tokens exactly
+        S.settings.theme = { ...tokens };
         Object.entries(tokens).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
         // update alpha-border base color for dark/light themes
         if (tokens['--th-bg']) {
@@ -4903,7 +4922,7 @@
           document.documentElement.classList.toggle('dark', isDark);
         }
         syncAllInputsFromDOM();
-        saveTheme();
+        ps(S);
         refreshAllCharts();
       }
 
@@ -4978,9 +4997,15 @@
       }
 
       function saveTheme() {
-        const t = {};
-        Object.keys(THEME_DEFAULT).forEach(k => { t[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim(); });
-        S.settings.theme = t;
+        // Preserve clean hex values already in S.settings.theme from setThemeProp,
+        // only fall back to getComputedStyle for any missing keys
+        if (!S.settings.theme) S.settings.theme = {};
+        const r = getComputedStyle(document.documentElement);
+        Object.keys(THEME_DEFAULT).forEach(k => {
+          if (!S.settings.theme[k]) {
+            S.settings.theme[k] = r.getPropertyValue(k).trim();
+          }
+        });
         ps(S);
       }
 
@@ -4997,8 +5022,9 @@
       }
 
       function resetTheme() {
-        // Reset to the active preset's original tokens, not always Moola
+        // Reset to the active preset's original tokens and clear saved overrides
         const idx = S.settings.activePreset != null ? S.settings.activePreset : (detectActivePreset() >= 0 ? detectActivePreset() : 0);
+        if (S.settings.presetOverrides) delete S.settings.presetOverrides[idx];
         applyThemeObject(THEME_PRESETS[idx].tokens);
         syncAllInputsFromDOM();
         highlightActivePreset(idx);
@@ -5076,6 +5102,7 @@
           ['tc-c14', 'thx-c14', '--th-chart14'],
           ['tc-c15', 'thx-c15', '--th-chart15'],
           ['tc-c16', 'thx-c16', '--th-chart16'],
+          ['tc-hero', 'thx-hero', '--th-hero-bg'],
           ['tc-bg', 'thx-bg', '--th-bg'],
           ['tc-surf', 'thx-surf', '--th-surface'],
           ['tc-txt', 'thx-txt', '--th-text'],
@@ -5131,8 +5158,19 @@
       }
 
       function applyPreset(i) {
+        // Save current preset's customizations before switching
+        if (S.settings.activePreset != null) {
+          if (!S.settings.presetOverrides) S.settings.presetOverrides = {};
+          S.settings.presetOverrides[S.settings.activePreset] = snapshotCurrentTheme();
+        }
         S.settings.activePreset = i;
-        applyThemeObject(THEME_PRESETS[i].tokens);
+        // Restore saved customizations for this preset, or use defaults
+        const saved = S.settings.presetOverrides?.[i];
+        if (saved && Object.keys(saved).length) {
+          applyThemeObject(saved);
+        } else {
+          applyThemeObject(THEME_PRESETS[i].tokens);
+        }
         highlightActivePreset(i);
       }
 
