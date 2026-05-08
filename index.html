@@ -857,6 +857,7 @@
             <button class="btn bp bsm" onclick="openContribModal(null)">+ Add contribution</button>
           </div>
         </div>
+        <div style="height:20px"></div>
         <!-- Account selector -->
         <div id="gains-acct-toggles"></div>
         <!-- Period selector -->
@@ -5284,12 +5285,12 @@
             // ALL: simple formula, no snapshots needed
             const periodGain = currentValue - totalContribsAll;
             const periodPct = totalContribsAll > 0 ? (periodGain / totalContribsAll) * 100 : 0;
-            ph += `<div class="card" style="padding:20px 24px;margin-bottom:16px">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">All-Time Gain / Loss</div>
+            ph += `<div class="card mb-2">
+              <div class="sec">All-Time Gain / Loss</div>
               <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
               <div style="display:flex;gap:28px;flex-wrap:wrap">
-                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Total contributed</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(totalContribsAll)}</div></div>
-                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Current value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(currentValue)}</div></div>
+                <div><div class="lbl">Total contributed</div><div class="mnum" style="font-family:var(--mono)">${fmtV(totalContribsAll)}</div></div>
+                <div><div class="lbl">Current value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(currentValue)}</div></div>
               </div>
             </div>`;
           } else {
@@ -5305,7 +5306,7 @@
             if (!hasEnoughData) {
               const periodLabel = { '1M': '1-month', '3M': '3-month', 'YTD': 'year-to-date', '1Y': '1-year', 'CUSTOM': 'custom period' }[gainsPeriod] || 'period';
               const promptDate = start;
-              ph += `<div class="card" style="text-align:center;padding:28px 24px;margin-bottom:16px">
+              ph += `<div class="card mb-2" style="text-align:center;padding:28px 24px">
                 <div style="font-size:13px;color:var(--ink3);margin-bottom:10px">Add a historical value for <strong>${promptDate}</strong> to see your ${periodLabel} performance.</div>
                 <button class="btn bp bsm" onclick="openHistSnapModal('${promptDate}')">Add historical value</button>
               </div>`;
@@ -5313,13 +5314,13 @@
               const periodContribs = contribsInRange(start, end);
               const periodGain = currentValue - startValue - periodContribs;
               const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : 0;
-              ph += `<div class="card" style="padding:20px 24px;margin-bottom:16px">
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">Period Gain / Loss</div>
+              ph += `<div class="card mb-2">
+                <div class="sec">Period Gain / Loss</div>
                 <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
                 <div style="display:flex;gap:28px;flex-wrap:wrap">
-                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Starting value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(startValue)}</div></div>
-                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Contributions</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(periodContribs)}</div></div>
-                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Current value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(currentValue)}</div></div>
+                  <div><div class="lbl">Starting value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(startValue)}</div></div>
+                  <div><div class="lbl">Contributions</div><div class="mnum" style="font-family:var(--mono)">${fmtV(periodContribs)}</div></div>
+                  <div><div class="lbl">Current value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(currentValue)}</div></div>
                 </div>
               </div>`;
             }
@@ -5342,27 +5343,27 @@
           }).join('');
           const tooltipContent = `<div style="font-size:11px;min-width:200px">${acctBreakdown}</div>`;
 
-          allTimeEl.innerHTML = `<div class="card" style="margin-bottom:16px">
-            <div class="sec" style="padding:16px 20px 12px"><span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">All-Time Summary</span></div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 20px 20px">
+          allTimeEl.innerHTML = `<div class="card mb-2">
+            <div class="sec" style="margin-bottom:12px">All-Time Summary</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
               <div>
-                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Contributed</div>
-                <div style="font-size:17px;font-weight:700;font-family:var(--mono)">${fmtV(totalContribs)}</div>
+                <div class="lbl">Total Contributed</div>
+                <div class="mnum" style="font-family:var(--mono)">${fmtV(totalContribs)}</div>
               </div>
               <div>
-                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Current Value</div>
+                <div class="lbl">Current Value</div>
                 <div style="position:relative;display:inline-block;cursor:help" onmouseenter="this.querySelector('.gains-tip').style.display='block'" onmouseleave="this.querySelector('.gains-tip').style.display='none'" onclick="const t=this.querySelector('.gains-tip');t.style.display=t.style.display==='block'?'none':'block'">
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono);text-decoration:underline dotted var(--ink4);text-underline-offset:3px">${fmtV(currentValue)}</div>
+                  <div class="mnum" style="font-family:var(--mono);text-decoration:underline dotted var(--ink4);text-underline-offset:3px">${fmtV(currentValue)}</div>
                   <div class="gains-tip" style="display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap">${tooltipContent}</div>
                 </div>
               </div>
               <div>
-                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Gained</div>
-                <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
+                <div class="lbl">Total Gained</div>
+                <div class="mnum" style="font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
               </div>
               <div>
-                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Return</div>
-                <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:${totalRetPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${hideVal ? '<span class="hval">Hidden</span>' : `${totalRetPct >= 0 ? '+' : ''}${totalRetPct.toFixed(1)}%`}</div>
+                <div class="lbl">Total Return</div>
+                <div class="mnum" style="font-family:var(--mono);color:${totalRetPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${hideVal ? '<span class="hval">Hidden</span>' : `${totalRetPct >= 0 ? '+' : ''}${totalRetPct.toFixed(1)}%`}</div>
               </div>
             </div>
           </div>`;
@@ -5372,12 +5373,12 @@
         const logEl = document.getElementById('gains-contrib-log');
         if (logEl) {
           const sorted = [...contribs].sort((a, b) => b.date.localeCompare(a.date));
-          let lh = `<div class="card mb-2"><div class="sec" style="padding:16px 20px 10px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">Contribution Log</span>
+          let lh = `<div class="card mb-2"><div class="sec" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Contribution Log</span>
             <button class="btn bsm bp" onclick="openContribModal(null)">+ Add</button>
           </div>`;
           if (!sorted.length) {
-            lh += `<div style="padding:20px;text-align:center;color:var(--ink3);font-size:13px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
+            lh += `<div style="text-align:center;color:var(--ink3);font-size:13px;padding-bottom:8px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
           } else {
             lh += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
               <th>Date</th><th>Amount</th><th>Note</th><th></th>
@@ -5386,8 +5387,8 @@
               lh += `<tr>
                 <td style="white-space:nowrap">${c.date}</td>
                 <td class="mo" style="font-weight:600">${fmtV(c.amount)}</td>
-                <td style="color:var(--ink3);font-size:12px">${c.note || ''}</td>
-                <td style="text-align:right">
+                <td style="color:var(--ink3)">${c.note || ''}</td>
+                <td style="text-align:right;white-space:nowrap">
                   <button class="btn bsm bgh" onclick="openContribModal('${c.id}')">Edit</button>
                   <button class="btn bsm bgh" style="color:var(--red)" onclick="delContrib('${c.id}')">&#10005;</button>
                 </td>
