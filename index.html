@@ -5875,28 +5875,33 @@
         return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
       }
 
-      async function fetchSingleQuote(ticker) {
-        // Source 1: FMP /quote — returns last price + day change even after hours
-        // Free demo key, CORS-safe, 250 req/day, no signup needed
+      // ── Batch FMP fetch (1 request for ALL tickers) ────────────
+      async function fetchFMPBatch(tickers) {
+        const out = {};
         try {
+          const symbols = tickers.join(',');
           const res = await fetchWithTimeout(
-            `https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 7000);
+            `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 12000);
           if (res.ok) {
             const data = await res.json();
-            const q = Array.isArray(data) ? data[0] : data;
-            // q.price = last trade price (works after hours — returns latest close)
-            // q.changesPercentage = % change from previous close (always populated)
-            if (q?.price) {
-              return {
-                price: q.price,
-                change: q.change ?? 0,
-                changePct: q.changesPercentage ?? 0,
-              };
-            }
+            const arr = Array.isArray(data) ? data : [data];
+            arr.forEach(q => {
+              if (q?.symbol && q?.price) {
+                out[q.symbol] = {
+                  price: q.price,
+                  change: q.change ?? 0,
+                  changePct: q.changesPercentage ?? 0,
+                };
+              }
+            });
           }
         } catch (_) { }
+        return out;
+      }
 
-        // Source 2: Yahoo via allorigins proxy (handles CORS for file:// context)
+      // ── Per-ticker fallback sources (only for tickers FMP missed) ──
+      async function fetchFallbackQuote(ticker) {
+        // Source 1: Yahoo via allorigins proxy (handles CORS for file:// context)
         try {
           const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`;
           const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
@@ -5913,7 +5918,7 @@
           }
         } catch (_) { }
 
-        // Source 3: Yahoo direct (works when opened via http server, not file://)
+        // Source 2: Yahoo direct (works when opened via http server, not file://)
         try {
           const res = await fetchWithTimeout(
             `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`, 6000);
@@ -5926,7 +5931,7 @@
           }
         } catch (_) { }
 
-        // Source 4: Twelve Data (free tier: 8 req/min, 800/day — no signup needed for demo)
+        // Source 3: Twelve Data (free tier: 8 req/min, 800/day)
         try {
           const res = await fetchWithTimeout(
             `https://api.twelvedata.com/price?symbol=${ticker}&apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 7000);
@@ -5939,35 +5944,41 @@
           }
         } catch (_) { }
 
-        return null; // all sources failed for this ticker
+        return null;
       }
 
       async function fetchQuotes(tickers, onProgress) {
         const out = {};
-        let remaining = [...tickers];
-        const maxRounds = 10;  // up to 10 retry rounds
+        if (tickers.length === 0) return out;
 
+        // ── Round 1: single batch FMP call for all tickers ──────
+        const fmpResults = await fetchFMPBatch(tickers);
+        Object.assign(out, fmpResults);
+
+        let remaining = tickers.filter(t => !out[t]);
+        if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
+
+        // ── Rounds 2+: retry remaining with all fallback sources ──
+        const maxRounds = 8;
         for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
-          // Exponential backoff: 0, 2s, 4s, 6s, 8s… capped at 10s
-          if (attempt > 0) {
-            const delay = Math.min(2000 * attempt, 10000);
-            await new Promise(r => setTimeout(r, delay));
+          // Backoff: 2s, 3s, 4s, 5s… capped at 8s
+          await new Promise(r => setTimeout(r, Math.min(2000 + attempt * 1000, 8000)));
+
+          // Try FMP batch again for remaining (in case it was a transient failure)
+          if (remaining.length > 1) {
+            const retry = await fetchFMPBatch(remaining);
+            Object.assign(out, retry);
+            remaining = tickers.filter(t => !out[t]);
           }
 
-          // Fetch in small batches of 3 to be gentler on rate limits
-          for (let i = 0; i < remaining.length; i += 3) {
-            const batch = remaining.slice(i, i + 3);
-            const settled = await Promise.allSettled(
-              batch.map(t => fetchSingleQuote(t).then(q => ({ ticker: t, q })))
-            );
-            settled.forEach(r => {
-              if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
-            });
-            if (i + 3 < remaining.length) await new Promise(r => setTimeout(r, 500));
+          // Try fallback sources for whatever is still missing, one at a time
+          for (const t of [...remaining]) {
+            const q = await fetchFallbackQuote(t);
+            if (q) { out[t] = q; remaining = tickers.filter(x => !out[x]); }
           }
 
-          remaining = tickers.filter(t => !out[t]);
-          if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, attempt + 1);
+          if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, attempt + 2);
+          if (remaining.length === 0) break;
         }
 
         return out;
