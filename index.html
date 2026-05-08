@@ -5599,31 +5599,41 @@
           const totalGained = currentValue - totalContribs;
           const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
 
-          // Build per-account tooltip
-          const acctBreakdown = acctIds.map(id => {
-            const a = S.accounts.find(x => String(x.id) === id);
-            if (!a) return '';
-            return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${a.name}</span><span style="font-family:var(--mono)">${fmt(getAcctUSD(a), 2)}</span></div>`;
-          }).join('');
-          const tooltipContent = `<div style="font-size:11px;min-width:200px">${acctBreakdown}</div>`;
+          // Build per-account breakdowns
+          const tipStyle = 'display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap';
+          const tipWrap = 'position:relative;display:inline-block;cursor:help';
+          const tipEvt = `onmouseenter="this.querySelector('.gains-tip').style.display='block'" onmouseleave="this.querySelector('.gains-tip').style.display='none'" onclick="const t=this.querySelector('.gains-tip');t.style.display=t.style.display==='block'?'none':'block'"`;
+          const dotUl = 'text-decoration:underline dotted var(--ink4);text-underline-offset:3px';
+          const mkTip = rows => `<div class="gains-tip" style="${tipStyle}"><div style="font-size:11px;min-width:200px">${rows}</div></div>`;
+          const mkRow = (name, val) => `<div style="display:flex;justify-content:space-between;gap:16px"><span>${name}</span><span style="font-family:var(--mono)">${val}</span></div>`;
+
+          const valueTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); return a ? mkRow(a.name, fmt(getAcctUSD(a), 2)) : ''; }).join('');
+          const contribTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const sum = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); return mkRow(a.name, fmt(sum, 2)); }).join('');
+          const gainedTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const acctContrib = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); const acctGain = getAcctUSD(a) - acctContrib; return mkRow(a.name, `<span style="color:${acctGain >= 0 ? 'var(--fm)' : 'var(--rose)'}">${acctGain >= 0 ? '+' : ''}${fmt(Math.abs(acctGain), 2)}</span>`); }).join('');
 
           allTimeEl.innerHTML = `<div class="card mb-2">
             <div class="sec" style="margin-bottom:12px">All-Time Summary</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
               <div>
                 <div class="lbl">Total Contributed</div>
-                <div class="mnum" style="font-family:var(--mono)">${fmtV(totalContribs)}</div>
+                <div style="${tipWrap}" ${tipEvt}>
+                  <div class="mnum" style="font-family:var(--mono);${dotUl}">${fmtV(totalContribs)}</div>
+                  ${mkTip(contribTip)}
+                </div>
               </div>
               <div>
                 <div class="lbl">Current Value</div>
-                <div style="position:relative;display:inline-block;cursor:help" onmouseenter="this.querySelector('.gains-tip').style.display='block'" onmouseleave="this.querySelector('.gains-tip').style.display='none'" onclick="const t=this.querySelector('.gains-tip');t.style.display=t.style.display==='block'?'none':'block'">
-                  <div class="mnum" style="font-family:var(--mono);text-decoration:underline dotted var(--ink4);text-underline-offset:3px">${fmtV(currentValue)}</div>
-                  <div class="gains-tip" style="display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap">${tooltipContent}</div>
+                <div style="${tipWrap}" ${tipEvt}>
+                  <div class="mnum" style="font-family:var(--mono);${dotUl}">${fmtV(currentValue)}</div>
+                  ${mkTip(valueTip)}
                 </div>
               </div>
               <div>
                 <div class="lbl">Total Gained</div>
-                <div class="mnum" style="font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
+                <div style="${tipWrap}" ${tipEvt}>
+                  <div class="mnum" style="font-family:var(--mono);${dotUl};color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
+                  ${mkTip(gainedTip)}
+                </div>
               </div>
               <div>
                 <div class="lbl">Total Return</div>
