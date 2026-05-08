@@ -1307,6 +1307,18 @@
                   class="inp inpm" id="fx-set" value="1370" step="1" style="width:150px" onchange="updFX(this.value)">
               </div>
             </div>
+            <div class="card mb-2">
+              <div class="sec">API Keys</div>
+              <div class="fr" style="align-items:flex-start">
+                <label style="display:flex;flex-direction:column;gap:3px">
+                  <span>Finnhub API key</span>
+                  <span style="font-size:10.5px;color:var(--ink4)">Free at <a href="https://finnhub.io" target="_blank" style="color:var(--teal)">finnhub.io</a> — 60 req/min</span>
+                </label>
+                <input type="text" class="inp inpm" id="finnhub-key" placeholder="paste key here"
+                  style="width:200px;font-family:var(--mono);font-size:11px"
+                  value="" onchange="S.settings.finnhubKey=this.value.trim();ps(S)">
+              </div>
+            </div>
             <div class="card">
               <div class="sec">Data Management</div>
               <div style="display:flex;flex-direction:column;gap:8px">
@@ -5637,6 +5649,8 @@
           }
         });
         document.getElementById('fx-set').value = S.settings.fx;
+        const fhKeyEl = document.getElementById('finnhub-key');
+        if (fhKeyEl) fhKeyEl.value = S.settings.finnhubKey || '';
         syncPrivacyUI();
         document.getElementById('snap-list').innerHTML = '';
         if (S.snapshots.length === 0) {
@@ -5864,10 +5878,9 @@
       }
 
       // ── Quote fetching ─────────────────────────────────────────────
-      // Tries 3 sources per ticker until one works:
-      //   1. Financial Modeling Prep (demo key, CORS-safe, 250 req/day free)
-      //   2. Yahoo Finance via allorigins CORS proxy
-      //   3. Yahoo Finance direct (works when served over http://)
+      // Primary: Finnhub (free key, 60 req/min, real-time US quotes)
+      // Fallback: FMP batch, Yahoo proxied, Twelve Data
+      // ──────────────────────────────────────────────────────────────
 
       function fetchWithTimeout(url, ms) {
         const controller = new AbortController();
@@ -5875,33 +5888,49 @@
         return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
       }
 
-      // ── Batch FMP fetch (1 request for ALL tickers) ────────────
-      async function fetchFMPBatch(tickers) {
-        const out = {};
+      // ── Finnhub: per-ticker but fast (60 req/min) ──────────────
+      async function fetchFinnhubQuote(ticker, apiKey) {
         try {
-          const symbols = tickers.join(',');
           const res = await fetchWithTimeout(
-            `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 12000);
+            `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`, 8000);
           if (res.ok) {
-            const data = await res.json();
-            const arr = Array.isArray(data) ? data : [data];
-            arr.forEach(q => {
-              if (q?.symbol && q?.price) {
-                out[q.symbol] = {
-                  price: q.price,
-                  change: q.change ?? 0,
-                  changePct: q.changesPercentage ?? 0,
-                };
-              }
-            });
+            const d = await res.json();
+            // d.c = current, d.d = change, d.dp = change%, d.pc = prev close
+            if (d?.c && d.c > 0) {
+              return { price: d.c, change: d.d ?? 0, changePct: d.dp ?? 0 };
+            }
           }
         } catch (_) { }
-        return out;
+        return null;
       }
 
-      // ── Per-ticker fallback sources (only for tickers FMP missed) ──
+      // ── FMP batch (commented out — kept as fallback option) ─────
+      // async function fetchFMPBatch(tickers) {
+      //   const out = {};
+      //   try {
+      //     const symbols = tickers.join(',');
+      //     const res = await fetchWithTimeout(
+      //       `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 12000);
+      //     if (res.ok) {
+      //       const data = await res.json();
+      //       const arr = Array.isArray(data) ? data : [data];
+      //       arr.forEach(q => {
+      //         if (q?.symbol && q?.price) {
+      //           out[q.symbol] = {
+      //             price: q.price,
+      //             change: q.change ?? 0,
+      //             changePct: q.changesPercentage ?? 0,
+      //           };
+      //         }
+      //       });
+      //     }
+      //   } catch (_) { }
+      //   return out;
+      // }
+
+      // ── Per-ticker fallback sources ────────────────────────────
       async function fetchFallbackQuote(ticker) {
-        // Source 1: Yahoo via allorigins proxy (handles CORS for file:// context)
+        // Fallback 1: Yahoo via allorigins proxy
         try {
           const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`;
           const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
@@ -5918,7 +5947,7 @@
           }
         } catch (_) { }
 
-        // Source 2: Yahoo direct (works when opened via http server, not file://)
+        // Fallback 2: Yahoo direct
         try {
           const res = await fetchWithTimeout(
             `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`, 6000);
@@ -5931,7 +5960,7 @@
           }
         } catch (_) { }
 
-        // Source 3: Twelve Data (free tier: 8 req/min, 800/day)
+        // Fallback 3: Twelve Data
         try {
           const res = await fetchWithTimeout(
             `https://api.twelvedata.com/price?symbol=${ticker}&apikey=hl4W4680nCfjggoN36LDD5KeuBSbpGZW`, 7000);
@@ -5951,27 +5980,38 @@
         const out = {};
         if (tickers.length === 0) return out;
 
-        // ── Round 1: single batch FMP call for all tickers ──────
-        const fmpResults = await fetchFMPBatch(tickers);
-        Object.assign(out, fmpResults);
+        const finnhubKey = S.settings.finnhubKey;
+
+        // ── Finnhub: fetch all tickers concurrently ──────────────
+        if (finnhubKey) {
+          const settled = await Promise.allSettled(
+            tickers.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q })))
+          );
+          settled.forEach(r => {
+            if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
+          });
+        }
 
         let remaining = tickers.filter(t => !out[t]);
         if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
 
-        // ── Rounds 2+: retry remaining with all fallback sources ──
-        const maxRounds = 8;
+        // ── Retry remaining with Finnhub + fallbacks ─────────────
+        const maxRounds = 6;
         for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
-          // Backoff: 2s, 3s, 4s, 5s… capped at 8s
           await new Promise(r => setTimeout(r, Math.min(2000 + attempt * 1000, 8000)));
 
-          // Try FMP batch again for remaining (in case it was a transient failure)
-          if (remaining.length > 1) {
-            const retry = await fetchFMPBatch(remaining);
-            Object.assign(out, retry);
+          // Retry Finnhub for remaining
+          if (finnhubKey) {
+            const settled = await Promise.allSettled(
+              remaining.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q })))
+            );
+            settled.forEach(r => {
+              if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
+            });
             remaining = tickers.filter(t => !out[t]);
           }
 
-          // Try fallback sources for whatever is still missing, one at a time
+          // Try fallback sources for whatever is still missing
           for (const t of [...remaining]) {
             const q = await fetchFallbackQuote(t);
             if (q) { out[t] = q; remaining = tickers.filter(x => !out[x]); }
@@ -6279,6 +6319,13 @@
         if (btn) btn.disabled = true;
 
         const tickers = [...new Set(S.funds.map(f => f.ticker))];
+        if (!S.settings.finnhubKey) {
+          showPriceBar('Add your Finnhub API key in Settings → API Keys', true);
+          syncInProgress = false;
+          if (icon) icon.style.animation = '';
+          if (btn) btn.disabled = false;
+          return;
+        }
         showPriceBar(`Syncing ${tickers.length} tickers…`);
 
         let quotes = {};
