@@ -1792,6 +1792,18 @@
       const GTAG = { fire: 'FIRE', home: 'Home', emergency: 'Emergency', milestone: 'Milestone', wedding: 'Wedding', kids: 'Kids', custom: 'Custom' };
       const TLAB = { checking: 'Checking', savings: 'Savings', 'brokerage-taxable': 'Taxable', 'brokerage-roth': 'Roth IRA', pension: 'Pension', subscription: '청약계좌', other: 'Other' };
 
+      // Color-code account types using theme chart colors — stable mapping by type
+      function getAcctTypeColor(typeId) {
+        const types = (S.accountTypes || []).filter(t => {
+          const cat = S.accountCategories?.find(c => c.id === t.categoryId);
+          return cat?.isInvestment || t.isInvestment;
+        });
+        const idx = types.findIndex(t => t.id === typeId);
+        const colors = getThemeColors();
+        const c = colors[(idx >= 0 ? idx : 0) % colors.length];
+        return c || colors[0];
+      }
+
       const ICONS = {
         grid: `<svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg>`,
         briefcase: `<svg viewBox="0 0 16 16"><rect x="2" y="4.5" width="12" height="8.5" rx="1.5"/><path d="M5 4.5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><line x1="2" y1="8" x2="14" y2="8"/></svg>`,
@@ -3453,7 +3465,10 @@
         if (invAccts.length === 0) { wrap.innerHTML = ''; return; }
 
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
-        const tagsHtml = selected.length ? selected.map(a => `<div class="ms-tag">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
+        const tagsHtml = selected.length ? selected.map(a => {
+          const ac = getAcctTypeColor(a.type);
+          return `<div class="ms-tag" style="background:${ac};border-color:${ac}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`;
+        }).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
         wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <span class="lbl" style="margin-bottom:0">Show accounts:</span>
@@ -3468,8 +3483,9 @@
               <div class="ms-list" id="port-ms-list">
                 ${invAccts.map(a => {
           const on = S.portAcctToggles[a.id] !== false;
+          const ac = getAcctTypeColor(a.type);
           return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="togglePortAcct('${a.id}')">
-                    <div class="chk"></div>
+                    <div class="chk" style="${on ? 'background:' + ac + ';border-color:' + ac : ''}"></div>
                     <span>${a.name}</span>
                   </div>`;
         }).join('')}
@@ -3609,10 +3625,11 @@
             const a = S.accounts.find(x => String(x.id) === id);
             const name = a?.name || id;
             const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
-            return `<span class="tag tb" style="font-size:10px">${name}: ${valFmt}</span>`;
+            const ac = a ? getAcctTypeColor(a.type) : 'var(--ink)';
+            return `<span class="tag" style="font-size:10px;background:${ac};color:#fff">${name}: ${valFmt}</span>`;
           }).join(' ');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}${isHandsOff ? '<span class="tag" style="background:var(--sky-l);color:var(--sky);margin-left:4px">hands-off</span>' : ''}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
