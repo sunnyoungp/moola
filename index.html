@@ -5312,7 +5312,8 @@
       }
 
       function contribsInRange(startDate, endDate) {
-        return (S.gainContribs || []).filter(c => c.date >= startDate && c.date <= endDate)
+        // Exclude contributions on the start date — they're already reflected in the starting snapshot value
+        return (S.gainContribs || []).filter(c => c.date > startDate && c.date <= endDate)
           .reduce((s, c) => s + (c.amount || 0), 0);
       }
 
