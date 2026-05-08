@@ -1723,6 +1723,7 @@
               <line x1="2" y1="2" x2="10" y2="10" />
               <line x1="10" y1="2" x2="2" y2="10" />
             </svg></button></div>
+        <div class="fr"><label>Account</label><select class="inp" id="gc-account"></select></div>
         <div class="fr"><label>Date</label><input class="inp" id="gc-date" type="date"></div>
         <div class="fr"><label>Amount</label>
           <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" id="gc-amount" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
@@ -1731,6 +1732,23 @@
         <div class="modal-footer">
           <button class="btn" onclick="closeModal('m-contrib')">Cancel</button>
           <button class="btn bp" onclick="saveContrib()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mo-ov" id="m-contrib-migrate">
+      <div class="modal" style="max-width:520px">
+        <div class="modal-title"><span>Assign accounts to contributions</span><button class="bgh btn bsm"
+            onclick="closeModal('m-contrib-migrate')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="2" y1="2" x2="10" y2="10" />
+              <line x1="10" y1="2" x2="2" y2="10" />
+            </svg></button></div>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">Contributions now track which account they belong to. Please assign each existing entry to an account so your per-account totals are accurate.</div>
+        <div id="cm-rows" style="max-height:400px;overflow-y:auto"></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('m-contrib-migrate')">Later</button>
+          <button class="btn bp" onclick="saveContribMigration()">Save All</button>
         </div>
       </div>
     </div>
@@ -5321,9 +5339,9 @@
         return { start: start.toISOString().slice(0, 10), end };
       }
 
-      function contribsInRange(startDate, endDate) {
+      function contribsInRange(startDate, endDate, acctIds) {
         // Exclude contributions on the start date — they're already reflected in the starting snapshot value
-        return (S.gainContribs || []).filter(c => c.date > startDate && c.date <= endDate)
+        return (S.gainContribs || []).filter(c => c.date > startDate && c.date <= endDate && (!acctIds || acctIds.includes(String(c.account))))
           .reduce((s, c) => s + (c.amount || 0), 0);
       }
 
@@ -5411,8 +5429,15 @@
       }
 
       // ── Main render ──
+      let _contribMigrateChecked = false;
       function renderGains() {
         renderGainsAcctToggles();
+
+        // One-time migration prompt for contributions missing account field
+        if (!_contribMigrateChecked) {
+          _contribMigrateChecked = true;
+          checkContribMigration();
+        }
 
         const snaps = S.gainSnapshots || [];
         const contribs = S.gainContribs || [];
@@ -5440,7 +5465,7 @@
         // ── Period calculation ──
         const { start, end } = gainsPeriodRange();
         const currentValue = currentValueForAccts(acctIds);
-        const totalContribsAll = contribs.reduce((s, c) => s + (c.amount || 0), 0);
+        const totalContribsAll = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + (c.amount || 0), 0);
         const isAllTime = gainsPeriod === 'ALL';
 
         // ── Period body ──
@@ -5483,7 +5508,7 @@
                 </div>`;
               }
             } else {
-              const periodContribs = contribsInRange(start, end);
+              const periodContribs = contribsInRange(start, end, acctIds);
               const periodGain = currentValue - startValue - periodContribs;
               const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : 0;
               ph += `<div class="card mb-2">
@@ -5565,7 +5590,7 @@
         // ── All-time summary ──
         const allTimeEl = document.getElementById('gains-alltime');
         if (allTimeEl) {
-          const totalContribs = contribs.reduce((s, c) => s + (c.amount || 0), 0);
+          const totalContribs = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + (c.amount || 0), 0);
           const totalGained = currentValue - totalContribs;
           const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
 
@@ -5611,15 +5636,25 @@
             <span>Contribution Log</span>
             <button class="btn bsm bp" onclick="openContribModal(null)">+ Add</button>
           </div>`;
+          const unassignedCount = sorted.filter(c => !c.account).length;
+          if (unassignedCount) {
+            lh += `<div style="background:var(--rose-bg,#fff0f0);border:1px solid var(--rose,#e55);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
+              <span style="color:var(--rose)">${unassignedCount} contribution${unassignedCount > 1 ? 's' : ''} missing account assignment</span>
+              <button class="btn bsm" style="color:var(--rose);border-color:var(--rose)" onclick="_contribMigrateChecked=false;checkContribMigration()">Assign now</button>
+            </div>`;
+          }
           if (!sorted.length) {
             lh += `<div style="text-align:center;color:var(--ink3);font-size:13px;padding-bottom:8px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
           } else {
             lh += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
-              <th>Date</th><th>Amount</th><th>Note</th><th></th>
+              <th>Date</th><th>Account</th><th>Amount</th><th>Note</th><th></th>
             </tr></thead><tbody>`;
             sorted.forEach(c => {
+              const acct = S.accounts.find(a => String(a.id) === String(c.account));
+              const acctName = acct ? acct.name : '<span style="color:var(--rose);font-size:11px">Unassigned</span>';
               lh += `<tr>
                 <td style="white-space:nowrap">${c.date}</td>
+                <td style="white-space:nowrap;font-size:12px">${acctName}</td>
                 <td class="mo" style="font-weight:600">${fmtV(c.amount)}</td>
                 <td style="color:var(--ink3)">${c.note || ''}</td>
                 <td style="text-align:right;white-space:nowrap">
@@ -5676,14 +5711,20 @@
       // ── Contribution modal ──
       function openContribModal(id) {
         S.editContribId = id;
+        // Populate account dropdown
+        const sel = document.getElementById('gc-account');
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        sel.innerHTML = invAccts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
         if (id) {
           const c = (S.gainContribs || []).find(x => String(x.id) === String(id));
           document.getElementById('m-contrib-title').textContent = 'Edit contribution';
+          sel.value = c.account || invAccts[0]?.id || '';
           document.getElementById('gc-date').value = c.date;
           document.getElementById('gc-amount').value = c.amount ? c.amount.toLocaleString('en-US') : '';
           document.getElementById('gc-note').value = c.note || '';
         } else {
           document.getElementById('m-contrib-title').textContent = 'Add contribution';
+          sel.value = invAccts[0]?.id || '';
           document.getElementById('gc-date').value = todayStr();
           document.getElementById('gc-amount').value = '';
           document.getElementById('gc-note').value = '';
@@ -5692,16 +5733,17 @@
       }
 
       function saveContrib() {
+        const account = document.getElementById('gc-account').value;
         const date = document.getElementById('gc-date').value;
         const amount = parseFloat(document.getElementById('gc-amount').value.replace(/,/g, '')) || 0;
-        if (!date || !amount) return;
+        if (!date || !amount || !account) return;
         const note = document.getElementById('gc-note').value.trim();
         if (!S.gainContribs) S.gainContribs = [];
         if (S.editContribId) {
           const idx = S.gainContribs.findIndex(x => String(x.id) === String(S.editContribId));
-          if (idx >= 0) S.gainContribs[idx] = { ...S.gainContribs[idx], date, amount, note };
+          if (idx >= 0) S.gainContribs[idx] = { ...S.gainContribs[idx], date, amount, note, account };
         } else {
-          S.gainContribs.push({ id: Date.now(), date, amount, note });
+          S.gainContribs.push({ id: Date.now(), date, amount, note, account });
         }
         S.gainContribs.sort((a, b) => a.date.localeCompare(b.date));
         ps(S); closeModal('m-contrib'); renderGains();
@@ -5711,6 +5753,38 @@
         if (!confirm('Delete this contribution?')) return;
         S.gainContribs = (S.gainContribs || []).filter(x => String(x.id) !== String(id));
         ps(S); renderGains();
+      }
+
+      // ── Contribution account migration ──
+      function checkContribMigration() {
+        const contribs = S.gainContribs || [];
+        if (!contribs.length) return;
+        const unassigned = contribs.filter(c => !c.account);
+        if (!unassigned.length) return;
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        if (!invAccts.length) return;
+        const opts = invAccts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        const rows = document.getElementById('cm-rows');
+        rows.innerHTML = unassigned.map(c =>
+          `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)" data-cid="${c.id}">
+            <div style="min-width:80px;font-size:12px;color:var(--ink3)">${c.date}</div>
+            <div style="min-width:80px;font-size:13px;font-family:var(--mono);font-weight:600">${gainFmtUSD(c.amount)}</div>
+            <div style="flex:1;font-size:12px;color:var(--ink4)">${c.note || ''}</div>
+            <select class="inp" style="max-width:180px;font-size:12px" data-migrate-id="${c.id}">${opts}</select>
+          </div>`
+        ).join('');
+        openModal('m-contrib-migrate');
+      }
+
+      function saveContribMigration() {
+        const selects = document.querySelectorAll('[data-migrate-id]');
+        selects.forEach(sel => {
+          const id = sel.getAttribute('data-migrate-id');
+          const acctId = sel.value;
+          const c = (S.gainContribs || []).find(x => String(x.id) === String(id));
+          if (c) c.account = acctId;
+        });
+        ps(S); closeModal('m-contrib-migrate'); renderGains();
       }
 
       // ── Historical snapshot modal ──
