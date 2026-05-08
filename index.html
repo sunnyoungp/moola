@@ -853,6 +853,20 @@
         <div id="ft-panel-body" style="flex:1;overflow-y:auto;padding:18px 20px 24px"></div>
       </div>
 
+      <!-- GAINS -->
+      <div id="tab-gains" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Investment Gains</div>
+            <div class="page-sub">Track returns across all investment accounts</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn bp bsm" onclick="openGainModal(null)">+ Add account</button>
+          </div>
+        </div>
+        <div id="gains-body"></div>
+      </div>
+
       <!-- SETTINGS -->
       <div id="tab-settings" class="tc">
         <div class="page-hdr">
@@ -1648,6 +1662,59 @@
       </div>
     </div>
 
+    <div class="mo-ov" id="m-gain">
+      <div class="modal" style="max-width:480px">
+        <div class="modal-title"><span id="m-gain-title">Add account</span><button class="bgh btn bsm"
+            onclick="closeModal('m-gain')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="2" y1="2" x2="10" y2="10" />
+              <line x1="10" y1="2" x2="2" y2="10" />
+            </svg></button></div>
+        <div class="fr"><label>Account name</label><input class="inp" id="g-name" placeholder="e.g. Fidelity Taxable"></div>
+        <div class="fr"><label>Account type</label><select class="inp" id="g-type">
+            <option value="taxable">Taxable</option>
+            <option value="roth">Roth IRA</option>
+            <option value="tax-advantaged">Tax-advantaged (401k, IRA)</option>
+            <option value="emergency">Emergency Fund</option>
+            <option value="foreign">Foreign Brokerage</option>
+          </select></div>
+        <div class="fr" id="g-cur-row" style="display:none">
+          <label>Currency</label>
+          <div style="display:flex;gap:8px">
+            <select class="inp" id="g-cur" style="width:90px" onchange="gainCurChanged()">
+              <option value="KRW">KRW</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="JPY">JPY</option>
+            </select>
+            <div style="flex:1;position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">1 USD =</span>
+              <input class="inp" id="g-fx" type="number" step="0.01" style="padding-left:62px" placeholder="1370">
+            </div>
+          </div>
+        </div>
+        <div class="fr"><label>Total cash deposited from bank</label>
+          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym">$</span><input class="inp" style="padding-left:24px" id="g-cashin" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+        </div>
+        <div class="fr"><label>Current market value</label>
+          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym2">$</span><input class="inp" style="padding-left:24px" id="g-value" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+        </div>
+        <div class="fr"><label>Realized gains from sales</label>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">ST</span><input class="inp" style="padding-left:28px" id="g-real-st" type="text" placeholder="Short-term" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+            <div style="flex:1;position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">LT</span><input class="inp" style="padding-left:28px" id="g-real-lt" type="text" placeholder="Long-term" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          </div>
+        </div>
+        <div class="fr"><label>Dividends &amp; interest received</label>
+          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym3">$</span><input class="inp" style="padding-left:24px" id="g-divs" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('m-gain')">Cancel</button>
+          <button class="btn bp" onclick="saveGain()">Save</button>
+        </div>
+      </div>
+    </div>
+
 
     <script>
       let fcTimeout = null;
@@ -1987,6 +2054,7 @@
             { id: 'goals', name: 'Goals', icon: 'target', archived: false },
             { id: 'life', name: 'Life', icon: 'layout', archived: false },
             { id: 'future', name: 'Life plan', icon: 'future', archived: false },
+            { id: 'gains', name: 'Gains', icon: 'activity', archived: false },
             { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
           ],
           accounts: [],
@@ -2024,7 +2092,8 @@
             { id: 'other-inv', name: 'Other (Investment)', categoryId: 'investments', bucketId: 'investments', isInvestment: true }
           ],
           portAcctToggles: {},
-          ovGoalsView: 'bars'
+          ovGoalsView: 'bars',
+          gainEntries: []
         };
       }
 
@@ -2055,6 +2124,7 @@
         if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, bills: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
         if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', bills: 'bills', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
         if (!S.future_scenarios) S.future_scenarios = [];
+        if (!S.gainEntries) S.gainEntries = [];
 
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
@@ -2567,7 +2637,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -4895,6 +4965,226 @@
         const cur = getComputedStyle(document.documentElement).getPropertyValue('--th-primary').trim();
         const idx = THEME_PRESETS.findIndex(p => toHex6(p.tokens['--th-primary']) === toHex6(cur));
         return idx >= 0 ? idx : -1;
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // INVESTMENT GAINS
+      // ══════════════════════════════════════════════════════════════
+
+      const GAIN_TYPES = { taxable: 'Taxable', roth: 'Roth IRA', 'tax-advantaged': 'Tax-advantaged', emergency: 'Emergency Fund', foreign: 'Foreign Brokerage' };
+
+      function gainToUSD(entry, val) {
+        if (entry.type !== 'foreign' || !entry.fx) return val;
+        return val / entry.fx;
+      }
+
+      function gainSym(entry) {
+        return entry.type === 'foreign' ? (entry.cur === 'KRW' ? '₩' : entry.cur === 'JPY' ? '¥' : entry.cur === 'GBP' ? '£' : entry.cur === 'EUR' ? '€' : '$') : '$';
+      }
+
+      function gainFmtLocal(entry, val) {
+        const sym = gainSym(entry);
+        const dec = (entry.cur === 'KRW' || entry.cur === 'JPY') ? 0 : 2;
+        return sym + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+      }
+
+      function gainFmtUSD(val) {
+        return '$' + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function renderGains() {
+        const body = document.getElementById('gains-body');
+        if (!body) return;
+        const entries = S.gainEntries || [];
+
+        if (!entries.length) {
+          body.innerHTML = `<div class="card" style="text-align:center;padding:48px 24px">
+            <div style="font-size:14px;color:var(--ink3);margin-bottom:12px">No accounts added yet</div>
+            <button class="btn bp" onclick="openGainModal(null)">+ Add your first account</button>
+          </div>`;
+          return;
+        }
+
+        // Aggregate totals (all in USD)
+        let totCashIn = 0, totValue = 0, totRealST = 0, totRealLT = 0, totDivs = 0;
+        entries.forEach(e => {
+          totCashIn += gainToUSD(e, e.cashIn || 0);
+          totValue += gainToUSD(e, e.value || 0);
+          totRealST += gainToUSD(e, e.realST || 0);
+          totRealLT += gainToUSD(e, e.realLT || 0);
+          totDivs += gainToUSD(e, e.divs || 0);
+        });
+
+        const totRealized = totRealST + totRealLT + totDivs;
+        const totUnrealized = totValue - totCashIn - totRealized;
+        const totGained = totUnrealized + totRealized;
+        const retPct = totCashIn > 0 ? (totGained / totCashIn) * 100 : 0;
+        const hideVal = isTabHidden('gains');
+
+        const fmtV = v => hideVal ? '<span class="hval">Hidden</span>' : gainFmtUSD(v);
+        const fmtP = v => hideVal ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+        // Hero cards
+        let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="card" style="padding:20px 24px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:6px">Total Cash Put In</div>
+            <div style="font-size:24px;font-weight:700;font-family:var(--mono)">${fmtV(totCashIn)}</div>
+          </div>
+          <div class="card" style="padding:20px 24px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:6px">Total Gained</div>
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <span style="font-size:24px;font-weight:700;font-family:var(--mono);color:${totGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totGained)}</span>
+              <span style="font-size:14px;font-weight:600;color:${retPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtP(retPct)}</span>
+            </div>
+          </div>
+        </div>`;
+
+        // Unrealized vs Realized breakdown
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="card" style="padding:20px 24px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:10px">Unrealized Gains</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${totUnrealized >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totUnrealized)}</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:4px">Current value − cash in − realized</div>
+          </div>
+          <div class="card" style="padding:20px 24px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:10px">Realized Gains</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${totRealized >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totRealized)}</div>
+            <div style="display:flex;gap:16px;margin-top:8px;font-size:11px">
+              <div><span style="color:var(--ink3)">Sales (ST):</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totRealST)}</span></div>
+              <div><span style="color:var(--ink3)">Sales (LT):</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totRealLT)}</span></div>
+              <div><span style="color:var(--ink3)">Divs/Int:</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totDivs)}</span></div>
+            </div>
+          </div>
+        </div>`;
+
+        // Per-account breakdown table
+        html += `<div class="card mb-2"><div class="sec" style="padding:16px 20px 8px"><span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">Per-Account Breakdown</span></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
+            <th>Account</th><th>Type</th><th>Cash In</th><th>Market Value</th><th>Gain / Loss</th><th>Return</th><th></th>
+          </tr></thead><tbody>`;
+
+        entries.forEach(e => {
+          const cashUSD = gainToUSD(e, e.cashIn || 0);
+          const valUSD = gainToUSD(e, e.value || 0);
+          const realUSD = gainToUSD(e, (e.realST || 0) + (e.realLT || 0) + (e.divs || 0));
+          const totalGain = valUSD - cashUSD + realUSD;
+          const pct = cashUSD > 0 ? (totalGain / cashUSD) * 100 : 0;
+          const isForeign = e.type === 'foreign';
+          const localHint = isForeign ? `<div style="font-size:9px;color:var(--ink3);margin-top:1px">${gainFmtLocal(e, e.cashIn)}</div>` : '';
+          const localHint2 = isForeign ? `<div style="font-size:9px;color:var(--ink3);margin-top:1px">${gainFmtLocal(e, e.value)}</div>` : '';
+
+          html += `<tr>
+            <td style="font-weight:600">${e.name}</td>
+            <td><span class="tag tb" style="font-size:10px">${GAIN_TYPES[e.type] || e.type}</span></td>
+            <td class="mo">${fmtV(cashUSD)}${localHint}</td>
+            <td class="mo">${fmtV(valUSD)}${localHint2}</td>
+            <td class="mo" style="color:${totalGain >= 0 ? 'var(--fm)' : 'var(--rose)'};font-weight:600">${fmtV(totalGain)}</td>
+            <td class="mo" style="color:${pct >= 0 ? 'var(--fm)' : 'var(--rose)'};font-weight:600">${hideVal ? '' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`}</td>
+            <td style="text-align:right">
+              <button class="btn bsm bgh" onclick="openGainModal('${e.id}')">Edit</button>
+              <button class="btn bsm bgh" style="color:var(--red)" onclick="delGain('${e.id}')">&#10005;</button>
+            </td>
+          </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        body.innerHTML = html;
+      }
+
+      function openGainModal(id) {
+        S.editGainId = id;
+        const typeEl = document.getElementById('g-type');
+        if (id) {
+          const e = S.gainEntries.find(x => String(x.id) === String(id));
+          document.getElementById('m-gain-title').textContent = 'Edit account';
+          document.getElementById('g-name').value = e.name;
+          typeEl.value = e.type;
+          document.getElementById('g-cashin').value = e.cashIn ? e.cashIn.toLocaleString('en-US') : '';
+          document.getElementById('g-value').value = e.value ? e.value.toLocaleString('en-US') : '';
+          document.getElementById('g-real-st').value = e.realST ? e.realST.toLocaleString('en-US') : '';
+          document.getElementById('g-real-lt').value = e.realLT ? e.realLT.toLocaleString('en-US') : '';
+          document.getElementById('g-divs').value = e.divs ? e.divs.toLocaleString('en-US') : '';
+          if (e.type === 'foreign') {
+            document.getElementById('g-cur-row').style.display = '';
+            document.getElementById('g-cur').value = e.cur || 'KRW';
+            document.getElementById('g-fx').value = e.fx || '';
+            const sym = gainSym(e);
+            document.getElementById('g-sym').textContent = sym;
+            document.getElementById('g-sym2').textContent = sym;
+            document.getElementById('g-sym3').textContent = sym;
+          } else {
+            document.getElementById('g-cur-row').style.display = 'none';
+            document.getElementById('g-sym').textContent = '$';
+            document.getElementById('g-sym2').textContent = '$';
+            document.getElementById('g-sym3').textContent = '$';
+          }
+        } else {
+          document.getElementById('m-gain-title').textContent = 'Add account';
+          ['g-name', 'g-cashin', 'g-value', 'g-real-st', 'g-real-lt', 'g-divs', 'g-fx'].forEach(i => document.getElementById(i).value = '');
+          typeEl.value = 'taxable';
+          document.getElementById('g-cur-row').style.display = 'none';
+          document.getElementById('g-sym').textContent = '$';
+          document.getElementById('g-sym2').textContent = '$';
+          document.getElementById('g-sym3').textContent = '$';
+        }
+        // Watch type changes for foreign toggle
+        typeEl.onchange = () => {
+          const isForeign = typeEl.value === 'foreign';
+          document.getElementById('g-cur-row').style.display = isForeign ? '' : 'none';
+          if (isForeign) {
+            gainCurChanged();
+          } else {
+            document.getElementById('g-sym').textContent = '$';
+            document.getElementById('g-sym2').textContent = '$';
+            document.getElementById('g-sym3').textContent = '$';
+          }
+        };
+        openModal('m-gain');
+      }
+
+      function gainCurChanged() {
+        const cur = document.getElementById('g-cur').value;
+        const sym = cur === 'KRW' ? '₩' : cur === 'JPY' ? '¥' : cur === 'GBP' ? '£' : cur === 'EUR' ? '€' : '$';
+        document.getElementById('g-sym').textContent = sym;
+        document.getElementById('g-sym2').textContent = sym;
+        document.getElementById('g-sym3').textContent = sym;
+      }
+
+      function parseBal(id) {
+        return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
+      }
+
+      function saveGain() {
+        const name = document.getElementById('g-name').value.trim();
+        if (!name) return;
+        const type = document.getElementById('g-type').value;
+        const entry = {
+          id: S.editGainId || Date.now(),
+          name,
+          type,
+          cashIn: parseBal('g-cashin'),
+          value: parseBal('g-value'),
+          realST: parseBal('g-real-st'),
+          realLT: parseBal('g-real-lt'),
+          divs: parseBal('g-divs')
+        };
+        if (type === 'foreign') {
+          entry.cur = document.getElementById('g-cur').value;
+          entry.fx = parseFloat(document.getElementById('g-fx').value) || 1;
+        }
+        if (S.editGainId) {
+          const idx = S.gainEntries.findIndex(x => String(x.id) === String(S.editGainId));
+          if (idx >= 0) S.gainEntries[idx] = entry;
+        } else {
+          S.gainEntries.push(entry);
+        }
+        ps(S); closeModal('m-gain'); renderGains();
+      }
+
+      function delGain(id) {
+        if (!confirm('Delete this account from gains tracker?')) return;
+        S.gainEntries = S.gainEntries.filter(x => String(x.id) !== String(id));
+        ps(S); renderGains();
       }
 
       // ── renderSettings extension ──────────────────────────────────
