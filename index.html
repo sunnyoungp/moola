@@ -3549,7 +3549,6 @@
         document.getElementById('port-total').innerHTML = MT(fmt(tot), 'portfolio');
         // Only include funds with a target for drift table (hands-off = targetPct 0)
         const rebalFunds = funds.filter(f => f.targetPct > 0);
-        const handOffFunds = funds.filter(f => !f.targetPct || f.targetPct === 0);
         const tgtSum = rebalFunds.reduce((s, f) => s + f.targetPct, 0) || 100;
         const rebalTot = rebalFunds.reduce((s, f) => s + getFundUSD(f), 0);
         // Build drift table — one row per ticker
@@ -3564,15 +3563,6 @@
             <td><span class="tag ${Math.abs(d) <= 1 ? 'tg' : Math.abs(d) <= 3 ? 'tgld' : 'tr'}">${Math.abs(d) <= 1 ? 'On target' : d > 0 ? 'Overweight' : 'Underweight'}</span></td>
           </tr>`;
         }).join('');
-        if (handOffFunds.length > 0) {
-          driftRows += handOffFunds.map(f => {
-            return `<tr style="opacity:.65">
-              <td style="font-weight:600">${f.ticker}</td>
-              <td class="mo" colspan="3" style="color:var(--ink3);font-size:11px">Hands-off — no target set</td>
-              <td><span class="tag tb">No target</span></td>
-            </tr>`;
-          }).join('');
-        }
         document.getElementById('drift-tbl-wrap').innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Fund</th><th>Current %</th><th>Target %</th><th>Drift</th><th>Status</th></tr></thead><tbody>${driftRows || '<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:12px">No funds in toggled accounts.</td></tr>'}</tbody></table></div>`;
         const isDark = document.documentElement.classList.contains('dark');
         const colors = getThemeColors();
