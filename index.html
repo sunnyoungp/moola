@@ -1799,6 +1799,12 @@
         const colors = getThemeColors();
         return colors[(idx >= 0 ? idx : 0) % colors.length] || colors[0];
       }
+      // Return '#fff' or '#000' for best contrast on a hex background
+      function contrastFg(hex) {
+        const c = hex.replace('#', '');
+        const r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#000' : '#fff';
+      }
 
       const ICONS = {
         grid: `<svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg>`,
@@ -3463,7 +3469,8 @@
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
         const tagsHtml = selected.length ? selected.map(a => {
           const ac = getAcctColor(a.id);
-          return `<div class="ms-tag" style="background:${ac};border-color:${ac}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`;
+          const fg = contrastFg(ac);
+          return `<div class="ms-tag" style="background:${ac};border-color:${ac};color:${fg}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`;
         }).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
         wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -3621,9 +3628,10 @@
             const a = S.accounts.find(x => String(x.id) === id);
             const name = a?.name || id;
             const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
-            const ac = a ? getAcctColor(a.id) : 'var(--ink3)';
-            return `<span style="display:inline-flex;align-items:center;gap:5px;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${ac};flex-shrink:0"></span><span style="font-size:10px;font-weight:600;color:var(--ink2)">${name}</span><span style="font-size:10px;font-family:var(--mono);color:var(--ink3)">${valFmt}</span></span>`;
-          }).join('<span style="margin:0 4px"></span>');
+            const ac = a ? getAcctColor(a.id) : 'var(--ink)';
+            const fg = a ? contrastFg(ac) : '#fff';
+            return `<span class="tag" style="font-size:10px;background:${ac};color:${fg}">${name}: ${valFmt}</span>`;
+          }).join(' ');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
           return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
