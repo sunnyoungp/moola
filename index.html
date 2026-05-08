@@ -2838,10 +2838,11 @@
           if (agg.length >= 2) {
             dC('snap'); const tc0 = getThemeColors()[0];
             const showDots = agg.length <= 60;
+            const snapFullDates = agg.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
             CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: {
               labels: agg.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', ovNwPeriod === '1M' ? { month: 'short', day: 'numeric' } : { month: 'short', year: '2-digit' })),
               datasets: [{ data: agg.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: showDots ? 3 : 0, borderWidth: 2 }]
-            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } });
+            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { title: items => snapFullDates[items[0].dataIndex], label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } });
           }
         }
         if (vis.breakdown) {
@@ -5526,6 +5527,7 @@
             });
             const tc0 = getThemeColors()[0];
             const showDots = chartSnaps.length <= 60;
+            const gainsFullDates = chartSnaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
             dC('gains');
             CH['gains'] = new Chart(document.getElementById('gainsChart'), {
               type: 'line',
@@ -5546,7 +5548,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
-                  tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('Value', fmt(c.parsed.y / cvt(1))) } }
+                  tooltip: { mode: 'index', intersect: false, callbacks: { title: items => gainsFullDates[items[0].dataIndex], label: c => chartTooltipLabel('Value', fmt(c.parsed.y / cvt(1))) } }
                 },
                 scales: {
                   x: chartXAxis(),
