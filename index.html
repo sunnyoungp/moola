@@ -861,12 +861,15 @@
             <div class="page-sub">Track returns across all investment accounts</div>
           </div>
           <div class="page-actions">
+            <button class="btn bsm bgh" onclick="openHistSnapModal()">+ Historical value</button>
             <button class="btn bp bsm" onclick="openContribModal(null)">+ Add contribution</button>
           </div>
         </div>
+        <!-- Account selector -->
+        <div id="gains-acct-toggles"></div>
         <!-- Period selector -->
         <div class="atab-group" id="gains-period-tabs" style="margin-bottom:16px"></div>
-        <div id="gains-custom-range" style="display:none;margin-bottom:16px;display:none;gap:10px;align-items:center">
+        <div id="gains-custom-range" style="display:none;gap:10px;align-items:center;margin-bottom:16px">
           <input type="date" class="inp" id="gains-start" style="width:150px" onchange="renderGains()">
           <span style="color:var(--ink3)">to</span>
           <input type="date" class="inp" id="gains-end" style="width:150px" onchange="renderGains()">
@@ -1694,6 +1697,24 @@
       </div>
     </div>
 
+    <div class="mo-ov" id="m-hist-snap">
+      <div class="modal" style="max-width:480px">
+        <div class="modal-title"><span>Add historical value</span><button class="bgh btn bsm"
+            onclick="closeModal('m-hist-snap')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="2" y1="2" x2="10" y2="10" />
+              <line x1="10" y1="2" x2="2" y2="10" />
+            </svg></button></div>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:12px">Enter the value of each investment account on a specific date. This creates a snapshot used for period gain calculations.</div>
+        <div class="fr"><label>Date</label><input class="inp" id="hs-date" type="date"></div>
+        <div id="hs-acct-rows"></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('m-hist-snap')">Cancel</button>
+          <button class="btn bp" onclick="saveHistSnap()">Save snapshot</button>
+        </div>
+      </div>
+    </div>
+
 
     <script>
       let fcTimeout = null;
@@ -2075,7 +2096,8 @@
           portAcctToggles: {},
           ovGoalsView: 'bars',
           gainSnapshots: [],
-          gainContribs: []
+          gainContribs: [],
+          gainsAcctToggles: {}
         };
       }
 
@@ -2108,6 +2130,8 @@
         if (!S.future_scenarios) S.future_scenarios = [];
         if (!S.gainSnapshots) S.gainSnapshots = [];
         if (!S.gainContribs) S.gainContribs = [];
+        if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        migrateGainSnapshots();
 
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
@@ -4951,7 +4975,7 @@
       }
 
       // ══════════════════════════════════════════════════════════════
-      // INVESTMENT GAINS — contributions log + automatic snapshots
+      // INVESTMENT GAINS — per-account snapshots + contributions log
       // ══════════════════════════════════════════════════════════════
 
       let gainsPeriod = '1Y';
@@ -4959,36 +4983,79 @@
       function gainFmtUSD(val) {
         return '$' + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
-
       function todayStr() { return new Date().toISOString().slice(0, 10); }
 
-      // ── Auto-snapshot: save portfolio value once per day on load ──
+      // ── Per-account snapshot: records each investment account's value ──
+      // Snapshot shape: { date: 'YYYY-MM-DD', accounts: { acctId: valueUSD, ... } }
       function gainsAutoSnapshot() {
         if (!S) return;
         if (!S.gainSnapshots) S.gainSnapshots = [];
         const today = todayStr();
-        const val = totInv();
-        // Replace today's snapshot if exists, else add
+        const snap = buildSnapshotForDate(today);
         const idx = S.gainSnapshots.findIndex(s => s.date === today);
         if (idx >= 0) {
-          S.gainSnapshots[idx].value = val;
+          S.gainSnapshots[idx] = snap;
         } else {
-          S.gainSnapshots.push({ date: today, value: val });
+          S.gainSnapshots.push(snap);
           S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
         }
         ps(S);
       }
 
-      // ── Find nearest snapshot to a date ──
-      function nearestSnapshot(dateStr) {
+      function buildSnapshotForDate(date) {
+        const accts = {};
+        S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => {
+          accts[String(a.id)] = getAcctUSD(a);
+        });
+        return { date, accounts: accts };
+      }
+
+      // Migrate old-format snapshots (flat { date, value }) → per-account format
+      function migrateGainSnapshots() {
+        if (!S.gainSnapshots) return;
+        S.gainSnapshots.forEach((snap, i) => {
+          if (snap.value !== undefined && !snap.accounts) {
+            // Old format — can't split into accounts, store as _total fallback
+            S.gainSnapshots[i] = { date: snap.date, accounts: {}, _total: snap.value };
+          }
+        });
+      }
+
+      // ── Get snapshot value for selected accounts ──
+      function snapValueForAccts(snap, acctIds) {
+        if (!snap) return null;
+        // Per-account snapshot
+        if (snap.accounts && Object.keys(snap.accounts).length > 0) {
+          return acctIds.reduce((s, id) => s + (snap.accounts[id] || 0), 0);
+        }
+        // Legacy total-only snapshot — return _total only if ALL accounts are selected
+        if (snap._total !== undefined) {
+          const allInv = S.accounts.filter(a => isInvestmentAcct(a));
+          if (acctIds.length === allInv.length) return snap._total;
+          return null; // Can't decompose old totals per-account
+        }
+        return null;
+      }
+
+      // ── Find nearest snapshot that has data for given accounts ──
+      function nearestSnap(dateStr, acctIds) {
         const snaps = S.gainSnapshots || [];
         if (!snaps.length) return null;
-        let best = snaps[0], bestDiff = Math.abs(new Date(snaps[0].date) - new Date(dateStr));
-        for (let i = 1; i < snaps.length; i++) {
-          const diff = Math.abs(new Date(snaps[i].date) - new Date(dateStr));
-          if (diff < bestDiff) { best = snaps[i]; bestDiff = diff; }
+        // Find closest by date that can produce a value
+        let best = null, bestDiff = Infinity;
+        for (const snap of snaps) {
+          const diff = Math.abs(new Date(snap.date) - new Date(dateStr));
+          const val = snapValueForAccts(snap, acctIds);
+          if (val !== null && diff < bestDiff) {
+            best = snap; bestDiff = diff;
+          }
         }
         return best;
+      }
+
+      function earliestSnapDate() {
+        const snaps = S.gainSnapshots || [];
+        return snaps.length ? snaps[0].date : null;
       }
 
       // ── Period date calculation ──
@@ -5002,10 +5069,8 @@
           case 'YTD': start = new Date(now.getFullYear(), 0, 1); break;
           case '1Y': start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()); break;
           case 'ALL': {
-            const snaps = S.gainSnapshots || [];
-            const contribs = S.gainContribs || [];
-            const earliest = [...snaps.map(s => s.date), ...contribs.map(c => c.date)].sort()[0];
-            start = earliest ? new Date(earliest) : new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+            const e = earliestSnapDate();
+            start = e ? new Date(e) : new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
             break;
           }
           case 'CUSTOM': {
@@ -5023,17 +5088,104 @@
           .reduce((s, c) => s + (c.amount || 0), 0);
       }
 
+      // ── Selected gains accounts ──
+      function getGainsAcctIds() {
+        if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        return S.accounts.filter(a => isInvestmentAcct(a) && S.gainsAcctToggles[a.id] !== false)
+          .map(a => String(a.id));
+      }
+
+      function currentValueForAccts(acctIds) {
+        return acctIds.reduce((s, id) => {
+          const a = S.accounts.find(x => String(x.id) === id);
+          return s + (a ? getAcctUSD(a) : 0);
+        }, 0);
+      }
+
+      // ── Account selector ──
+      function renderGainsAcctToggles() {
+        const wrap = document.getElementById('gains-acct-toggles');
+        if (!wrap) return;
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        if (!invAccts.length) { wrap.innerHTML = ''; return; }
+        if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+
+        const selected = invAccts.filter(a => S.gainsAcctToggles[a.id] !== false);
+        const tagsHtml = selected.length ? selected.map(a => {
+          const ac = getAcctColor(a.id);
+          const fg = contrastFg(ac);
+          return `<div class="ms-tag" style="background:${ac};border-color:${ac};color:${fg}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); toggleGainsAcct('${a.id}')">×</span></div>`;
+        }).join('') : '<span style="color:var(--ink4);font-size:12px;margin:2px 0">Select accounts...</span>';
+
+        wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <span class="lbl" style="margin-bottom:0">Accounts:</span>
+          <div class="ms-container" id="gains-ms">
+            <div class="ms-trigger" onclick="toggleGainsDropdown(event)">
+              ${tagsHtml}
+            </div>
+            <div class="ms-dropdown" id="gains-ms-menu" onclick="event.stopPropagation()">
+              <div class="ms-search">
+                <input type="text" placeholder="Filter accounts..." oninput="filterGainsMS(this.value)">
+              </div>
+              <div class="ms-list" id="gains-ms-list">
+                ${invAccts.map(a => {
+          const on = S.gainsAcctToggles[a.id] !== false;
+          const ac = getAcctColor(a.id);
+          return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="toggleGainsAcct('${a.id}')">
+                    <div class="chk" style="${on ? 'background:' + ac + ';border-color:' + ac : ''}"></div>
+                    <span>${a.name}</span>
+                  </div>`;
+        }).join('')}
+              </div>
+              <div class="ms-footer">
+                <button class="btn bsm bgh" style="flex:1" onclick="toggleAllGainsAccts(true)">Select all</button>
+                <button class="btn bsm bgh" style="flex:1" onclick="toggleAllGainsAccts(false)">Clear all</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function toggleGainsDropdown(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('gains-ms-menu');
+        const isShown = menu.style.display === 'block';
+        document.querySelectorAll('.ms-dropdown').forEach(d => d.style.display = 'none');
+        menu.style.display = isShown ? 'none' : 'block';
+        if (!isShown) menu.querySelector('input').focus();
+      }
+      function filterGainsMS(val) {
+        const q = val.toLowerCase();
+        document.querySelectorAll('#gains-ms-list .ms-item').forEach(it => {
+          it.style.display = it.dataset.name.includes(q) ? 'flex' : 'none';
+        });
+      }
+      function toggleGainsAcct(id) {
+        if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        S.gainsAcctToggles[id] = !(S.gainsAcctToggles[id] !== false);
+        ps(S); renderGains();
+      }
+      function toggleAllGainsAccts(state) {
+        if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        S.accounts.filter(a => isInvestmentAcct(a)).forEach(a => S.gainsAcctToggles[a.id] = state);
+        ps(S); renderGains();
+      }
+
+      // ── Main render ──
       function renderGains() {
+        renderGainsAcctToggles();
+
         const snaps = S.gainSnapshots || [];
         const contribs = S.gainContribs || [];
+        const acctIds = getGainsAcctIds();
         const hideVal = isTabHidden('gains');
         const fmtV = v => hideVal ? '<span class="hval">Hidden</span>' : gainFmtUSD(v);
         const fmtG = (v, p) => {
           if (hideVal) return '<span class="hval">Hidden</span>';
           const sign = v >= 0 ? '+' : '';
           const col = v >= 0 ? 'var(--fm)' : 'var(--rose)';
-          return `<span style="color:${col}">${sign}${gainFmtUSD(v)}</span>` +
-            (p != null ? ` <span style="color:${col};font-size:14px;font-weight:600">(${sign}${p.toFixed(1)}%)</span>` : '');
+          return `<span style="color:${col};font-weight:700">${sign}${gainFmtUSD(v)}</span>` +
+            (p != null ? `<span style="color:${col};font-size:14px;font-weight:600;margin-left:8px">${sign}${p.toFixed(1)}%</span>` : '');
         };
 
         // ── Period tabs ──
@@ -5043,43 +5195,36 @@
             `<button class="atab ${gainsPeriod === p ? 'on' : ''}" onclick="gainsPeriod='${p}';renderGains()">${p === 'CUSTOM' ? 'Custom' : p}</button>`
           ).join('');
         }
-        // Show/hide custom range picker
         const customEl = document.getElementById('gains-custom-range');
         if (customEl) customEl.style.display = gainsPeriod === 'CUSTOM' ? 'flex' : 'none';
 
         // ── Period calculation ──
         const { start, end } = gainsPeriodRange();
-        const currentValue = totInv();
-        const startSnap = nearestSnapshot(start);
-        const startValue = startSnap ? startSnap.value : 0;
+        const currentValue = currentValueForAccts(acctIds);
+        const startSnap = nearestSnap(start, acctIds);
+        const startValue = startSnap ? snapValueForAccts(startSnap, acctIds) : null;
         const periodContribs = contribsInRange(start, end);
-        const periodGain = currentValue - startValue - periodContribs;
-        const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : (currentValue > 0 && periodContribs > 0 ? ((currentValue - periodContribs) / periodContribs) * 100 : 0);
-
-        // Check if data is limited
-        const earliestSnap = snaps.length ? snaps[0].date : null;
-        const dataLimited = earliestSnap && earliestSnap > start;
+        const hasEnoughData = startValue !== null;
+        const periodGain = hasEnoughData ? currentValue - startValue - periodContribs : 0;
+        const periodPct = hasEnoughData && startValue > 0 ? (periodGain / startValue) * 100 : 0;
 
         // ── Period body ──
         const periodEl = document.getElementById('gains-period-body');
         if (periodEl) {
           let ph = '';
-          if (dataLimited) {
-            ph += `<div style="background:var(--fll);color:var(--f);padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:12px">Data available from ${earliestSnap} — showing from earliest snapshot</div>`;
-          }
-          if (!snaps.length) {
-            ph += `<div class="card" style="text-align:center;padding:32px 24px;margin-bottom:16px">
-              <div style="font-size:14px;color:var(--ink3)">Snapshots will begin building automatically each time you open Moola.</div>
-              <div style="font-size:12px;color:var(--ink4);margin-top:6px">Check back after a few days for gain/loss tracking.</div>
+          if (!hasEnoughData) {
+            ph += `<div class="card" style="text-align:center;padding:28px 24px;margin-bottom:16px">
+              <div style="font-size:13px;color:var(--ink3);margin-bottom:8px">Not enough snapshot history for this period.</div>
+              <div style="font-size:12px;color:var(--ink4)">Snapshots are saved automatically each time you open Moola, or add a <button class="btn bsm bgh" style="display:inline;padding:2px 8px;font-size:11px" onclick="openHistSnapModal()">historical value</button> to backfill.</div>
             </div>`;
           } else {
-            ph += `<div class="card" style="padding:24px;margin-bottom:16px">
+            ph += `<div class="card" style="padding:20px 24px;margin-bottom:16px">
               <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">Period Gain / Loss</div>
-              <div style="font-size:28px;font-weight:700;font-family:var(--mono);margin-bottom:12px">${fmtG(periodGain, periodPct)}</div>
-              <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:12px">
-                <div><span style="color:var(--ink3)">Starting value</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(startValue)}</div></div>
-                <div><span style="color:var(--ink3)">Contributions</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(periodContribs)}</div></div>
-                <div><span style="color:var(--ink3)">Current value</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(currentValue)}</div></div>
+              <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
+              <div style="display:flex;gap:28px;flex-wrap:wrap">
+                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Starting value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(startValue)}</div></div>
+                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Contributions</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(periodContribs)}</div></div>
+                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Current value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(currentValue)}</div></div>
               </div>
             </div>`;
           }
@@ -5093,24 +5238,35 @@
           const totalGained = currentValue - totalContribs;
           const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
 
+          // Build per-account tooltip
+          const acctBreakdown = acctIds.map(id => {
+            const a = S.accounts.find(x => String(x.id) === id);
+            if (!a) return '';
+            return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${a.name}</span><span style="font-family:var(--mono)">${gainFmtUSD(getAcctUSD(a))}</span></div>`;
+          }).join('');
+          const tooltipContent = `<div style="font-size:11px;min-width:200px">${acctBreakdown}</div>`;
+
           allTimeEl.innerHTML = `<div class="card" style="margin-bottom:16px">
             <div class="sec" style="padding:16px 20px 12px"><span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">All-Time Summary</span></div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 20px 20px">
               <div>
                 <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Contributed</div>
-                <div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmtV(totalContribs)}</div>
+                <div style="font-size:17px;font-weight:700;font-family:var(--mono)">${fmtV(totalContribs)}</div>
               </div>
               <div>
                 <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Current Value</div>
-                <div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmtV(currentValue)}</div>
+                <div style="position:relative;display:inline-block;cursor:help" onmouseenter="this.querySelector('.gains-tip').style.display='block'" onmouseleave="this.querySelector('.gains-tip').style.display='none'" onclick="const t=this.querySelector('.gains-tip');t.style.display=t.style.display==='block'?'none':'block'">
+                  <div style="font-size:17px;font-weight:700;font-family:var(--mono);text-decoration:underline dotted var(--ink4);text-underline-offset:3px">${fmtV(currentValue)}</div>
+                  <div class="gains-tip" style="display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap">${tooltipContent}</div>
+                </div>
               </div>
               <div>
                 <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Gained</div>
-                <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
+                <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
               </div>
               <div>
                 <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Return</div>
-                <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${totalRetPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${hideVal ? '<span class="hval">Hidden</span>' : `${totalRetPct >= 0 ? '+' : ''}${totalRetPct.toFixed(1)}%`}</div>
+                <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:${totalRetPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${hideVal ? '<span class="hval">Hidden</span>' : `${totalRetPct >= 0 ? '+' : ''}${totalRetPct.toFixed(1)}%`}</div>
               </div>
             </div>
           </div>`;
@@ -5120,12 +5276,12 @@
         const logEl = document.getElementById('gains-contrib-log');
         if (logEl) {
           const sorted = [...contribs].sort((a, b) => b.date.localeCompare(a.date));
-          let lh = `<div class="card mb-2"><div class="sec" style="padding:16px 20px 8px;display:flex;justify-content:space-between;align-items:center">
+          let lh = `<div class="card mb-2"><div class="sec" style="padding:16px 20px 10px;display:flex;justify-content:space-between;align-items:center">
             <span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">Contribution Log</span>
             <button class="btn bsm bp" onclick="openContribModal(null)">+ Add</button>
           </div>`;
           if (!sorted.length) {
-            lh += `<div style="padding:24px 20px;text-align:center;color:var(--ink3);font-size:13px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
+            lh += `<div style="padding:20px;text-align:center;color:var(--ink3);font-size:13px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
           } else {
             lh += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
               <th>Date</th><th>Amount</th><th>Note</th><th></th>
@@ -5186,6 +5342,43 @@
         if (!confirm('Delete this contribution?')) return;
         S.gainContribs = (S.gainContribs || []).filter(x => String(x.id) !== String(id));
         ps(S); renderGains();
+      }
+
+      // ── Historical snapshot modal ──
+      function openHistSnapModal() {
+        document.getElementById('hs-date').value = '';
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const rows = document.getElementById('hs-acct-rows');
+        rows.innerHTML = invAccts.map(a =>
+          `<div class="fr" style="margin-bottom:8px">
+            <label style="font-size:12px">${a.name}</label>
+            <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" data-acct-id="${a.id}" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          </div>`
+        ).join('');
+        openModal('m-hist-snap');
+      }
+
+      function saveHistSnap() {
+        const date = document.getElementById('hs-date').value;
+        if (!date) return;
+        const accounts = {};
+        document.querySelectorAll('#hs-acct-rows input[data-acct-id]').forEach(inp => {
+          const val = parseFloat(inp.value.replace(/,/g, '')) || 0;
+          if (val > 0) accounts[inp.dataset.acctId] = val;
+        });
+        if (!Object.keys(accounts).length) return;
+        if (!S.gainSnapshots) S.gainSnapshots = [];
+        const idx = S.gainSnapshots.findIndex(s => s.date === date);
+        if (idx >= 0) {
+          // Merge with existing snapshot (don't overwrite other accounts)
+          Object.assign(S.gainSnapshots[idx].accounts || {}, accounts);
+          if (!S.gainSnapshots[idx].accounts) S.gainSnapshots[idx] = { date, accounts };
+          else S.gainSnapshots[idx].accounts = { ...S.gainSnapshots[idx].accounts, ...accounts };
+        } else {
+          S.gainSnapshots.push({ date, accounts });
+          S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        ps(S); closeModal('m-hist-snap'); renderGains();
       }
 
       // ── renderSettings extension ──────────────────────────────────
