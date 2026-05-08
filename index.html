@@ -1317,6 +1317,7 @@
                 <input type="text" class="inp inpm" id="finnhub-key" placeholder="paste key here"
                   style="width:200px;font-family:var(--mono);font-size:11px"
                   value="" onchange="S.settings.finnhubKey=this.value.trim();ps(S)">
+                <!-- Default key is set in fetchQuotes() — personal key (sunyoung) -->
               </div>
             </div>
             <div class="card">
@@ -5980,7 +5981,8 @@
         const out = {};
         if (tickers.length === 0) return out;
 
-        const finnhubKey = S.settings.finnhubKey;
+        // Personal Finnhub key (sunyoung) — override in Settings → API Keys
+        const finnhubKey = S.settings.finnhubKey || 'd7uvcvhr01qp7l70evbgd7uvcvhr01qp7l70evc0';
 
         // ── Finnhub: fetch all tickers concurrently ──────────────
         if (finnhubKey) {
@@ -6319,13 +6321,6 @@
         if (btn) btn.disabled = true;
 
         const tickers = [...new Set(S.funds.map(f => f.ticker))];
-        if (!S.settings.finnhubKey) {
-          showPriceBar('Add your Finnhub API key in Settings → API Keys', true);
-          syncInProgress = false;
-          if (icon) icon.style.animation = '';
-          if (btn) btn.disabled = false;
-          return;
-        }
         showPriceBar(`Syncing ${tickers.length} tickers…`);
 
         let quotes = {};
