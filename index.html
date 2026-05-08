@@ -5500,7 +5500,13 @@
           if (!q?.price) return '';
           const sign = q.changePct >= 0 ? '+' : '';
           const cls = q.changePct >= 0 ? 'pos' : 'neg';
-          const priceStr = hideVal ? '———' : `$${q.price.toFixed(2)}`;
+          const fund = S.funds.find(f => f.ticker === ticker);
+          const fundAcctId = fund ? Object.keys(fund.accounts)[0] : null;
+          const fundAcct = fundAcctId ? S.accounts.find(a => String(a.id) === fundAcctId) : null;
+          const isKRW = fundAcct?.currency === 'KRW';
+          const sym = isKRW ? '₩' : '$';
+          const priceFmt = isKRW ? Math.round(q.price).toLocaleString() : q.price.toFixed(2);
+          const priceStr = hideVal ? '———' : `${sym}${priceFmt}`;
           const chgStr = q.changePct != null
             ? `<span class="chg ${cls}">${sign}${q.changePct.toFixed(2)}%</span>` : '';
           return `<span class="price-chip"><strong>${ticker}</strong> ${priceStr} ${chgStr}</span>`;
