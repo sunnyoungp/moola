@@ -5638,7 +5638,7 @@
           </div>`;
           const unassignedCount = sorted.filter(c => !c.account).length;
           if (unassignedCount) {
-            lh += `<div style="background:var(--rose-bg,#fff0f0);border:1px solid var(--rose,#e55);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
+            lh += `<div style="background:var(--rose-l);border:1px solid var(--rose);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
               <span style="color:var(--rose)">${unassignedCount} contribution${unassignedCount > 1 ? 's' : ''} missing account assignment</span>
               <button class="btn bsm" style="color:var(--rose);border-color:var(--rose)" onclick="_contribMigrateChecked=false;checkContribMigration()">Assign now</button>
             </div>`;
