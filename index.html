@@ -5984,25 +5984,26 @@
         return null;
       }
 
-      async function fetchQuotes(tickers, onProgress) {
+      async function fetchQuotes(tickers, { onProgress, onQuote } = {}) {
         const out = {};
         if (tickers.length === 0) return out;
 
         // Personal Finnhub key (sunyoung) — override in Settings → API Keys
         const finnhubKey = S.settings.finnhubKey || 'd7uvcvhr01qp7l70evbgd7uvcvhr01qp7l70evc0';
 
+        function collect(ticker, q) {
+          if (q) { out[ticker] = q; if (onQuote) onQuote(ticker, q, out); }
+        }
+
         // ── Round 1: Finnhub for US, Yahoo for Korean — all concurrent ──
         const usTickers = tickers.filter(t => !isKoreanTicker(t));
         const krTickers = tickers.filter(t => isKoreanTicker(t));
 
         const allFetches = [
-          ...usTickers.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q }))),
-          ...krTickers.map(t => fetchFallbackQuote(t).then(q => ({ ticker: t, q }))),
+          ...usTickers.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => { collect(t, q); })),
+          ...krTickers.map(t => fetchFallbackQuote(t).then(q => { collect(t, q); })),
         ];
-        const settled = await Promise.allSettled(allFetches);
-        settled.forEach(r => {
-          if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
-        });
+        await Promise.allSettled(allFetches);
 
         let remaining = tickers.filter(t => !out[t]);
         if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
@@ -6012,22 +6013,14 @@
         for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
           await new Promise(r => setTimeout(r, Math.min(2000 + attempt * 1000, 8000)));
 
-          // Retry Finnhub for remaining
-          if (finnhubKey) {
-            const settled = await Promise.allSettled(
-              remaining.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q })))
-            );
-            settled.forEach(r => {
-              if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
-            });
-            remaining = tickers.filter(t => !out[t]);
-          }
-
-          // Try fallback sources for whatever is still missing
-          for (const t of [...remaining]) {
-            const q = await fetchFallbackQuote(t);
-            if (q) { out[t] = q; remaining = tickers.filter(x => !out[x]); }
-          }
+          // Retry failed tickers concurrently with all sources
+          const retryFetches = remaining.map(t => {
+            const fn = isKoreanTicker(t) ? fetchFallbackQuote(t) :
+              fetchFinnhubQuote(t, finnhubKey).then(q => q || fetchFallbackQuote(t));
+            return fn.then(q => { collect(t, q); });
+          });
+          await Promise.allSettled(retryFetches);
+          remaining = tickers.filter(t => !out[t]);
 
           if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, attempt + 2);
           if (remaining.length === 0) break;
@@ -6335,19 +6328,10 @@
 
         let quotes = {};
 
-        // ── Stock quotes with auto-retry progress ─────────────────
-        try {
-          quotes = await fetchQuotes(tickers, (done, total, remaining, round) => {
-            if (done < total) {
-              showPriceBar(`Syncing… ${done}/${total} tickers (retry ${round})` +
-                (remaining.length <= 3 ? ` — waiting on ${remaining.join(', ')}` : ''));
-            }
-          });
-
-          // Apply all fetched prices
+        // Apply a single ticker's price immediately and refresh UI
+        function applyQuote(ticker, q) {
           S.funds.forEach(f => {
-            const q = quotes[f.ticker];
-            if (!q?.price) return;
+            if (f.ticker !== ticker || !q?.price) return;
             f.lastPrice = q.price;
             f.lastChange = q.changePct;
             for (const held of Object.values(f.accounts)) {
@@ -6356,12 +6340,31 @@
               }
             }
           });
-          syncAccountsFromPortfolio(); ps(S);
+          syncAccountsFromPortfolio();
+          window._lastQuotes = { ...window._lastQuotes, [ticker]: q };
+          renderPriceChips(window._lastQuotes);
+          const activeId = document.querySelector('.tc.on')?.id?.replace('tab-', '');
+          if (activeId) renderTab(activeId);
+          if (activeId !== 'overview') renderOverview();
+        }
+
+        // ── Stock quotes with streaming updates ───────────────────
+        try {
+          quotes = await fetchQuotes(tickers, {
+            onQuote: (ticker, q) => applyQuote(ticker, q),
+            onProgress: (done, total, remaining, round) => {
+              if (done < total) {
+                showPriceBar(`Syncing… ${done}/${total}` +
+                  (remaining.length <= 3 ? ` — waiting on ${remaining.join(', ')}` : ` tickers (retry ${round})`));
+              }
+            },
+          });
+          ps(S);
         } catch (e) {
           console.error('[moola] syncPrices error:', e);
         }
 
-        // ── Update UI ─────────────────────────────────────────────
+        // ── Final status ──────────────────────────────────────────
         const failedTickers = tickers.filter(t => !quotes[t]);
         lastSyncTime = new Date();
         const timeStr = lastSyncTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -6397,12 +6400,12 @@
           ps(S);
         }
 
-        // Re-render if we updated any fund values
+        // Final re-render
         const activeId = document.querySelector('.tc.on')?.id?.replace('tab-', '');
         if (activeId) renderTab(activeId);
         if (activeId !== 'overview') renderOverview();
 
-        // If fund modal is open, refresh per-account value hints with new prices
+        // If fund modal is open, refresh per-account value hints
         const fundModal = document.getElementById('m-fund');
         if (fundModal?.classList.contains('on')) {
           const editFund = S.funds.find(x => x.id === S.editFundId);
