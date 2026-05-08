@@ -2075,9 +2075,6 @@
         loadTheme();
         // Ensure investment account balances reflect current fund values on every load
         syncAccountsFromPortfolio();
-        // Auto-snapshot: NW history + investment gains
-        nwAutoSnapshot();
-        gainsAutoSnapshot();
         // rest of your existing init code:
         if (S.settings.currency === 'KRW') { dispCur = 'KRW'; }
         syncCurUI();
@@ -2090,6 +2087,13 @@
         setInterval(autoSyncFX, 15 * 60 * 1000);
         updateSyncTimeDisplay();
         setInterval(updateSyncTimeDisplay, 60000);
+
+        // Sync prices on load, then take auto-snapshots with fresh data
+        if (S.funds.length > 0) {
+          await syncPrices();
+        }
+        nwAutoSnapshot();
+        gainsAutoSnapshot();
       }
       function mkDef() {
         return {
