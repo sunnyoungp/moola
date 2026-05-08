@@ -1726,7 +1726,12 @@
         <div class="fr"><label>Account</label><select class="inp" id="gc-account"></select></div>
         <div class="fr"><label>Date</label><input class="inp" id="gc-date" type="date"></div>
         <div class="fr"><label>Amount</label>
-          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" id="gc-amount" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="inp" id="gc-currency" style="width:80px;flex-shrink:0" onchange="document.getElementById('gc-sym').textContent=this.value==='KRW'?'₩':'$'">
+              <option value="USD">USD</option><option value="KRW">KRW</option>
+            </select>
+            <div style="position:relative;flex:1"><span id="gc-sym" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" id="gc-amount" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          </div>
         </div>
         <div class="fr"><label>Note <span style="color:var(--ink4);font-weight:400">(optional)</span></label><input class="inp" id="gc-note" placeholder="e.g. Monthly 401k deposit"></div>
         <div class="modal-footer">
@@ -2804,7 +2809,7 @@
         syncPrivacyUI();
         document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
         // Pull total contributed from gains contribution log
-        const totalContrib = (S.gainContribs || []).reduce((s, c) => s + (c.amount || 0), 0);
+        const totalContrib = (S.gainContribs || []).reduce((s, c) => s + contribToUSD(c), 0);
         const snaps = S.snapshots || [];
         const gain = snaps.length ? nwTotal() - (snaps[0]?.nw || nwTotal()) - totalContrib : 0;
         const contribSince = snaps.length && snaps[0]?.date ? new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
@@ -5342,7 +5347,7 @@
       function contribsInRange(startDate, endDate, acctIds) {
         // Exclude contributions on the start date — they're already reflected in the starting snapshot value
         return (S.gainContribs || []).filter(c => c.date > startDate && c.date <= endDate && (!acctIds || acctIds.includes(String(c.account))))
-          .reduce((s, c) => s + (c.amount || 0), 0);
+          .reduce((s, c) => s + contribToUSD(c), 0);
       }
 
       // ── Selected gains accounts ──
@@ -5443,12 +5448,12 @@
         const contribs = S.gainContribs || [];
         const acctIds = getGainsAcctIds();
         const hideVal = isTabHidden('gains');
-        const fmtV = v => hideVal ? '<span class="hval">Hidden</span>' : gainFmtUSD(v);
+        const fmtV = v => hideVal ? '<span class="hval">Hidden</span>' : fmt(v, 2);
         const fmtG = (v, p) => {
           if (hideVal) return '<span class="hval">Hidden</span>';
           const sign = v >= 0 ? '+' : '';
           const col = v >= 0 ? 'var(--fm)' : 'var(--rose)';
-          return `<span style="color:${col};font-weight:700">${sign}${gainFmtUSD(v)}</span>` +
+          return `<span style="color:${col};font-weight:700">${sign}${fmt(Math.abs(v), 2)}</span>` +
             (p != null ? `<span style="color:${col};font-size:14px;font-weight:600;margin-left:8px">${sign}${p.toFixed(1)}%</span>` : '');
         };
 
@@ -5465,7 +5470,7 @@
         // ── Period calculation ──
         const { start, end } = gainsPeriodRange();
         const currentValue = currentValueForAccts(acctIds);
-        const totalContribsAll = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + (c.amount || 0), 0);
+        const totalContribsAll = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + contribToUSD(c), 0);
         const isAllTime = gainsPeriod === 'ALL';
 
         // ── Period body ──
@@ -5590,7 +5595,7 @@
         // ── All-time summary ──
         const allTimeEl = document.getElementById('gains-alltime');
         if (allTimeEl) {
-          const totalContribs = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + (c.amount || 0), 0);
+          const totalContribs = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + contribToUSD(c), 0);
           const totalGained = currentValue - totalContribs;
           const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
 
@@ -5598,7 +5603,7 @@
           const acctBreakdown = acctIds.map(id => {
             const a = S.accounts.find(x => String(x.id) === id);
             if (!a) return '';
-            return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${a.name}</span><span style="font-family:var(--mono)">${gainFmtUSD(getAcctUSD(a))}</span></div>`;
+            return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${a.name}</span><span style="font-family:var(--mono)">${fmt(getAcctUSD(a), 2)}</span></div>`;
           }).join('');
           const tooltipContent = `<div style="font-size:11px;min-width:200px">${acctBreakdown}</div>`;
 
@@ -5652,10 +5657,13 @@
             sorted.forEach(c => {
               const acct = S.accounts.find(a => String(a.id) === String(c.account));
               const acctName = acct ? acct.name : '<span style="color:var(--rose);font-size:11px">Unassigned</span>';
+              const cSym = c.currency === 'KRW' ? '₩' : '$';
+              const cDec = c.currency === 'KRW' ? 0 : 2;
+              const cFmt = hideVal ? '<span class="hval">Hidden</span>' : cSym + (c.amount || 0).toLocaleString('en-US', { minimumFractionDigits: cDec, maximumFractionDigits: cDec });
               lh += `<tr>
                 <td style="white-space:nowrap">${c.date}</td>
                 <td style="white-space:nowrap;font-size:12px">${acctName}</td>
-                <td class="mo" style="font-weight:600">${fmtV(c.amount)}</td>
+                <td class="mo" style="font-weight:600">${cFmt}</td>
                 <td style="color:var(--ink3)">${c.note || ''}</td>
                 <td style="text-align:right;white-space:nowrap">
                   <button class="btn bsm bgh" onclick="openContribModal('${c.id}')">Edit</button>
@@ -5709,22 +5717,36 @@
       }
 
       // ── Contribution modal ──
+      function setContribCurFromAcct() {
+        const acctId = document.getElementById('gc-account').value;
+        const acct = S.accounts.find(a => String(a.id) === String(acctId));
+        const cur = acct?.currency || 'USD';
+        const curEl = document.getElementById('gc-currency');
+        curEl.value = cur;
+        document.getElementById('gc-sym').textContent = cur === 'KRW' ? '₩' : '$';
+      }
+
       function openContribModal(id) {
         S.editContribId = id;
         // Populate account dropdown
         const sel = document.getElementById('gc-account');
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
         sel.innerHTML = invAccts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        sel.onchange = setContribCurFromAcct;
         if (id) {
           const c = (S.gainContribs || []).find(x => String(x.id) === String(id));
           document.getElementById('m-contrib-title').textContent = 'Edit contribution';
           sel.value = c.account || invAccts[0]?.id || '';
+          const cur = c.currency || 'USD';
+          document.getElementById('gc-currency').value = cur;
+          document.getElementById('gc-sym').textContent = cur === 'KRW' ? '₩' : '$';
           document.getElementById('gc-date').value = c.date;
-          document.getElementById('gc-amount').value = c.amount ? c.amount.toLocaleString('en-US') : '';
+          document.getElementById('gc-amount').value = c.amount ? c.amount.toLocaleString('en-US', { maximumFractionDigits: cur === 'KRW' ? 0 : 2 }) : '';
           document.getElementById('gc-note').value = c.note || '';
         } else {
           document.getElementById('m-contrib-title').textContent = 'Add contribution';
           sel.value = invAccts[0]?.id || '';
+          setContribCurFromAcct();
           document.getElementById('gc-date').value = todayStr();
           document.getElementById('gc-amount').value = '';
           document.getElementById('gc-note').value = '';
@@ -5732,8 +5754,13 @@
         openModal('m-contrib');
       }
 
+      function contribToUSD(c) {
+        return c.currency === 'KRW' ? (c.amount || 0) / getFX() : (c.amount || 0);
+      }
+
       function saveContrib() {
         const account = document.getElementById('gc-account').value;
+        const currency = document.getElementById('gc-currency').value;
         const date = document.getElementById('gc-date').value;
         const amount = parseFloat(document.getElementById('gc-amount').value.replace(/,/g, '')) || 0;
         if (!date || !amount || !account) return;
@@ -5741,9 +5768,9 @@
         if (!S.gainContribs) S.gainContribs = [];
         if (S.editContribId) {
           const idx = S.gainContribs.findIndex(x => String(x.id) === String(S.editContribId));
-          if (idx >= 0) S.gainContribs[idx] = { ...S.gainContribs[idx], date, amount, note, account };
+          if (idx >= 0) S.gainContribs[idx] = { ...S.gainContribs[idx], date, amount, note, account, currency };
         } else {
-          S.gainContribs.push({ id: Date.now(), date, amount, note, account });
+          S.gainContribs.push({ id: Date.now(), date, amount, note, account, currency });
         }
         S.gainContribs.sort((a, b) => a.date.localeCompare(b.date));
         ps(S); closeModal('m-contrib'); renderGains();
@@ -5768,7 +5795,7 @@
         rows.innerHTML = unassigned.map(c =>
           `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)" data-cid="${c.id}">
             <div style="min-width:80px;font-size:12px;color:var(--ink3)">${c.date}</div>
-            <div style="min-width:80px;font-size:13px;font-family:var(--mono);font-weight:600">${gainFmtUSD(c.amount)}</div>
+            <div style="min-width:80px;font-size:13px;font-family:var(--mono);font-weight:600">${(c.currency === 'KRW' ? '₩' : '$') + (c.amount || 0).toLocaleString('en-US', { minimumFractionDigits: c.currency === 'KRW' ? 0 : 2, maximumFractionDigits: c.currency === 'KRW' ? 0 : 2 })}</div>
             <div style="flex:1;font-size:12px;color:var(--ink4)">${c.note || ''}</div>
             <select class="inp" style="max-width:180px;font-size:12px" data-migrate-id="${c.id}">${opts}</select>
           </div>`
