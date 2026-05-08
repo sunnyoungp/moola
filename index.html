@@ -861,10 +861,22 @@
             <div class="page-sub">Track returns across all investment accounts</div>
           </div>
           <div class="page-actions">
-            <button class="btn bp bsm" onclick="openGainModal(null)">+ Add account</button>
+            <button class="btn bp bsm" onclick="openContribModal(null)">+ Add contribution</button>
           </div>
         </div>
-        <div id="gains-body"></div>
+        <!-- Period selector -->
+        <div class="atab-group" id="gains-period-tabs" style="margin-bottom:16px"></div>
+        <div id="gains-custom-range" style="display:none;margin-bottom:16px;display:none;gap:10px;align-items:center">
+          <input type="date" class="inp" id="gains-start" style="width:150px" onchange="renderGains()">
+          <span style="color:var(--ink3)">to</span>
+          <input type="date" class="inp" id="gains-end" style="width:150px" onchange="renderGains()">
+        </div>
+        <!-- Period gain display -->
+        <div id="gains-period-body"></div>
+        <!-- All-time summary -->
+        <div id="gains-alltime"></div>
+        <!-- Contribution log -->
+        <div id="gains-contrib-log"></div>
       </div>
 
       <!-- SETTINGS -->
@@ -1662,55 +1674,22 @@
       </div>
     </div>
 
-    <div class="mo-ov" id="m-gain">
-      <div class="modal" style="max-width:480px">
-        <div class="modal-title"><span id="m-gain-title">Add account</span><button class="bgh btn bsm"
-            onclick="closeModal('m-gain')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+    <div class="mo-ov" id="m-contrib">
+      <div class="modal" style="max-width:400px">
+        <div class="modal-title"><span id="m-contrib-title">Add contribution</span><button class="bgh btn bsm"
+            onclick="closeModal('m-contrib')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="2" y1="2" x2="10" y2="10" />
               <line x1="10" y1="2" x2="2" y2="10" />
             </svg></button></div>
-        <div class="fr"><label>Account name</label><input class="inp" id="g-name" placeholder="e.g. Fidelity Taxable"></div>
-        <div class="fr"><label>Account type</label><select class="inp" id="g-type">
-            <option value="taxable">Taxable</option>
-            <option value="roth">Roth IRA</option>
-            <option value="tax-advantaged">Tax-advantaged (401k, IRA)</option>
-            <option value="emergency">Emergency Fund</option>
-            <option value="foreign">Foreign Brokerage</option>
-          </select></div>
-        <div class="fr" id="g-cur-row" style="display:none">
-          <label>Currency</label>
-          <div style="display:flex;gap:8px">
-            <select class="inp" id="g-cur" style="width:90px" onchange="gainCurChanged()">
-              <option value="KRW">KRW</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="JPY">JPY</option>
-            </select>
-            <div style="flex:1;position:relative">
-              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">1 USD =</span>
-              <input class="inp" id="g-fx" type="number" step="0.01" style="padding-left:62px" placeholder="1370">
-            </div>
-          </div>
+        <div class="fr"><label>Date</label><input class="inp" id="gc-date" type="date"></div>
+        <div class="fr"><label>Amount</label>
+          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" id="gc-amount" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
         </div>
-        <div class="fr"><label>Total cash deposited from bank</label>
-          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym">$</span><input class="inp" style="padding-left:24px" id="g-cashin" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-        </div>
-        <div class="fr"><label>Current market value</label>
-          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym2">$</span><input class="inp" style="padding-left:24px" id="g-value" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-        </div>
-        <div class="fr"><label>Realized gains from sales</label>
-          <div style="display:flex;gap:8px">
-            <div style="flex:1;position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">ST</span><input class="inp" style="padding-left:28px" id="g-real-st" type="text" placeholder="Short-term" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-            <div style="flex:1;position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:12px">LT</span><input class="inp" style="padding-left:28px" id="g-real-lt" type="text" placeholder="Long-term" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-          </div>
-        </div>
-        <div class="fr"><label>Dividends &amp; interest received</label>
-          <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px" id="g-sym3">$</span><input class="inp" style="padding-left:24px" id="g-divs" type="text" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-        </div>
+        <div class="fr"><label>Note <span style="color:var(--ink4);font-weight:400">(optional)</span></label><input class="inp" id="gc-note" placeholder="e.g. Monthly 401k deposit"></div>
         <div class="modal-footer">
-          <button class="btn" onclick="closeModal('m-gain')">Cancel</button>
-          <button class="btn bp" onclick="saveGain()">Save</button>
+          <button class="btn" onclick="closeModal('m-contrib')">Cancel</button>
+          <button class="btn bp" onclick="saveContrib()">Save</button>
         </div>
       </div>
     </div>
@@ -2031,6 +2010,8 @@
         loadTheme();
         // Ensure investment account balances reflect current fund values on every load
         syncAccountsFromPortfolio();
+        // Auto-snapshot portfolio value for gains tracking
+        gainsAutoSnapshot();
         // rest of your existing init code:
         if (S.settings.currency === 'KRW') { dispCur = 'KRW'; }
         syncCurUI();
@@ -2093,7 +2074,8 @@
           ],
           portAcctToggles: {},
           ovGoalsView: 'bars',
-          gainEntries: []
+          gainSnapshots: [],
+          gainContribs: []
         };
       }
 
@@ -2124,7 +2106,8 @@
         if (!S.future.colVis) S.future.colVis = { age: true, income: true, partner: false, living: true, housing: true, kids: true, bills: true, netsav: true, nw: true, freeSpend: true, monthlySurplus: true, totalIncome: true, totalExpenses: true, reqSavings: true };
         if (!S.future.colLabels) S.future.colLabels = { age: 'age', income: 'gross income', partner: 'partner', living: 'living', housing: 'housing', kids: 'kids', bills: 'bills', netsav: 'net savings', nw: 'net worth', freeSpend: 'discretionary budget / mo', monthlySurplus: 'savings surplus / mo', totalIncome: 'Total Income', totalExpenses: 'Total Expenses', reqSavings: 'Required Savings' };
         if (!S.future_scenarios) S.future_scenarios = [];
-        if (!S.gainEntries) S.gainEntries = [];
+        if (!S.gainSnapshots) S.gainSnapshots = [];
+        if (!S.gainContribs) S.gainContribs = [];
 
         // Ensure accountCategories + accountTypes exist (for old saves)
         if (!S.accountCategories) {
@@ -4968,222 +4951,240 @@
       }
 
       // ══════════════════════════════════════════════════════════════
-      // INVESTMENT GAINS
+      // INVESTMENT GAINS — contributions log + automatic snapshots
       // ══════════════════════════════════════════════════════════════
 
-      const GAIN_TYPES = { taxable: 'Taxable', roth: 'Roth IRA', 'tax-advantaged': 'Tax-advantaged', emergency: 'Emergency Fund', foreign: 'Foreign Brokerage' };
-
-      function gainToUSD(entry, val) {
-        if (entry.type !== 'foreign' || !entry.fx) return val;
-        return val / entry.fx;
-      }
-
-      function gainSym(entry) {
-        return entry.type === 'foreign' ? (entry.cur === 'KRW' ? '₩' : entry.cur === 'JPY' ? '¥' : entry.cur === 'GBP' ? '£' : entry.cur === 'EUR' ? '€' : '$') : '$';
-      }
-
-      function gainFmtLocal(entry, val) {
-        const sym = gainSym(entry);
-        const dec = (entry.cur === 'KRW' || entry.cur === 'JPY') ? 0 : 2;
-        return sym + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-      }
+      let gainsPeriod = '1Y';
 
       function gainFmtUSD(val) {
         return '$' + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
+      function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+      // ── Auto-snapshot: save portfolio value once per day on load ──
+      function gainsAutoSnapshot() {
+        if (!S) return;
+        if (!S.gainSnapshots) S.gainSnapshots = [];
+        const today = todayStr();
+        const val = totInv();
+        // Replace today's snapshot if exists, else add
+        const idx = S.gainSnapshots.findIndex(s => s.date === today);
+        if (idx >= 0) {
+          S.gainSnapshots[idx].value = val;
+        } else {
+          S.gainSnapshots.push({ date: today, value: val });
+          S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        ps(S);
+      }
+
+      // ── Find nearest snapshot to a date ──
+      function nearestSnapshot(dateStr) {
+        const snaps = S.gainSnapshots || [];
+        if (!snaps.length) return null;
+        let best = snaps[0], bestDiff = Math.abs(new Date(snaps[0].date) - new Date(dateStr));
+        for (let i = 1; i < snaps.length; i++) {
+          const diff = Math.abs(new Date(snaps[i].date) - new Date(dateStr));
+          if (diff < bestDiff) { best = snaps[i]; bestDiff = diff; }
+        }
+        return best;
+      }
+
+      // ── Period date calculation ──
+      function gainsPeriodRange() {
+        const now = new Date();
+        const end = todayStr();
+        let start;
+        switch (gainsPeriod) {
+          case '1M': start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()); break;
+          case '3M': start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); break;
+          case 'YTD': start = new Date(now.getFullYear(), 0, 1); break;
+          case '1Y': start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()); break;
+          case 'ALL': {
+            const snaps = S.gainSnapshots || [];
+            const contribs = S.gainContribs || [];
+            const earliest = [...snaps.map(s => s.date), ...contribs.map(c => c.date)].sort()[0];
+            start = earliest ? new Date(earliest) : new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+            break;
+          }
+          case 'CUSTOM': {
+            const s = document.getElementById('gains-start')?.value;
+            const e = document.getElementById('gains-end')?.value;
+            return { start: s || end, end: e || end };
+          }
+          default: start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        }
+        return { start: start.toISOString().slice(0, 10), end };
+      }
+
+      function contribsInRange(startDate, endDate) {
+        return (S.gainContribs || []).filter(c => c.date >= startDate && c.date <= endDate)
+          .reduce((s, c) => s + (c.amount || 0), 0);
+      }
+
       function renderGains() {
-        const body = document.getElementById('gains-body');
-        if (!body) return;
-        const entries = S.gainEntries || [];
-
-        if (!entries.length) {
-          body.innerHTML = `<div class="card" style="text-align:center;padding:48px 24px">
-            <div style="font-size:14px;color:var(--ink3);margin-bottom:12px">No accounts added yet</div>
-            <button class="btn bp" onclick="openGainModal(null)">+ Add your first account</button>
-          </div>`;
-          return;
-        }
-
-        // Aggregate totals (all in USD)
-        let totCashIn = 0, totValue = 0, totRealST = 0, totRealLT = 0, totDivs = 0;
-        entries.forEach(e => {
-          totCashIn += gainToUSD(e, e.cashIn || 0);
-          totValue += gainToUSD(e, e.value || 0);
-          totRealST += gainToUSD(e, e.realST || 0);
-          totRealLT += gainToUSD(e, e.realLT || 0);
-          totDivs += gainToUSD(e, e.divs || 0);
-        });
-
-        const totRealized = totRealST + totRealLT + totDivs;
-        const totUnrealized = totValue - totCashIn - totRealized;
-        const totGained = totUnrealized + totRealized;
-        const retPct = totCashIn > 0 ? (totGained / totCashIn) * 100 : 0;
+        const snaps = S.gainSnapshots || [];
+        const contribs = S.gainContribs || [];
         const hideVal = isTabHidden('gains');
-
         const fmtV = v => hideVal ? '<span class="hval">Hidden</span>' : gainFmtUSD(v);
-        const fmtP = v => hideVal ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+        const fmtG = (v, p) => {
+          if (hideVal) return '<span class="hval">Hidden</span>';
+          const sign = v >= 0 ? '+' : '';
+          const col = v >= 0 ? 'var(--fm)' : 'var(--rose)';
+          return `<span style="color:${col}">${sign}${gainFmtUSD(v)}</span>` +
+            (p != null ? ` <span style="color:${col};font-size:14px;font-weight:600">(${sign}${p.toFixed(1)}%)</span>` : '');
+        };
 
-        // Hero cards
-        let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-          <div class="card" style="padding:20px 24px">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:6px">Total Cash Put In</div>
-            <div style="font-size:24px;font-weight:700;font-family:var(--mono)">${fmtV(totCashIn)}</div>
-          </div>
-          <div class="card" style="padding:20px 24px">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:6px">Total Gained</div>
-            <div style="display:flex;align-items:baseline;gap:10px">
-              <span style="font-size:24px;font-weight:700;font-family:var(--mono);color:${totGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totGained)}</span>
-              <span style="font-size:14px;font-weight:600;color:${retPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtP(retPct)}</span>
+        // ── Period tabs ──
+        const tabsEl = document.getElementById('gains-period-tabs');
+        if (tabsEl) {
+          tabsEl.innerHTML = ['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'].map(p =>
+            `<button class="atab ${gainsPeriod === p ? 'on' : ''}" onclick="gainsPeriod='${p}';renderGains()">${p === 'CUSTOM' ? 'Custom' : p}</button>`
+          ).join('');
+        }
+        // Show/hide custom range picker
+        const customEl = document.getElementById('gains-custom-range');
+        if (customEl) customEl.style.display = gainsPeriod === 'CUSTOM' ? 'flex' : 'none';
+
+        // ── Period calculation ──
+        const { start, end } = gainsPeriodRange();
+        const currentValue = totInv();
+        const startSnap = nearestSnapshot(start);
+        const startValue = startSnap ? startSnap.value : 0;
+        const periodContribs = contribsInRange(start, end);
+        const periodGain = currentValue - startValue - periodContribs;
+        const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : (currentValue > 0 && periodContribs > 0 ? ((currentValue - periodContribs) / periodContribs) * 100 : 0);
+
+        // Check if data is limited
+        const earliestSnap = snaps.length ? snaps[0].date : null;
+        const dataLimited = earliestSnap && earliestSnap > start;
+
+        // ── Period body ──
+        const periodEl = document.getElementById('gains-period-body');
+        if (periodEl) {
+          let ph = '';
+          if (dataLimited) {
+            ph += `<div style="background:var(--fll);color:var(--f);padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:12px">Data available from ${earliestSnap} — showing from earliest snapshot</div>`;
+          }
+          if (!snaps.length) {
+            ph += `<div class="card" style="text-align:center;padding:32px 24px;margin-bottom:16px">
+              <div style="font-size:14px;color:var(--ink3)">Snapshots will begin building automatically each time you open Moola.</div>
+              <div style="font-size:12px;color:var(--ink4);margin-top:6px">Check back after a few days for gain/loss tracking.</div>
+            </div>`;
+          } else {
+            ph += `<div class="card" style="padding:24px;margin-bottom:16px">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">Period Gain / Loss</div>
+              <div style="font-size:28px;font-weight:700;font-family:var(--mono);margin-bottom:12px">${fmtG(periodGain, periodPct)}</div>
+              <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:12px">
+                <div><span style="color:var(--ink3)">Starting value</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(startValue)}</div></div>
+                <div><span style="color:var(--ink3)">Contributions</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(periodContribs)}</div></div>
+                <div><span style="color:var(--ink3)">Current value</span><div style="font-family:var(--mono);font-weight:600;margin-top:2px">${fmtV(currentValue)}</div></div>
+              </div>
+            </div>`;
+          }
+          periodEl.innerHTML = ph;
+        }
+
+        // ── All-time summary ──
+        const allTimeEl = document.getElementById('gains-alltime');
+        if (allTimeEl) {
+          const totalContribs = contribs.reduce((s, c) => s + (c.amount || 0), 0);
+          const totalGained = currentValue - totalContribs;
+          const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
+
+          allTimeEl.innerHTML = `<div class="card" style="margin-bottom:16px">
+            <div class="sec" style="padding:16px 20px 12px"><span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">All-Time Summary</span></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 20px 20px">
+              <div>
+                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Contributed</div>
+                <div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmtV(totalContribs)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Current Value</div>
+                <div style="font-size:18px;font-weight:700;font-family:var(--mono)">${fmtV(currentValue)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Gained</div>
+                <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${totalGained >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totalGained)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--ink3);margin-bottom:4px">Total Return</div>
+                <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${totalRetPct >= 0 ? 'var(--fm)' : 'var(--rose)'}">${hideVal ? '<span class="hval">Hidden</span>' : `${totalRetPct >= 0 ? '+' : ''}${totalRetPct.toFixed(1)}%`}</div>
+              </div>
             </div>
-          </div>
-        </div>`;
+          </div>`;
+        }
 
-        // Unrealized vs Realized breakdown
-        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-          <div class="card" style="padding:20px 24px">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:10px">Unrealized Gains</div>
-            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${totUnrealized >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totUnrealized)}</div>
-            <div style="font-size:11px;color:var(--ink3);margin-top:4px">Current value − cash in − realized</div>
-          </div>
-          <div class="card" style="padding:20px 24px">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:10px">Realized Gains</div>
-            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${totRealized >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(totRealized)}</div>
-            <div style="display:flex;gap:16px;margin-top:8px;font-size:11px">
-              <div><span style="color:var(--ink3)">Sales (ST):</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totRealST)}</span></div>
-              <div><span style="color:var(--ink3)">Sales (LT):</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totRealLT)}</span></div>
-              <div><span style="color:var(--ink3)">Divs/Int:</span> <span style="font-family:var(--mono);color:var(--ink2)">${fmtV(totDivs)}</span></div>
-            </div>
-          </div>
-        </div>`;
-
-        // Per-account breakdown table
-        html += `<div class="card mb-2"><div class="sec" style="padding:16px 20px 8px"><span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">Per-Account Breakdown</span></div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
-            <th>Account</th><th>Type</th><th>Cash In</th><th>Market Value</th><th>Gain / Loss</th><th>Return</th><th></th>
-          </tr></thead><tbody>`;
-
-        entries.forEach(e => {
-          const cashUSD = gainToUSD(e, e.cashIn || 0);
-          const valUSD = gainToUSD(e, e.value || 0);
-          const realUSD = gainToUSD(e, (e.realST || 0) + (e.realLT || 0) + (e.divs || 0));
-          const totalGain = valUSD - cashUSD + realUSD;
-          const pct = cashUSD > 0 ? (totalGain / cashUSD) * 100 : 0;
-          const isForeign = e.type === 'foreign';
-          const localHint = isForeign ? `<div style="font-size:9px;color:var(--ink3);margin-top:1px">${gainFmtLocal(e, e.cashIn)}</div>` : '';
-          const localHint2 = isForeign ? `<div style="font-size:9px;color:var(--ink3);margin-top:1px">${gainFmtLocal(e, e.value)}</div>` : '';
-
-          html += `<tr>
-            <td style="font-weight:600">${e.name}</td>
-            <td><span class="tag tb" style="font-size:10px">${GAIN_TYPES[e.type] || e.type}</span></td>
-            <td class="mo">${fmtV(cashUSD)}${localHint}</td>
-            <td class="mo">${fmtV(valUSD)}${localHint2}</td>
-            <td class="mo" style="color:${totalGain >= 0 ? 'var(--fm)' : 'var(--rose)'};font-weight:600">${fmtV(totalGain)}</td>
-            <td class="mo" style="color:${pct >= 0 ? 'var(--fm)' : 'var(--rose)'};font-weight:600">${hideVal ? '' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`}</td>
-            <td style="text-align:right">
-              <button class="btn bsm bgh" onclick="openGainModal('${e.id}')">Edit</button>
-              <button class="btn bsm bgh" style="color:var(--red)" onclick="delGain('${e.id}')">&#10005;</button>
-            </td>
-          </tr>`;
-        });
-
-        html += `</tbody></table></div></div>`;
-        body.innerHTML = html;
+        // ── Contribution log ──
+        const logEl = document.getElementById('gains-contrib-log');
+        if (logEl) {
+          const sorted = [...contribs].sort((a, b) => b.date.localeCompare(a.date));
+          let lh = `<div class="card mb-2"><div class="sec" style="padding:16px 20px 8px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em">Contribution Log</span>
+            <button class="btn bsm bp" onclick="openContribModal(null)">+ Add</button>
+          </div>`;
+          if (!sorted.length) {
+            lh += `<div style="padding:24px 20px;text-align:center;color:var(--ink3);font-size:13px">No contributions logged yet. Add your first deposit to start tracking.</div>`;
+          } else {
+            lh += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
+              <th>Date</th><th>Amount</th><th>Note</th><th></th>
+            </tr></thead><tbody>`;
+            sorted.forEach(c => {
+              lh += `<tr>
+                <td style="white-space:nowrap">${c.date}</td>
+                <td class="mo" style="font-weight:600">${fmtV(c.amount)}</td>
+                <td style="color:var(--ink3);font-size:12px">${c.note || ''}</td>
+                <td style="text-align:right">
+                  <button class="btn bsm bgh" onclick="openContribModal('${c.id}')">Edit</button>
+                  <button class="btn bsm bgh" style="color:var(--red)" onclick="delContrib('${c.id}')">&#10005;</button>
+                </td>
+              </tr>`;
+            });
+            lh += `</tbody></table></div>`;
+          }
+          lh += `</div>`;
+          logEl.innerHTML = lh;
+        }
       }
 
-      function openGainModal(id) {
-        S.editGainId = id;
-        const typeEl = document.getElementById('g-type');
+      // ── Contribution modal ──
+      function openContribModal(id) {
+        S.editContribId = id;
         if (id) {
-          const e = S.gainEntries.find(x => String(x.id) === String(id));
-          document.getElementById('m-gain-title').textContent = 'Edit account';
-          document.getElementById('g-name').value = e.name;
-          typeEl.value = e.type;
-          document.getElementById('g-cashin').value = e.cashIn ? e.cashIn.toLocaleString('en-US') : '';
-          document.getElementById('g-value').value = e.value ? e.value.toLocaleString('en-US') : '';
-          document.getElementById('g-real-st').value = e.realST ? e.realST.toLocaleString('en-US') : '';
-          document.getElementById('g-real-lt').value = e.realLT ? e.realLT.toLocaleString('en-US') : '';
-          document.getElementById('g-divs').value = e.divs ? e.divs.toLocaleString('en-US') : '';
-          if (e.type === 'foreign') {
-            document.getElementById('g-cur-row').style.display = '';
-            document.getElementById('g-cur').value = e.cur || 'KRW';
-            document.getElementById('g-fx').value = e.fx || '';
-            const sym = gainSym(e);
-            document.getElementById('g-sym').textContent = sym;
-            document.getElementById('g-sym2').textContent = sym;
-            document.getElementById('g-sym3').textContent = sym;
-          } else {
-            document.getElementById('g-cur-row').style.display = 'none';
-            document.getElementById('g-sym').textContent = '$';
-            document.getElementById('g-sym2').textContent = '$';
-            document.getElementById('g-sym3').textContent = '$';
-          }
+          const c = (S.gainContribs || []).find(x => String(x.id) === String(id));
+          document.getElementById('m-contrib-title').textContent = 'Edit contribution';
+          document.getElementById('gc-date').value = c.date;
+          document.getElementById('gc-amount').value = c.amount ? c.amount.toLocaleString('en-US') : '';
+          document.getElementById('gc-note').value = c.note || '';
         } else {
-          document.getElementById('m-gain-title').textContent = 'Add account';
-          ['g-name', 'g-cashin', 'g-value', 'g-real-st', 'g-real-lt', 'g-divs', 'g-fx'].forEach(i => document.getElementById(i).value = '');
-          typeEl.value = 'taxable';
-          document.getElementById('g-cur-row').style.display = 'none';
-          document.getElementById('g-sym').textContent = '$';
-          document.getElementById('g-sym2').textContent = '$';
-          document.getElementById('g-sym3').textContent = '$';
+          document.getElementById('m-contrib-title').textContent = 'Add contribution';
+          document.getElementById('gc-date').value = todayStr();
+          document.getElementById('gc-amount').value = '';
+          document.getElementById('gc-note').value = '';
         }
-        // Watch type changes for foreign toggle
-        typeEl.onchange = () => {
-          const isForeign = typeEl.value === 'foreign';
-          document.getElementById('g-cur-row').style.display = isForeign ? '' : 'none';
-          if (isForeign) {
-            gainCurChanged();
-          } else {
-            document.getElementById('g-sym').textContent = '$';
-            document.getElementById('g-sym2').textContent = '$';
-            document.getElementById('g-sym3').textContent = '$';
-          }
-        };
-        openModal('m-gain');
+        openModal('m-contrib');
       }
 
-      function gainCurChanged() {
-        const cur = document.getElementById('g-cur').value;
-        const sym = cur === 'KRW' ? '₩' : cur === 'JPY' ? '¥' : cur === 'GBP' ? '£' : cur === 'EUR' ? '€' : '$';
-        document.getElementById('g-sym').textContent = sym;
-        document.getElementById('g-sym2').textContent = sym;
-        document.getElementById('g-sym3').textContent = sym;
-      }
-
-      function parseBal(id) {
-        return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
-      }
-
-      function saveGain() {
-        const name = document.getElementById('g-name').value.trim();
-        if (!name) return;
-        const type = document.getElementById('g-type').value;
-        const entry = {
-          id: S.editGainId || Date.now(),
-          name,
-          type,
-          cashIn: parseBal('g-cashin'),
-          value: parseBal('g-value'),
-          realST: parseBal('g-real-st'),
-          realLT: parseBal('g-real-lt'),
-          divs: parseBal('g-divs')
-        };
-        if (type === 'foreign') {
-          entry.cur = document.getElementById('g-cur').value;
-          entry.fx = parseFloat(document.getElementById('g-fx').value) || 1;
-        }
-        if (S.editGainId) {
-          const idx = S.gainEntries.findIndex(x => String(x.id) === String(S.editGainId));
-          if (idx >= 0) S.gainEntries[idx] = entry;
+      function saveContrib() {
+        const date = document.getElementById('gc-date').value;
+        const amount = parseFloat(document.getElementById('gc-amount').value.replace(/,/g, '')) || 0;
+        if (!date || !amount) return;
+        const note = document.getElementById('gc-note').value.trim();
+        if (!S.gainContribs) S.gainContribs = [];
+        if (S.editContribId) {
+          const idx = S.gainContribs.findIndex(x => String(x.id) === String(S.editContribId));
+          if (idx >= 0) S.gainContribs[idx] = { ...S.gainContribs[idx], date, amount, note };
         } else {
-          S.gainEntries.push(entry);
+          S.gainContribs.push({ id: Date.now(), date, amount, note });
         }
-        ps(S); closeModal('m-gain'); renderGains();
+        S.gainContribs.sort((a, b) => a.date.localeCompare(b.date));
+        ps(S); closeModal('m-contrib'); renderGains();
       }
 
-      function delGain(id) {
-        if (!confirm('Delete this account from gains tracker?')) return;
-        S.gainEntries = S.gainEntries.filter(x => String(x.id) !== String(id));
+      function delContrib(id) {
+        if (!confirm('Delete this contribution?')) return;
+        S.gainContribs = (S.gainContribs || []).filter(x => String(x.id) !== String(id));
         ps(S); renderGains();
       }
 
