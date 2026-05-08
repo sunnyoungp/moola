@@ -216,22 +216,22 @@
             <button class="stab on" onclick="setKrwFmt('short',this)">억/만</button>
             <button class="stab" onclick="setKrwFmt('full',this)">Full &#8361;</button>
           </div>
-          <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
-            <button id="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" style="width:30px;height:30px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
-              <svg id="dark-toggle-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
-              </svg>
-            </button>
-            <button onclick="signOut()" title="Sign out" style="width:30px;height:30px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="M10 12l4-4-4-4"/><line x1="14" y1="8" x2="6" y2="8"/>
-              </svg>
-            </button>
-          </div>
         </div>
         <div class="sb-fx-info" id="sb-fx-info" style="display:none">
           <span id="sb-fx-rate" style="font-family:var(--mono);font-size:10.5px;color:var(--ink3)"></span>
           <span id="sb-fx-updated" style="font-size:10px;color:var(--ink4);margin-left:4px"></span>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button id="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" style="width:28px;height:28px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
+            <svg id="dark-toggle-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
+            </svg>
+          </button>
+          <button onclick="signOut()" title="Sign out" style="width:28px;height:28px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="M10 12l4-4-4-4"/><line x1="14" y1="8" x2="6" y2="8"/>
+            </svg>
+          </button>
         </div>
       </div>
     </nav>

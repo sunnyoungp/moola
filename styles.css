@@ -50,7 +50,7 @@
   --sans: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: 'SF Mono', 'Helvetica Neue', ui-monospace, 'JetBrains Mono', monospace;
   /* Layout */
-  --sb: 228px;
+  --sb: 200px;
   --sb-collapsed: 56px;
   --mob-nav-h: 62px;
   /* Borders — legacy aliases (keep for backward compat) */
