@@ -5273,32 +5273,56 @@
         // ── Period calculation ──
         const { start, end } = gainsPeriodRange();
         const currentValue = currentValueForAccts(acctIds);
-        const startSnap = nearestSnap(start, acctIds);
-        const startValue = startSnap ? snapValueForAccts(startSnap, acctIds) : null;
-        const periodContribs = contribsInRange(start, end);
-        const hasEnoughData = startValue !== null;
-        const periodGain = hasEnoughData ? currentValue - startValue - periodContribs : 0;
-        const periodPct = hasEnoughData && startValue > 0 ? (periodGain / startValue) * 100 : 0;
+        const totalContribsAll = contribs.reduce((s, c) => s + (c.amount || 0), 0);
+        const isAllTime = gainsPeriod === 'ALL';
 
         // ── Period body ──
         const periodEl = document.getElementById('gains-period-body');
         if (periodEl) {
           let ph = '';
-          if (!hasEnoughData) {
-            ph += `<div class="card" style="text-align:center;padding:28px 24px;margin-bottom:16px">
-              <div style="font-size:13px;color:var(--ink3);margin-bottom:8px">Not enough snapshot history for this period.</div>
-              <div style="font-size:12px;color:var(--ink4)">Snapshots are saved automatically each time you open Moola, or add a <button class="btn bsm bgh" style="display:inline;padding:2px 8px;font-size:11px" onclick="openHistSnapModal()">historical value</button> to backfill.</div>
-            </div>`;
-          } else {
+          if (isAllTime) {
+            // ALL: simple formula, no snapshots needed
+            const periodGain = currentValue - totalContribsAll;
+            const periodPct = totalContribsAll > 0 ? (periodGain / totalContribsAll) * 100 : 0;
             ph += `<div class="card" style="padding:20px 24px;margin-bottom:16px">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">Period Gain / Loss</div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">All-Time Gain / Loss</div>
               <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
               <div style="display:flex;gap:28px;flex-wrap:wrap">
-                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Starting value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(startValue)}</div></div>
-                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Contributions</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(periodContribs)}</div></div>
+                <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Total contributed</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(totalContribsAll)}</div></div>
                 <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Current value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(currentValue)}</div></div>
               </div>
             </div>`;
+          } else {
+            // 1M/3M/YTD/1Y/CUSTOM: require a valid historical snapshot
+            const startSnap = nearestSnap(start, acctIds);
+            // A snapshot is only valid if it's not just today's auto-snapshot
+            // (i.e., it must actually be near the requested start date, not weeks/months away)
+            const startValue = startSnap ? snapValueForAccts(startSnap, acctIds) : null;
+            const maxDriftDays = gainsPeriod === '1M' ? 7 : 14;
+            const snapTooFar = startSnap ? Math.abs(new Date(startSnap.date) - new Date(start)) / 86400000 > maxDriftDays : true;
+            const hasEnoughData = startValue !== null && !snapTooFar;
+
+            if (!hasEnoughData) {
+              const periodLabel = { '1M': '1-month', '3M': '3-month', 'YTD': 'year-to-date', '1Y': '1-year', 'CUSTOM': 'custom period' }[gainsPeriod] || 'period';
+              const promptDate = start;
+              ph += `<div class="card" style="text-align:center;padding:28px 24px;margin-bottom:16px">
+                <div style="font-size:13px;color:var(--ink3);margin-bottom:10px">Add a historical value for <strong>${promptDate}</strong> to see your ${periodLabel} performance.</div>
+                <button class="btn bp bsm" onclick="openHistSnapModal('${promptDate}')">Add historical value</button>
+              </div>`;
+            } else {
+              const periodContribs = contribsInRange(start, end);
+              const periodGain = currentValue - startValue - periodContribs;
+              const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : 0;
+              ph += `<div class="card" style="padding:20px 24px;margin-bottom:16px">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600;margin-bottom:8px">Period Gain / Loss</div>
+                <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
+                <div style="display:flex;gap:28px;flex-wrap:wrap">
+                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Starting value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(startValue)}</div></div>
+                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Contributions</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(periodContribs)}</div></div>
+                  <div><div style="font-size:11px;color:var(--ink3);margin-bottom:3px">Current value</div><div style="font-size:14px;font-family:var(--mono);font-weight:600">${fmtV(currentValue)}</div></div>
+                </div>
+              </div>`;
+            }
           }
           periodEl.innerHTML = ph;
         }
@@ -5417,8 +5441,8 @@
       }
 
       // ── Historical snapshot modal ──
-      function openHistSnapModal() {
-        document.getElementById('hs-date').value = '';
+      function openHistSnapModal(prefillDate) {
+        document.getElementById('hs-date').value = prefillDate || '';
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
         const rows = document.getElementById('hs-acct-rows');
         rows.innerHTML = invAccts.map(a =>
