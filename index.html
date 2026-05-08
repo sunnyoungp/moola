@@ -1852,18 +1852,31 @@
       const GTAG = { fire: 'FIRE', home: 'Home', emergency: 'Emergency', milestone: 'Milestone', wedding: 'Wedding', kids: 'Kids', custom: 'Custom' };
       const TLAB = { checking: 'Checking', savings: 'Savings', 'brokerage-taxable': 'Taxable', 'brokerage-roth': 'Roth IRA', pension: 'Pension', subscription: '청약계좌', other: 'Other' };
 
+      // Vibrant account tag colors — designed for white text in both light and dark mode
+      const ACCT_TAG_COLORS = [
+        '#4361EE', // vivid blue
+        '#7C3AED', // vivid purple
+        '#0891B2', // teal/cyan
+        '#DB2777', // hot pink
+        '#059669', // emerald
+        '#D97706', // amber
+        '#DC2626', // red
+        '#4F46E5', // indigo
+        '#0D9488', // dark teal
+        '#BE185D', // deep rose
+        '#7C22CE', // violet
+        '#B45309', // burnt orange
+        '#1D4ED8', // royal blue
+        '#9333EA', // bright purple
+        '#15803D', // forest green
+        '#C2410C', // rust
+      ];
+
       // Color-code each investment account — stable mapping by account ID
       function getAcctColor(acctId) {
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a)).sort((a, b) => a.id - b.id);
         const idx = invAccts.findIndex(a => String(a.id) === String(acctId));
-        const colors = getThemeColors();
-        return colors[(idx >= 0 ? idx : 0) % colors.length] || colors[0];
-      }
-      // Return '#fff' or '#000' for best contrast on a hex background
-      function contrastFg(hex) {
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#000' : '#fff';
+        return ACCT_TAG_COLORS[(idx >= 0 ? idx : 0) % ACCT_TAG_COLORS.length];
       }
 
       const ICONS = {
@@ -3619,7 +3632,7 @@
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
         const tagsHtml = selected.length ? selected.map(a => {
           const ac = getAcctColor(a.id);
-          const fg = contrastFg(ac);
+          const fg = '#fff';
           return `<div class="ms-tag" style="background:${ac};border-color:${ac};color:${fg}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`;
         }).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
@@ -3769,7 +3782,7 @@
             const name = a?.name || id;
             const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
             const ac = a ? getAcctColor(a.id) : 'var(--ink)';
-            const fg = a ? contrastFg(ac) : '#fff';
+            const fg = '#fff';
             return `<span class="tag" style="font-size:10px;background:${ac};color:${fg}">${name}: ${valFmt}</span>`;
           }).join(' ');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
@@ -5186,7 +5199,7 @@
         const selected = invAccts.filter(a => S.gainsAcctToggles[a.id] !== false);
         const tagsHtml = selected.length ? selected.map(a => {
           const ac = getAcctColor(a.id);
-          const fg = contrastFg(ac);
+          const fg = '#fff';
           return `<div class="ms-tag" style="background:${ac};border-color:${ac};color:${fg}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); toggleGainsAcct('${a.id}')">×</span></div>`;
         }).join('') : '<span style="color:var(--ink4);font-size:12px;margin:2px 0">Select accounts...</span>';
 
