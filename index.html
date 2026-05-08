@@ -4847,25 +4847,32 @@
         },
       ];
 
-      function applyThemeToken(prop, val) {
+      function setThemeProp(prop, val) {
         document.documentElement.style.setProperty(prop, val);
+        // Keep in-memory theme in sync so dark mode toggle doesn't lose edits
+        if (!S.settings.theme) S.settings.theme = {};
+        S.settings.theme[prop] = val;
+      }
+
+      function applyThemeToken(prop, val) {
+        setThemeProp(prop, val);
         // cascade derived tokens for primary
         if (prop === '--th-primary') {
-          document.documentElement.style.setProperty('--th-primary-m', lighten(val, 0.18));
-          document.documentElement.style.setProperty('--th-primary-l', lighten(val, 0.55));
-          document.documentElement.style.setProperty('--th-primary-ll', lighten(val, 0.72));
-          document.documentElement.style.setProperty('--th-btn-bg', val);
-          document.documentElement.style.setProperty('--th-progress', val);
-          document.documentElement.style.setProperty('--th-tag-fg', val);
-          document.documentElement.style.setProperty('--th-tag-bg', lighten(val, 0.72));
-          document.documentElement.style.setProperty('--th-sidebar-active-fg', val);
-          document.documentElement.style.setProperty('--th-sidebar-active-bg', lighten(val, 0.72));
-          document.documentElement.style.setProperty('--th-chart1', val);
+          setThemeProp('--th-primary-m', lighten(val, 0.18));
+          setThemeProp('--th-primary-l', lighten(val, 0.55));
+          setThemeProp('--th-primary-ll', lighten(val, 0.72));
+          setThemeProp('--th-btn-bg', val);
+          setThemeProp('--th-progress', val);
+          setThemeProp('--th-tag-fg', val);
+          setThemeProp('--th-tag-bg', lighten(val, 0.72));
+          setThemeProp('--th-sidebar-active-fg', val);
+          setThemeProp('--th-sidebar-active-bg', lighten(val, 0.72));
+          setThemeProp('--th-chart1', val);
           syncAllInputsFromDOM();
         }
         if (prop === '--th-secondary') {
-          document.documentElement.style.setProperty('--th-secondary-l', lighten(val, 0.6));
-          document.documentElement.style.setProperty('--th-chart2', val);
+          setThemeProp('--th-secondary-l', lighten(val, 0.6));
+          setThemeProp('--th-chart2', val);
           syncAllInputsFromDOM();
         }
         // update alpha-border ink-rgb based on bg lightness
@@ -4878,7 +4885,11 @@
       }
 
       function applyThemeTokens(map) {
-        Object.entries(map).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+        if (!S.settings.theme) S.settings.theme = {};
+        Object.entries(map).forEach(([k, v]) => {
+          document.documentElement.style.setProperty(k, v);
+          S.settings.theme[k] = v;
+        });
         saveTheme();
         refreshAllCharts();
       }
@@ -4906,9 +4917,12 @@
       }
 
       function snapshotCurrentTheme() {
+        // Prefer in-memory theme state (always hex), fall back to computed styles
+        const saved = S.settings.theme || {};
+        const r = getComputedStyle(document.documentElement);
         const t = {};
         Object.keys(THEME_DEFAULT).forEach(k => {
-          t[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+          t[k] = saved[k] || r.getPropertyValue(k).trim();
         });
         return t;
       }
