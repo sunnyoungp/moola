@@ -5942,28 +5942,32 @@
         return null; // all sources failed for this ticker
       }
 
-      async function fetchQuotes(tickers) {
+      async function fetchQuotes(tickers, onProgress) {
         const out = {};
         let remaining = [...tickers];
+        const maxRounds = 10;  // up to 10 retry rounds
 
-        // Up to 3 attempts with staggered delays to avoid rate-limit storms
-        for (let attempt = 0; attempt < 3 && remaining.length > 0; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+        for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
+          // Exponential backoff: 0, 2s, 4s, 6s, 8s… capped at 10s
+          if (attempt > 0) {
+            const delay = Math.min(2000 * attempt, 10000);
+            await new Promise(r => setTimeout(r, delay));
+          }
 
-          // Fetch in small batches of 5 to avoid slamming APIs
-          for (let i = 0; i < remaining.length; i += 5) {
-            const batch = remaining.slice(i, i + 5);
+          // Fetch in small batches of 3 to be gentler on rate limits
+          for (let i = 0; i < remaining.length; i += 3) {
+            const batch = remaining.slice(i, i + 3);
             const settled = await Promise.allSettled(
               batch.map(t => fetchSingleQuote(t).then(q => ({ ticker: t, q })))
             );
             settled.forEach(r => {
               if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
             });
-            // Small delay between batches to space out requests
-            if (i + 5 < remaining.length) await new Promise(r => setTimeout(r, 300));
+            if (i + 3 < remaining.length) await new Promise(r => setTimeout(r, 500));
           }
 
           remaining = tickers.filter(t => !out[t]);
+          if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, attempt + 1);
         }
 
         return out;
@@ -6266,38 +6270,36 @@
         const tickers = [...new Set(S.funds.map(f => f.ticker))];
         showPriceBar(`Syncing ${tickers.length} tickers…`);
 
-        const errors = [];
         let quotes = {};
 
-        // ── Stock quotes ──────────────────────────────────────────
-        const failedTickers = [];
+        // ── Stock quotes with auto-retry progress ─────────────────
         try {
-          quotes = await fetchQuotes(tickers);
-          let valueUpdates = 0;
+          quotes = await fetchQuotes(tickers, (done, total, remaining, round) => {
+            if (done < total) {
+              showPriceBar(`Syncing… ${done}/${total} tickers (retry ${round})` +
+                (remaining.length <= 3 ? ` — waiting on ${remaining.join(', ')}` : ''));
+            }
+          });
+
+          // Apply all fetched prices
           S.funds.forEach(f => {
             const q = quotes[f.ticker];
-            if (!q?.price) { failedTickers.push(f.ticker); return; }
+            if (!q?.price) return;
             f.lastPrice = q.price;
             f.lastChange = q.changePct;
             for (const held of Object.values(f.accounts)) {
               if (held.shares && held.shares > 0) {
                 held.value = Math.round(held.shares * q.price * 100) / 100;
-                valueUpdates++;
               }
             }
           });
           syncAccountsFromPortfolio(); ps(S);
-          if (failedTickers.length === tickers.length) {
-            errors.push('No quotes received — prices may be delayed or market closed');
-          } else if (failedTickers.length > 0) {
-            errors.push(`Partial: no data for ${failedTickers.join(', ')}`);
-          }
         } catch (e) {
-          errors.push(`Quotes error: ${e.message || String(e)}`);
           console.error('[moola] syncPrices error:', e);
         }
 
         // ── Update UI ─────────────────────────────────────────────
+        const failedTickers = tickers.filter(t => !quotes[t]);
         lastSyncTime = new Date();
         const timeStr = lastSyncTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         window._lastQuotes = quotes;
@@ -6308,8 +6310,6 @@
 
         if (Object.keys(quotes).length === 0) {
           showPriceBar('Could not reach price servers', true);
-        } else if (errors.length > 0) {
-          showPriceBar(errors.join(' · '), true);
         } else {
           S.settings.lastPriceSync = Date.now();
           ps(S);
@@ -6319,12 +6319,18 @@
           const isWeekend = [0, 6].includes(new Date().getUTCDay());
           const isOpen = !isWeekend && h >= 14 && h < 21;
           const note = isOpen ? '15-min delayed' : 'closing price';
-          const updNote = fundsWithShares.length > 0
-            ? `${fundsUpdated.length}/${fundsWithShares.length} values updated · ${note}`
-            : `prices loaded · add shares to calculate values on sync`;
+
+          let updNote;
+          if (fundsWithShares.length === 0) {
+            updNote = `prices loaded · add shares to calculate values on sync`;
+          } else if (failedTickers.length > 0) {
+            updNote = `${fundsUpdated.length}/${fundsWithShares.length} values updated · no data for ${failedTickers.join(', ')}`;
+          } else {
+            updNote = `${fundsUpdated.length}/${fundsWithShares.length} values updated · ${note}`;
+          }
 
           S.settings.lastPriceSyncStatus = `${timeStr} · ${updNote}`;
-          showPriceBar(S.settings.lastPriceSyncStatus);
+          showPriceBar(S.settings.lastPriceSyncStatus, failedTickers.length > 0);
           ps(S);
         }
 
