@@ -5268,9 +5268,11 @@
       function nearestSnap(dateStr, acctIds) {
         const snaps = S.gainSnapshots || [];
         if (!snaps.length) return null;
-        // Find closest by date that can produce a value
+        // Find closest snapshot ON or BEFORE the requested date
+        // (never use a future snapshot as the starting point)
         let best = null, bestDiff = Infinity;
         for (const snap of snaps) {
+          if (snap.date > dateStr) continue; // skip snapshots after the target date
           const diff = Math.abs(new Date(snap.date) - new Date(dateStr));
           const val = snapValueForAccts(snap, acctIds);
           if (val !== null && diff < bestDiff) {
