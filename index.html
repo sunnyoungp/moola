@@ -894,6 +894,8 @@
         <div id="gains-alltime"></div>
         <!-- Contribution log -->
         <div id="gains-contrib-log"></div>
+        <!-- Snapshot history -->
+        <div id="gains-snap-log"></div>
       </div>
 
       <!-- SETTINGS -->
@@ -5628,6 +5630,44 @@
           }
           lh += `</div>`;
           logEl.innerHTML = lh;
+        }
+
+        // ── Snapshot history (collapsible) ──
+        const snapLogEl = document.getElementById('gains-snap-log');
+        if (snapLogEl) {
+          const snaps = (S.gainSnapshots || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+          const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+          let sh = `<div class="card mb-2">
+            <div class="sec" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;cursor:pointer;user-select:none" onclick="toggleSettingsSection('s-snap-history')">
+              <div style="display:flex;align-items:center;gap:8px">
+                <svg id="s-snap-history-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;transform:rotate(-90deg)"><polyline points="4 6 8 10 12 6"/></svg>
+                <span style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.5px;text-transform:uppercase">Daily Snapshots</span>
+              </div>
+              <span style="font-size:11px;color:var(--ink4)">${snaps.length} recorded</span>
+            </div>
+            <div id="s-snap-history" style="display:none;margin-top:14px">`;
+          if (!snaps.length) {
+            sh += `<div style="text-align:center;color:var(--ink3);font-size:13px;padding:8px 0">No snapshots yet. One is recorded each time you open the app.</div>`;
+          } else {
+            sh += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr>
+              <th>Date</th>`;
+            // Column per investment account
+            invAccts.forEach(a => { sh += `<th style="text-align:right">${a.name}</th>`; });
+            sh += `<th style="text-align:right">Total</th></tr></thead><tbody>`;
+            snaps.forEach(s => {
+              let total = 0;
+              sh += `<tr><td style="white-space:nowrap;font-size:12px">${s.date}</td>`;
+              invAccts.forEach(a => {
+                const val = s.accounts?.[String(a.id)] || 0;
+                total += val;
+                sh += `<td class="mo" style="text-align:right;font-size:12px">${fmtV(val)}</td>`;
+              });
+              sh += `<td class="mo" style="text-align:right;font-weight:600;font-size:12px">${fmtV(total)}</td></tr>`;
+            });
+            sh += `</tbody></table></div>`;
+          }
+          sh += `</div></div>`;
+          snapLogEl.innerHTML = sh;
         }
       }
 
