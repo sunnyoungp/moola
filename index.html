@@ -885,6 +885,11 @@
         </div>
         <!-- Period gain display -->
         <div id="gains-period-body"></div>
+        <!-- Value over time chart -->
+        <div id="gains-chart-card" class="card mb-2" style="display:none">
+          <div class="sec">Portfolio Value Over Time</div>
+          <div style="height:240px;position:relative"><canvas id="gainsChart"></canvas></div>
+        </div>
         <!-- All-time summary -->
         <div id="gains-alltime"></div>
         <!-- Contribution log -->
@@ -5490,6 +5495,67 @@
             }
           }
           periodEl.innerHTML = ph;
+        }
+
+        // ── Portfolio value chart ──
+        const chartCard = document.getElementById('gains-chart-card');
+        if (chartCard) {
+          const { start: cStart, end: cEnd } = gainsPeriodRange();
+          // Get snapshots in range that have data for selected accounts
+          const chartSnaps = (S.gainSnapshots || [])
+            .filter(s => s.date >= cStart && s.date <= cEnd)
+            .filter(s => snapValueForAccts(s, acctIds) !== null)
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+          // Add current value as the last point if latest snap isn't today
+          const today = todayStr();
+          if (chartSnaps.length > 0 && chartSnaps[chartSnaps.length - 1].date !== today) {
+            chartSnaps.push(buildSnapshotForDate(today));
+          }
+
+          if (chartSnaps.length >= 2) {
+            chartCard.style.display = '';
+            const values = chartSnaps.map(s => snapValueForAccts(s, acctIds));
+            const labels = chartSnaps.map(s => {
+              const d = new Date(s.date + 'T12:00:00');
+              return gainsPeriod === '1D' || gainsPeriod === '1M'
+                ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            });
+            const tc0 = getThemeColors()[0];
+            const showDots = chartSnaps.length <= 60;
+            dC('gains');
+            CH['gains'] = new Chart(document.getElementById('gainsChart'), {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [{
+                  data: values,
+                  borderColor: tc0,
+                  backgroundColor: tc0 + '18',
+                  fill: true,
+                  tension: 0.3,
+                  pointRadius: showDots ? 3 : 0,
+                  borderWidth: 2,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('Value', fmt(c.parsed.y / cvt(1))) } }
+                },
+                scales: {
+                  x: chartXAxis(),
+                  y: chartYAxis(v => fmt(v / cvt(1)), 'gains'),
+                }
+              }
+            });
+          } else {
+            chartCard.style.display = 'none';
+            dC('gains');
+          }
         }
 
         // ── All-time summary ──
