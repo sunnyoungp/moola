@@ -4973,9 +4973,11 @@
       }
 
       function resetTheme() {
-        applyThemeObject(THEME_DEFAULT);
+        // Reset to the active preset's original tokens, not always Moola
+        const idx = S.settings.activePreset != null ? S.settings.activePreset : (detectActivePreset() >= 0 ? detectActivePreset() : 0);
+        applyThemeObject(THEME_PRESETS[idx].tokens);
         syncAllInputsFromDOM();
-        highlightActivePreset(0);
+        highlightActivePreset(idx);
       }
 
       // ── Hex helpers ───────────────────────────────────────────────
@@ -5105,6 +5107,7 @@
       }
 
       function applyPreset(i) {
+        S.settings.activePreset = i;
         applyThemeObject(THEME_PRESETS[i].tokens);
         highlightActivePreset(i);
       }
