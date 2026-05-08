@@ -71,22 +71,22 @@
   --th-secondary-l: #F5EBCF;
   --th-sidebar-active-bg: #ECEEF9;
   --th-sidebar-active-fg: #3D4E8A;
-  --th-chart1: #4361EE;
-  --th-chart2: #7C3AED;
+  --th-chart1: #6366F1;
+  --th-chart2: #8B5CF6;
   --th-chart3: #F59E0B;
   --th-chart4: #EC4899;
   --th-chart5: #06B6D4;
   --th-chart6: #10B981;
   --th-chart7: #F97316;
   --th-chart8: #3B82F6;
-  --th-chart9: #E11D48;
-  --th-chart10: #8B5CF6;
+  --th-chart9: #F43F5E;
+  --th-chart10: #A78BFA;
   --th-chart11: #14B8A6;
-  --th-chart12: #A855F7;
-  --th-chart13: #0891B2;
+  --th-chart12: #D946EF;
+  --th-chart13: #0EA5E9;
   --th-chart14: #EF4444;
   --th-chart15: #22C55E;
-  --th-chart16: #F472B6;
+  --th-chart16: #FB7185;
   --th-progress: #3D4E8A;
   --th-highlight: #F5EBCF;
   --th-btn-bg: #1C1B19;
@@ -2194,7 +2194,7 @@ hr {
 
 /* ═══ NW HERO ═══════════════════════════════════════════════ */
 .nw-hero {
-  background: linear-gradient(135deg, #1C1B19 0%, #2E3550 55%, #3A2E50 100%);
+  background: linear-gradient(135deg, var(--th-sidebar-active-bg, #1C1B19) 0%, color-mix(in srgb, var(--th-primary) 40%, var(--th-sidebar-active-bg, #1C1B19)) 55%, color-mix(in srgb, var(--th-primary) 25%, #2A1830) 100%);
   border: none;
   border-radius: var(--rxl);
   padding: 30px 36px;
