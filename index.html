@@ -5893,14 +5893,17 @@
         return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
       }
 
-      // ── Finnhub: per-ticker but fast (60 req/min) ──────────────
+      // Korean tickers end in .KS (KOSPI) or .KQ (KOSDAQ) — Finnhub doesn't support them
+      function isKoreanTicker(t) { return /\.(KS|KQ)$/i.test(t) || /^\d{6}$/.test(t); }
+
+      // ── Finnhub: per-ticker but fast (60 req/min, US stocks only) ──
       async function fetchFinnhubQuote(ticker, apiKey) {
+        if (isKoreanTicker(ticker)) return null; // Finnhub free tier doesn't cover KRX
         try {
           const res = await fetchWithTimeout(
             `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`, 8000);
           if (res.ok) {
             const d = await res.json();
-            // d.c = current, d.d = change, d.dp = change%, d.pc = prev close
             if (d?.c && d.c > 0) {
               return { price: d.c, change: d.d ?? 0, changePct: d.dp ?? 0 };
             }
@@ -5935,7 +5938,7 @@
 
       // ── Per-ticker fallback sources ────────────────────────────
       async function fetchFallbackQuote(ticker) {
-        // Fallback 1: Yahoo via allorigins proxy
+        // Fallback 1: Yahoo via allorigins proxy (works for both US and Korean tickers)
         try {
           const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`;
           const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
@@ -5988,15 +5991,18 @@
         // Personal Finnhub key (sunyoung) — override in Settings → API Keys
         const finnhubKey = S.settings.finnhubKey || 'd7uvcvhr01qp7l70evbgd7uvcvhr01qp7l70evc0';
 
-        // ── Finnhub: fetch all tickers concurrently ──────────────
-        if (finnhubKey) {
-          const settled = await Promise.allSettled(
-            tickers.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q })))
-          );
-          settled.forEach(r => {
-            if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
-          });
-        }
+        // ── Round 1: Finnhub for US, Yahoo for Korean — all concurrent ──
+        const usTickers = tickers.filter(t => !isKoreanTicker(t));
+        const krTickers = tickers.filter(t => isKoreanTicker(t));
+
+        const allFetches = [
+          ...usTickers.map(t => fetchFinnhubQuote(t, finnhubKey).then(q => ({ ticker: t, q }))),
+          ...krTickers.map(t => fetchFallbackQuote(t).then(q => ({ ticker: t, q }))),
+        ];
+        const settled = await Promise.allSettled(allFetches);
+        settled.forEach(r => {
+          if (r.status === 'fulfilled' && r.value?.q) out[r.value.ticker] = r.value.q;
+        });
 
         let remaining = tickers.filter(t => !out[t]);
         if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
