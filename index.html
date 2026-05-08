@@ -5205,7 +5205,7 @@
       // INVESTMENT GAINS — per-account snapshots + contributions log
       // ══════════════════════════════════════════════════════════════
 
-      let gainsPeriod = '1D';
+      let gainsPeriod = 'ALL';
 
       function gainFmtUSD(val) {
         return '$' + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -5419,7 +5419,7 @@
         // ── Period tabs ──
         const tabsEl = document.getElementById('gains-period-tabs');
         if (tabsEl) {
-          tabsEl.innerHTML = ['1D', '1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'].map(p =>
+          tabsEl.innerHTML = ['ALL', '1D', '1M', '3M', 'YTD', '1Y', 'CUSTOM'].map(p =>
             `<button class="atab ${gainsPeriod === p ? 'on' : ''}" onclick="gainsPeriod='${p}';renderGains()">${p === 'CUSTOM' ? 'Custom' : p}</button>`
           ).join('');
         }
