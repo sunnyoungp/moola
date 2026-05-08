@@ -206,7 +206,14 @@
       <div class="sb-nav" id="sb-nav"></div>
 
       <div class="sb-foot">
-        <button onclick="signOut()">Sign out</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="signOut()" style="flex:1">Sign out</button>
+          <button id="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
+            <svg id="dark-toggle-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
+            </svg>
+          </button>
+        </div>
         <div class="sb-cur">
           <span class="sb-cur-label">Currency</span>
           <div class="stabs" id="cur-tabs">
@@ -237,6 +244,11 @@
       <div class="mob-tray-handle"></div>
       <div id="mob-tray-cur"
         style="padding:10px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button id="mob-dark-toggle" onclick="toggleDarkMode()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg id="mob-dark-toggle-icon" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
+          </svg>
+        </button>
         <span
           style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">Currency</span>
         <div class="stabs" id="mob-cur-tabs">
@@ -2045,6 +2057,7 @@
         syncCurUI();
         krwFmt = S.settings.krwFmt || 'short';
         renderSidebar();
+        syncDarkToggleIcons();
         syncPrivacyUI();
         renderOverview();
         autoSyncFX();
@@ -4877,6 +4890,48 @@
         syncAllInputsFromDOM();
         saveTheme();
         refreshAllCharts();
+      }
+
+      // ── Dark mode toggle ──────────────────────────────────────────
+      const MOON_SVG = '<path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>';
+      const SUN_SVG = '<circle cx="8" cy="8" r="3"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4"/>';
+
+      function isDarkModeActive() {
+        const bg = getComputedStyle(document.documentElement).getPropertyValue('--th-bg').trim();
+        return bg ? isDarkColor(bg) : false;
+      }
+
+      function toggleDarkMode() {
+        if (isDarkModeActive()) {
+          // Restore saved light theme
+          const saved = S.settings.lightTheme;
+          if (saved && Object.keys(saved).length) {
+            applyThemeObject(saved);
+          } else {
+            applyThemeObject(THEME_DEFAULT);
+          }
+        } else {
+          // Save current light theme, then go dark
+          const current = {};
+          Object.keys(THEME_DEFAULT).forEach(k => {
+            current[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+          });
+          S.settings.lightTheme = current;
+          applyThemeObject(THEME_PRESETS[7].tokens);
+        }
+        ps(S);
+        syncDarkToggleIcons();
+        renderSidebar();
+        if (document.getElementById('tab-settings')?.classList.contains('on')) renderSettings();
+      }
+
+      function syncDarkToggleIcons() {
+        const dark = isDarkModeActive();
+        const svg = dark ? SUN_SVG : MOON_SVG;
+        const el = document.getElementById('dark-toggle-icon');
+        if (el) el.innerHTML = svg;
+        const mob = document.getElementById('mob-dark-toggle-icon');
+        if (mob) mob.innerHTML = svg;
       }
 
       // Re-render whichever charts are currently visible on screen
