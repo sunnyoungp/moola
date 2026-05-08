@@ -1792,16 +1792,12 @@
       const GTAG = { fire: 'FIRE', home: 'Home', emergency: 'Emergency', milestone: 'Milestone', wedding: 'Wedding', kids: 'Kids', custom: 'Custom' };
       const TLAB = { checking: 'Checking', savings: 'Savings', 'brokerage-taxable': 'Taxable', 'brokerage-roth': 'Roth IRA', pension: 'Pension', subscription: '청약계좌', other: 'Other' };
 
-      // Color-code account types using theme chart colors — stable mapping by type
-      function getAcctTypeColor(typeId) {
-        const types = (S.accountTypes || []).filter(t => {
-          const cat = S.accountCategories?.find(c => c.id === t.categoryId);
-          return cat?.isInvestment || t.isInvestment;
-        });
-        const idx = types.findIndex(t => t.id === typeId);
+      // Color-code each investment account — stable mapping by account ID
+      function getAcctColor(acctId) {
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a)).sort((a, b) => a.id - b.id);
+        const idx = invAccts.findIndex(a => String(a.id) === String(acctId));
         const colors = getThemeColors();
-        const c = colors[(idx >= 0 ? idx : 0) % colors.length];
-        return c || colors[0];
+        return colors[(idx >= 0 ? idx : 0) % colors.length] || colors[0];
       }
 
       const ICONS = {
@@ -3466,7 +3462,7 @@
 
         const selected = invAccts.filter(a => S.portAcctToggles[a.id] !== false);
         const tagsHtml = selected.length ? selected.map(a => {
-          const ac = getAcctTypeColor(a.type);
+          const ac = getAcctColor(a.id);
           return `<div class="ms-tag" style="background:${ac};border-color:${ac}">${a.name}<span class="ms-tag-del" onclick="event.stopPropagation(); togglePortAcct('${a.id}')">×</span></div>`;
         }).join('') : '<span style="color:var(--ink4);font-size:12px;margin: 2px 0">Select accounts...</span>';
 
@@ -3483,7 +3479,7 @@
               <div class="ms-list" id="port-ms-list">
                 ${invAccts.map(a => {
           const on = S.portAcctToggles[a.id] !== false;
-          const ac = getAcctTypeColor(a.type);
+          const ac = getAcctColor(a.id);
           return `<div class="ms-item ${on ? 'on' : ''}" data-name="${a.name.toLowerCase()}" onclick="togglePortAcct('${a.id}')">
                     <div class="chk" style="${on ? 'background:' + ac + ';border-color:' + ac : ''}"></div>
                     <span>${a.name}</span>
@@ -3625,9 +3621,9 @@
             const a = S.accounts.find(x => String(x.id) === id);
             const name = a?.name || id;
             const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
-            const ac = a ? getAcctTypeColor(a.type) : 'var(--ink)';
-            return `<span class="tag" style="font-size:10px;background:${ac};color:#fff">${name}: ${valFmt}</span>`;
-          }).join(' ');
+            const ac = a ? getAcctColor(a.id) : 'var(--ink3)';
+            return `<span style="display:inline-flex;align-items:center;gap:5px;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${ac};flex-shrink:0"></span><span style="font-size:10px;font-weight:600;color:var(--ink2)">${name}</span><span style="font-size:10px;font-family:var(--mono);color:var(--ink3)">${valFmt}</span></span>`;
+          }).join('<span style="margin:0 4px"></span>');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
           return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
