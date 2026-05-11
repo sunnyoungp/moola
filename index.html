@@ -5642,8 +5642,7 @@
             const tcs = getThemeColors();
             const tc0 = tcs[0];
             const tcContrib = tcs[1] || '#2E6EA6';
-            const tcGain = 'var(--fm)';
-            const tcGainResolved = getComputedStyle(document.documentElement).getPropertyValue('--fm').trim() || '#16a34a';
+            const tcGainResolved = tcs[3] || getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#D4A017';
             const showDots = chartSnaps.length <= 60;
             const gainsFullDates = chartSnaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
             dC('gains');
@@ -5816,24 +5815,44 @@
                     display: true,
                     position: 'top',
                     align: 'end',
-                    labels: { boxWidth: 10, boxHeight: 2, padding: 12, font: { size: 11 }, usePointStyle: false }
+                    labels: {
+                      boxWidth: 12, boxHeight: 12, padding: 14,
+                      font: { size: 11 },
+                      usePointStyle: true, pointStyle: 'rectRounded',
+                      generateLabels: chart => chart.data.datasets.map((ds, i) => ({
+                        text: ds.label,
+                        fillStyle: chart.isDatasetVisible(i) ? ds.borderColor : 'transparent',
+                        strokeStyle: ds.borderColor,
+                        lineWidth: 1.5,
+                        hidden: false,
+                        datasetIndex: i,
+                        fontColor: chart.isDatasetVisible(i) ? undefined : '#888',
+                      }))
+                    }
                   },
                   tooltip: {
                     mode: 'index', intersect: false,
+                    padding: 12,
+                    titleFont: { size: 13, weight: '700' },
+                    titleMarginBottom: 10,
+                    bodyFont: { size: 12 },
+                    bodySpacing: 6,
+                    boxPadding: 6,
                     callbacks: {
                       title: items => gainsFullDates[items[0].dataIndex],
                       label: c => {
+                        if (!c.chart.isDatasetVisible(c.datasetIndex)) return null;
                         const name = c.dataset.label;
+                        if (isTabHidden('gains')) return name + ':  —';
                         const val = fmt(c.parsed.y / cvt(1));
-                        if (isTabHidden('gains')) return name + ': —';
-                        return name + ': ' + val;
+                        return name + ':  ' + val;
                       },
                       afterBody: items => {
-                        if (isTabHidden('gains') || !items.length) return [];
+                        if (isTabHidden('gains') || !items.length || acctIds.length < 2) return [];
                         const idx = items[0].dataIndex;
                         const snap = chartSnaps[idx];
-                        if (!snap || !snap.accounts || acctIds.length < 2) return [];
-                        const lines = ['', '── By Account ──'];
+                        if (!snap || !snap.accounts) return [];
+                        const lines = ['', '  By Account'];
                         acctIds.forEach(id => {
                           const acct = S.accounts.find(a => String(a.id) === id);
                           if (!acct) return;
@@ -5842,12 +5861,14 @@
                             .filter(c => String(c.account) === id && c.date <= snap.date)
                             .reduce((s, c) => s + contribToUSD(c), 0);
                           const gain = val - cumC;
-                          const gStr = (gain >= 0 ? '+' : '-') + fmt(Math.abs(gain), 2).replace(/^-/, '');
-                          lines.push(`  ${acct.name}: ${fmt(val, 2)} (${gStr})`);
+                          const sign = gain >= 0 ? '+' : '-';
+                          const gStr = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
+                          lines.push(`    ${acct.name}`);
+                          lines.push(`      ${fmt(val, 2)}  (${gStr})`);
                         });
                         return lines;
                       }
-                    }
+                    },
                   }
                 },
                 scales: {
