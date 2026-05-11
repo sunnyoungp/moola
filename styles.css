@@ -2914,6 +2914,8 @@ body.sb-collapsed .priv-section {
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .mob-nav-bar {
@@ -2928,44 +2930,51 @@ body.sb-collapsed .priv-section {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   border: none;
   background: none;
-  color: var(--ink3);
+  color: var(--ink4);
   font-family: var(--sans);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: .02em;
   cursor: pointer;
   padding: 8px 4px;
-  transition: color .12s;
+  transition: color .15s;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mob-tab svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: transform .15s;
 }
 
 .mob-tab.on {
   color: var(--fm);
+  font-weight: 600;
+}
+
+.mob-tab.on svg {
+  stroke-width: 1.8;
 }
 
 .mob-tab.on::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  left: 25%;
+  right: 25%;
+  height: 2.5px;
   background: var(--fm);
-  border-radius: 0 0 2px 2px;
+  border-radius: 0 0 3px 3px;
 }
 
 /* "All" tray — slides up above bottom nav */
@@ -2976,15 +2985,13 @@ body.sb-collapsed .priv-section {
   right: 0;
   z-index: 299;
   background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
-  padding: 16px;
-  box-shadow: 0 -4px 24px rgba(26, 25, 23, .10);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px 20px;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, .10);
   transform: translateY(110%);
-  transition: transform .22s cubic-bezier(.25, .46, .45, .94), visibility 0s linear .22s;
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1), visibility 0s linear .25s;
   visibility: hidden;
   pointer-events: none;
-  /* Only active on mobile — desktop overrides below */
   display: none;
 }
 
@@ -2992,7 +2999,7 @@ body.sb-collapsed .priv-section {
   transform: translateY(0);
   visibility: visible;
   pointer-events: auto;
-  transition: transform .22s cubic-bezier(.25, .46, .45, .94), visibility 0s;
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1), visibility 0s;
 }
 
 #mob-tray-backdrop {
@@ -3000,7 +3007,9 @@ body.sb-collapsed .priv-section {
   position: fixed;
   inset: 0;
   z-index: 298;
-  background: rgba(26, 25, 23, .2);
+  background: rgba(0, 0, 0, .25);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 #mob-tray-backdrop.open {
@@ -3008,11 +3017,12 @@ body.sb-collapsed .priv-section {
 }
 
 .mob-tray-handle {
-  width: 36px;
+  width: 32px;
   height: 4px;
   background: var(--ink4);
   border-radius: 2px;
-  margin: 0 auto 16px;
+  margin: 0 auto 14px;
+  opacity: .5;
 }
 
 .mob-tray-grid {
@@ -3024,31 +3034,33 @@ body.sb-collapsed .priv-section {
 .mob-tray-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 14px;
-  border-radius: var(--r);
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
-  transition: background .12s;
+  transition: background .12s, transform .1s;
   font-family: var(--sans);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mob-tray-item:hover {
+.mob-tray-item:active {
+  transform: scale(0.97);
   background: var(--s2);
 }
 
 .mob-tray-item svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: var(--fm);
   flex-shrink: 0;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3172,157 +3184,301 @@ body.sb-collapsed .priv-section {
 /* ── 480px: Mobile ────────────────────────────────────────── */
 @media (max-width: 480px) {
 
-  /* Nav: hide sidebar, show bottom bar */
-  #sidebar {
-    display: none !important;
-  }
-
-  #mob-nav {
-    display: block;
-  }
-
-  #mob-tray {
-    display: block;
-  }
-
-  /* visibility+transform controls show/hide */
+  /* ── Layout: sidebar → bottom nav ── */
+  #sidebar { display: none !important; }
+  #mob-nav { display: block; }
+  #mob-tray { display: block; }
 
   #main {
     margin-left: 0 !important;
     padding-bottom: calc(var(--mob-nav-h) + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Page chrome */
+  /* ── Global mobile polish ── */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  /* ── Typography: larger, more readable ── */
   .page-hdr {
-    padding: 18px 14px 0;
+    padding: 24px 20px 0;
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px;
   }
 
   .page-title {
-    font-size: 19px;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -.5px;
   }
 
   .page-sub {
-    font-size: 12px;
+    font-size: 13px;
+    color: var(--ink3);
   }
 
   .page-actions {
     width: 100%;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
   }
 
   .page-actions .btn {
     min-width: 0;
   }
 
-  /* Spacing */
+  /* ── Spacing: generous like Stripe/Mint ── */
   .tc {
-    padding: 14px 14px 20px;
+    padding: 16px 20px 28px;
   }
 
   .card {
-    padding: 14px 14px;
+    padding: 18px;
+    border-radius: 16px;
+    border-color: var(--border);
+    box-shadow: var(--sh2);
+  }
+
+  .card:hover {
+    border-color: var(--border);
+    box-shadow: var(--sh2);
   }
 
   .csm {
-    padding: 10px 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
   }
 
-  /* Grids → single column */
+  .sec {
+    font-size: 11px;
+    margin-bottom: 14px;
+  }
+
+  .lbl {
+    font-size: 11px;
+  }
+
+  .mnum {
+    font-size: 18px;
+  }
+
+  .bnum {
+    font-size: 28px;
+  }
+
+  .mut {
+    font-size: 12px;
+  }
+
+  /* ── Grids: single column with breathing room ── */
   .g2,
   .g3 {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .g4 {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 10px;
   }
 
-  /* NW hero stacks */
+  /* ── NW hero: big bold balance ── */
   .nw-hero {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
-    padding: 18px 16px;
+    gap: 12px;
+    padding: 22px 20px;
+    border-radius: 18px;
   }
 
   .nw-hero-value {
-    font-size: 26px;
-    letter-spacing: -.8px;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -1px;
+  }
+
+  .nw-hero .bnum {
+    font-size: 22px;
   }
 
   .nw-hero-right {
     align-self: flex-start;
   }
 
-  /* Table horizontal scroll (explicit wrappers per section) */
+  /* ── Buttons: 44px touch targets ── */
+  .btn {
+    height: 42px;
+    padding: 0 16px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .bsm {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  /* ── Inputs: taller, more padded ── */
+  .inp {
+    height: 44px;
+    padding: 0 14px;
+    font-size: 15px;
+    border-radius: 10px;
+  }
+
+  .inpm {
+    font-size: 15px;
+  }
+
+  .inpsm {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .fr {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .fr label {
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* ── Tags: slightly larger, more padded ── */
+  .tag {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  /* ── Segment tabs: larger touch targets ── */
+  .stabs {
+    flex-wrap: wrap;
+    border-radius: 10px;
+    padding: 3px;
+  }
+
+  .stab {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 7px;
+  }
+
+  /* ── Anchor tabs: horizontal scroll, larger ── */
+  .atab-group {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin-bottom: 4px;
+  }
+
+  .atab {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Rebalance: mode tabs ── */
+  #rebal-mode-tabs {
+    flex-wrap: wrap;
+  }
+
+  #rebal-mode-tabs .atab {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  /* ── Portfolio: sync row stacks, chips scroll ── */
+  #port-sync-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  #port-sync-chips {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    justify-content: flex-start;
+  }
+
+  .price-chip {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+
+  /* ── Tray: clean separator ── */
+  #mob-tray-cur {
+    border-bottom: none !important;
+    padding: 12px 16px 8px;
+  }
+
+  /* ── Tables: horizontal scroll ── */
   .cash-tbl-wrap,
   .inv-tbl-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    margin: 0 -18px;
+    padding: 0 18px;
   }
 
   .tbl {
     min-width: 440px;
   }
 
-  /* Segment controls wrap */
-  .stabs {
-    flex-wrap: wrap;
+  .tbl th,
+  .tbl td {
+    padding: 10px 8px;
+    font-size: 12.5px;
   }
 
-  /* Rebalance: mode atabs wrap on mobile */
-  #rebal-mode-tabs {
-    flex-wrap: wrap;
-  }
-
-  #rebal-mode-tabs .atab {
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-
-  /* Sync row: stack vertically, chips right-aligned below */
-  #port-sync-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  #port-sync-chips {
-    justify-content: flex-end;
-    width: 100%;
-  }
-
-  /* Tray: remove border between controls and grid */
-  #mob-tray-cur {
-    border-bottom: none !important;
-  }
-
-  /* Projections: slider label font */
-  .fr label {
-    font-size: 11px;
-  }
-
-  /* Modals → bottom sheet */
-  .modal {
-    padding: 20px 16px 24px;
-    border-radius: 18px 18px 0 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-  }
-
+  /* ── Modals → polished bottom sheets ── */
   .mo-ov {
     align-items: flex-end;
     padding: 0;
   }
 
-  /* Life: spreadsheet toolbar compact */
+  .modal {
+    padding: 24px 20px 28px;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, .12);
+  }
+
+  .modal-title {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+
+  .modal-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+  }
+
+  .modal-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── Life: spreadsheet toolbar compact ── */
   .ss-toolbar {
-    padding: 5px 7px;
+    padding: 6px 8px;
     gap: 4px;
     flex-wrap: nowrap;
   }
@@ -3334,7 +3490,7 @@ body.sb-collapsed .priv-section {
 
   .ss-fbar {
     min-width: 80px;
-    font-size: 11px;
+    font-size: 12px;
     flex: 1;
   }
 
@@ -3342,32 +3498,19 @@ body.sb-collapsed .priv-section {
     max-height: 45vh;
   }
 
-  /* Goals: single column on small screens */
+  /* ── Goals: single column ── */
   .goals-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  /* Gains: stat grids → 2 columns */
+  /* ── Gains: stat grids 2-col ── */
   .gains-stat-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
   }
 
-  /* Gains: period tabs scroll horizontally */
-  .atab-group {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    flex-wrap: nowrap;
-  }
-
-  .atab {
-    padding: 6px 10px;
-    font-size: 12px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  /* Gains: custom date range stack */
+  /* ── Gains: custom date range stacks ── */
   .gains-custom-range {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -3375,22 +3518,25 @@ body.sb-collapsed .priv-section {
 
   .gains-custom-range input {
     width: 100% !important;
+    height: 44px;
   }
 
-  /* Gains: chart legend pills wrap */
   .gains-legend {
     flex-wrap: wrap;
   }
 
-  /* Chart heights on mobile */
+  /* ── Charts: taller for readability ── */
   .chart-wrap {
-    height: 180px !important;
+    height: 200px !important;
   }
 
-  /* Gains-tip tooltips: constrain width */
+  /* ── Tooltips: constrained ── */
   .gains-tip {
     max-width: calc(100vw - 40px);
     white-space: normal !important;
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
   }
 }
 
