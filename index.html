@@ -6836,31 +6836,36 @@
       }
 
       // Build bracket bar chart HTML (Bank Salad style)
-      // tiers: [{ label, value, pctWidth }], userTierIdx: which tier user is in
+      // Shows "Top X%" tiers with the minimum amount to reach that tier.
+      // User's tier is highlighted in green showing their actual value.
       function buildBracketBars(bp, compareVal, cat, isKR, hide) {
-        // Define tiers matching Bank Salad: ~5%, ~10%, ~20%, ~40%, ~60%, ~100%
+        // Tiers: "Top 5%" means you need >= p95 value to be in the top 5%
+        // label = what the tier is called, p = the percentile threshold
         const tiers = [
-          { label: '~5%', pIdx: 6 },   // p99 → top 1% → use p95 as ~5% threshold
-          { label: '~10%', pIdx: 5 },   // p95 → top 5% → use p90 as ~10%
-          { label: '~20%', pIdx: 4 },   // p90 → top 10% → use p75 as ~20%
-          { label: '~40%', pIdx: 3 },   // p75
-          { label: '~60%', pIdx: 2 },   // p50
-          { label: '~100%', pIdx: 1 },  // p25
+          { label: 'Top 1%', p: 99 },
+          { label: 'Top 5%', p: 95 },
+          { label: 'Top 10%', p: 90 },
+          { label: 'Top 25%', p: 75 },
+          { label: 'Top 50%', p: 50 },
+          { label: 'Top 75%', p: 25 },
         ];
-        // Map tier thresholds from breakpoints (p99, p95, p90, p75, p50, p25)
-        const pMap = [99, 95, 90, 75, 50, 25];
-        const tierData = tiers.map((t, i) => {
-          const bpEntry = bp.find(b => b.p === pMap[i]);
-          const val = bpEntry ? bpEntry.v : 0;
-          return { label: t.label, threshold: val };
+
+        const tierData = tiers.map(t => {
+          const bpEntry = bp.find(b => b.p === t.p);
+          return { label: t.label, threshold: bpEntry ? bpEntry.v : 0, p: t.p };
         });
-        // Find which tier the user falls in
-        let userTier = tierData.length - 1; // default: bottom
-        for (let i = 0; i < tierData.length; i++) {
-          if (compareVal >= tierData[i].threshold) { userTier = i; break; }
+
+        // Remove tiers that have the same threshold as the one above (e.g. multiple $0 rows)
+        const filtered = tierData.filter((t, i) => i === 0 || t.threshold !== tierData[i - 1].threshold);
+
+        // Find user's tier: highest tier where compareVal >= threshold
+        let userTier = -1;
+        for (let i = 0; i < filtered.length; i++) {
+          if (compareVal >= filtered[i].threshold) { userTier = i; break; }
         }
-        // Max bar width proportional to highest tier value
-        const maxVal = Math.max(...tierData.map(t => Math.abs(t.threshold)), 1);
+        if (userTier === -1) userTier = filtered.length - 1;
+
+        const maxVal = Math.max(...filtered.map(t => Math.abs(t.threshold)), 1);
 
         const fmtTierVal = v => {
           if (hide) return '—';
@@ -6868,24 +6873,25 @@
           if (isKR) {
             const krw = v * KR_UNIT;
             if (Math.abs(krw) >= 1e8) return (krw / 1e8).toFixed(1) + '억원';
-            if (Math.abs(krw) >= 1e4) return Math.round(krw / 1e4) + '만원';
+            if (Math.abs(krw) >= 1e4) return Math.round(krw / 1e4).toLocaleString() + '만원';
             return Math.round(krw).toLocaleString() + '원';
           }
           return fmtUSD(v);
         };
 
-        let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
-        tierData.forEach((t, i) => {
+        let html = `<div style="display:flex;flex-direction:column;gap:8px">`;
+        filtered.forEach((t, i) => {
           const isUser = i === userTier;
-          const barPct = Math.max(4, (Math.abs(t.threshold) / maxVal) * 100);
-          const barCol = isUser ? 'var(--fm)' : 'var(--s3)';
+          const barPct = Math.max(3, (Math.abs(t.threshold) / maxVal) * 100);
           const textWeight = isUser ? '600' : '400';
           const textCol = isUser ? 'var(--ink)' : 'var(--ink3)';
-          const suffix = isUser ? ' <span style="color:var(--fm);font-size:10px">(you)</span>' : '';
-          html += `<div style="display:grid;grid-template-columns:50px 1fr auto;align-items:center;gap:10px">
-            <span style="font-size:11px;color:${textCol};font-weight:${textWeight};text-align:right">${t.label}</span>
-            <div style="height:14px;border-radius:4px;background:${isUser ? 'var(--fm)' : 'var(--s3)'};width:${barPct}%;transition:width .3s"></div>
-            <span style="font-size:11px;color:${textCol};font-weight:${textWeight};font-family:var(--mono);white-space:nowrap">${fmtTierVal(t.threshold)}${suffix}</span>
+          // User's row shows THEIR value; other rows show the tier threshold
+          const displayVal = isUser ? fmtTierVal(compareVal) : fmtTierVal(t.threshold);
+          const tag = isUser ? `<span style="color:var(--fm);font-size:10px;font-weight:600;margin-left:4px">← You</span>` : '';
+          html += `<div style="display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:8px">
+            <span style="font-size:10.5px;color:${textCol};font-weight:${textWeight};text-align:right">${t.label}</span>
+            <div style="height:${isUser ? 16 : 12}px;border-radius:${isUser ? 5 : 3}px;background:${isUser ? 'var(--fm)' : 'var(--s3)'};width:${isUser ? Math.max(3, (Math.abs(compareVal) / maxVal) * 100) : barPct}%;transition:width .3s"></div>
+            <span style="font-size:10.5px;color:${textCol};font-weight:${textWeight};font-family:var(--mono);white-space:nowrap">${displayVal}${tag}</span>
           </div>`;
         });
         html += `</div>`;
