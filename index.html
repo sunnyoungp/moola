@@ -6949,6 +6949,12 @@
           if (hide) return '<span class="hval">Hidden</span>';
           if (cat.value === null) return '<span class="mut">Not tracked</span>';
           if (cat.unit === '%') return cat.value.toFixed(1) + '%';
+          if (isKR) {
+            const krw = cat.value * fx;
+            if (Math.abs(krw) >= 1e8) return '₩' + (krw / 1e8).toFixed(1) + '억';
+            if (Math.abs(krw) >= 1e4) return '₩' + Math.round(krw / 1e4).toLocaleString() + '만';
+            return '₩' + Math.round(krw).toLocaleString();
+          }
           return fmt(cat.value, 0);
         };
 
