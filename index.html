@@ -5771,7 +5771,6 @@
                   },
                   tooltip: {
                     mode: 'index', intersect: false,
-                    filter: () => !_sel.active,
                     callbacks: {
                       title: items => gainsFullDates[items[0].dataIndex],
                       label: c => {
@@ -5793,7 +5792,8 @@
             CH['gains']._sel = _sel;
             CH['gains']._selData = { values, cumContribs, gainsData, gainsFullDates, acctIds };
 
-            // Desktop drag handlers
+            // Desktop drag handlers — we intercept events on the canvas directly
+            // and disable Chart.js tooltip during drag to prevent conflicts
             if (window.innerWidth > 768) {
               gainsCanvas.style.cursor = 'crosshair';
               const getIdx = (clientX) => {
@@ -5806,41 +5806,67 @@
                 return Math.round(pct * (values.length - 1));
               };
 
-              gainsCanvas.addEventListener('mousedown', e => {
+              const redrawSel = () => {
+                const chart = CH['gains'];
+                if (!chart) return;
+                // Use draw() — just repaints without full update cycle
+                chart.draw();
+              };
+
+              gainsCanvas.addEventListener('pointerdown', e => {
                 if (e.button !== 0) return;
                 const chart = CH['gains'];
                 if (!chart) return;
                 const rect = gainsCanvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
-                // Only start drag if within chart area
                 if (x < chart.chartArea.left || x > chart.chartArea.right) return;
+
+                // If there's a locked selection, first click clears it
+                if (_sel.locked) {
+                  _sel.active = false;
+                  _sel.startIdx = -1;
+                  _sel.endIdx = -1;
+                  _sel.locked = false;
+                  // Re-enable tooltip
+                  chart.options.plugins.tooltip.enabled = true;
+                  chart.update('none');
+                  return;
+                }
+
                 _sel.active = true;
                 _sel.locked = false;
                 _sel.startX = e.clientX;
                 _sel.startIdx = getIdx(e.clientX);
                 _sel.endIdx = _sel.startIdx;
+                // Disable tooltip during drag
+                chart.options.plugins.tooltip.enabled = false;
+                chart.update('none');
+                gainsCanvas.setPointerCapture(e.pointerId);
               });
 
-              gainsCanvas.addEventListener('mousemove', e => {
+              gainsCanvas.addEventListener('pointermove', e => {
                 if (!_sel.active || _sel.locked) return;
                 _sel.endIdx = getIdx(e.clientX);
-                CH['gains']?.update('none');
+                redrawSel();
               });
 
-              gainsCanvas.addEventListener('mouseup', e => {
-                if (!_sel.active) return;
+              gainsCanvas.addEventListener('pointerup', e => {
+                if (!_sel.active || _sel.locked) return;
                 if (Math.abs(e.clientX - _sel.startX) < 5) {
-                  // Click — clear selection
+                  // Too small — treat as click, clear
                   _sel.active = false;
                   _sel.startIdx = -1;
                   _sel.endIdx = -1;
-                  _sel.locked = false;
-                  CH['gains']?.update('none');
+                  const chart = CH['gains'];
+                  if (chart) {
+                    chart.options.plugins.tooltip.enabled = true;
+                    chart.update('none');
+                  }
                   return;
                 }
                 _sel.endIdx = getIdx(e.clientX);
-                _sel.locked = true; // Keep showing until next click
-                CH['gains']?.update('none');
+                _sel.locked = true;
+                redrawSel();
               });
             }
           } else {
