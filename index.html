@@ -888,8 +888,14 @@
         <div id="gains-period-body"></div>
         <!-- Value over time chart -->
         <div id="gains-chart-card" class="card mb-2" style="display:none">
-          <div class="sec">Portfolio Value Over Time</div>
-          <div style="height:260px;position:relative"><canvas id="gainsChart"></canvas></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="sec" style="margin-bottom:0">Portfolio Value Over Time</div>
+            <div id="gains-chart-legend" style="display:flex;gap:6px"></div>
+          </div>
+          <div style="height:260px;position:relative">
+            <canvas id="gainsChart"></canvas>
+            <div id="gains-chart-tooltip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
+          </div>
         </div>
         <!-- All-time summary -->
         <div id="gains-alltime"></div>
@@ -5811,64 +5817,62 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                  legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                      boxWidth: 12, boxHeight: 12, padding: 14,
-                      font: { size: 11 },
-                      usePointStyle: true, pointStyle: 'rectRounded',
-                      generateLabels: chart => chart.data.datasets.map((ds, i) => ({
-                        text: ds.label,
-                        fillStyle: chart.isDatasetVisible(i) ? ds.borderColor : 'transparent',
-                        strokeStyle: ds.borderColor,
-                        lineWidth: 1.5,
-                        hidden: false,
-                        datasetIndex: i,
-                        fontColor: chart.isDatasetVisible(i) ? undefined : '#888',
-                      }))
-                    }
-                  },
-                  tooltip: {
-                    mode: 'index', intersect: false,
-                    padding: 12,
-                    titleFont: { size: 13, weight: '700' },
-                    titleMarginBottom: 10,
-                    bodyFont: { size: 12 },
-                    bodySpacing: 6,
-                    boxPadding: 6,
-                    callbacks: {
-                      title: items => gainsFullDates[items[0].dataIndex],
-                      label: c => {
-                        if (!c.chart.isDatasetVisible(c.datasetIndex)) return null;
-                        const name = c.dataset.label;
-                        if (isTabHidden('gains')) return name + ':  —';
-                        const val = fmt(c.parsed.y / cvt(1));
-                        return name + ':  ' + val;
-                      },
-                      afterBody: items => {
-                        if (isTabHidden('gains') || !items.length || acctIds.length < 2) return [];
-                        const idx = items[0].dataIndex;
-                        const snap = chartSnaps[idx];
-                        if (!snap || !snap.accounts) return [];
-                        const lines = ['', '  By Account'];
+                  legend: { display: false },
+                  tooltip: { enabled: false,
+                    external: ctx => {
+                      const tipEl = document.getElementById('gains-chart-tooltip');
+                      if (!tipEl) return;
+                      if (ctx.tooltip.opacity === 0 || _sel.active) {
+                        tipEl.style.display = 'none';
+                        return;
+                      }
+                      const idx = ctx.tooltip.dataPoints?.[0]?.dataIndex;
+                      if (idx == null) { tipEl.style.display = 'none'; return; }
+                      const chart = ctx.chart;
+                      const snap = chartSnaps[idx];
+                      const hide = isTabHidden('gains');
+
+                      // Build dataset rows (only visible ones)
+                      const dsColors = [tc0, tcContrib, tcGainResolved];
+                      const dsNames = ['Portfolio Value', 'Contributions', 'Gains'];
+                      const dsVals = [values[idx], cumContribs[idx], gainsData[idx]];
+                      let dsRows = '';
+                      dsNames.forEach((name, di) => {
+                        if (!chart.isDatasetVisible(di)) return;
+                        const v = hide ? '—' : fmt(dsVals[di], 2);
+                        dsRows += `<div style="display:flex;align-items:center;gap:8px;padding:2px 0"><span style="width:8px;height:8px;border-radius:2px;background:${dsColors[di]};flex-shrink:0"></span><span style="flex:1">${name}</span><span style="font-family:var(--mono);font-weight:500">${v}</span></div>`;
+                      });
+
+                      // Build per-account section
+                      let acctRows = '';
+                      if (!hide && snap?.accounts && acctIds.length >= 2) {
+                        acctRows = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">By Account</div>`;
                         acctIds.forEach(id => {
                           const acct = S.accounts.find(a => String(a.id) === id);
                           if (!acct) return;
                           const val = snap.accounts[id] || 0;
-                          const cumC = filteredContribs
-                            .filter(c => String(c.account) === id && c.date <= snap.date)
-                            .reduce((s, c) => s + contribToUSD(c), 0);
+                          const cumC = filteredContribs.filter(c => String(c.account) === id && c.date <= snap.date).reduce((s, c) => s + contribToUSD(c), 0);
                           const gain = val - cumC;
                           const sign = gain >= 0 ? '+' : '-';
-                          const gStr = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
-                          lines.push(`    ${acct.name}`);
-                          lines.push(`      ${fmt(val, 2)}  (${gStr})`);
+                          const gFmt = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
+                          const gCol = gain >= 0 ? 'var(--fm)' : 'var(--rose)';
+                          acctRows += `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0"><span style="font-size:11px">${acct.name}</span><span style="font-family:var(--mono);font-size:11px"><span style="color:${gCol}">${gFmt}</span></span></div>`;
                         });
-                        return lines;
+                        acctRows += '</div>';
                       }
-                    },
+
+                      tipEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh3);padding:12px 14px;font-size:12px;min-width:180px;max-width:280px"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${gainsFullDates[idx]}</div>${dsRows}${acctRows}</div>`;
+
+                      // Position tooltip
+                      const pos = chart.canvas.getBoundingClientRect();
+                      const tipW = tipEl.offsetWidth || 200;
+                      const cx = ctx.tooltip.caretX;
+                      let left = cx + 12;
+                      if (cx + tipW + 20 > chart.width) left = cx - tipW - 12;
+                      tipEl.style.display = '';
+                      tipEl.style.left = Math.max(0, left) + 'px';
+                      tipEl.style.top = Math.max(0, ctx.tooltip.caretY - 40) + 'px';
+                    }
                   }
                 },
                 scales: {
@@ -5880,6 +5884,17 @@
             // Attach selection data to chart instance
             CH['gains']._sel = _sel;
             CH['gains']._selData = { values, cumContribs, gainsData, gainsFullDates, acctIds };
+
+            // Custom legend
+            const legendEl = document.getElementById('gains-chart-legend');
+            if (legendEl) {
+              const dsColors = [tc0, tcContrib, tcGainResolved];
+              const dsNames = ['Portfolio Value', 'Contributions', 'Gains'];
+              legendEl.innerHTML = dsNames.map((name, i) => {
+                const vis = CH['gains'].isDatasetVisible(i);
+                return `<button data-ds="${i}" style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:${vis ? 'var(--s2)' : 'transparent'};cursor:pointer;font-size:10.5px;font-family:var(--sans);color:${vis ? 'var(--ink)' : 'var(--ink4)'};transition:all .15s" onclick="toggleGainsDs(${i})"><span style="width:7px;height:7px;border-radius:2px;background:${vis ? dsColors[i] : 'var(--ink4)'};opacity:${vis ? 1 : 0.4}"></span>${name}</button>`;
+              }).join('');
+            }
 
             // Desktop drag handlers — we intercept events on the canvas directly
             // and disable Chart.js tooltip during drag to prevent conflicts
@@ -5910,14 +5925,13 @@
                 const x = e.clientX - rect.left;
                 if (x < chart.chartArea.left || x > chart.chartArea.right) return;
 
+                const tipEl = document.getElementById('gains-chart-tooltip');
                 // If there's a locked selection, first click clears it
                 if (_sel.locked) {
                   _sel.active = false;
                   _sel.startIdx = -1;
                   _sel.endIdx = -1;
                   _sel.locked = false;
-                  // Re-enable tooltip
-                  chart.options.plugins.tooltip.enabled = true;
                   chart.update('none');
                   return;
                 }
@@ -5927,9 +5941,7 @@
                 _sel.startX = e.clientX;
                 _sel.startIdx = getIdx(e.clientX);
                 _sel.endIdx = _sel.startIdx;
-                // Disable tooltip during drag
-                chart.options.plugins.tooltip.enabled = false;
-                chart.update('none');
+                if (tipEl) tipEl.style.display = 'none';
                 gainsCanvas.setPointerCapture(e.pointerId);
               });
 
@@ -5946,11 +5958,7 @@
                   _sel.active = false;
                   _sel.startIdx = -1;
                   _sel.endIdx = -1;
-                  const chart = CH['gains'];
-                  if (chart) {
-                    chart.options.plugins.tooltip.enabled = true;
-                    chart.update('none');
-                  }
+                  CH['gains']?.update('none');
                   return;
                 }
                 _sel.endIdx = getIdx(e.clientX);
@@ -6097,6 +6105,27 @@
           }
           sh += `</div></div>`;
           snapLogEl.innerHTML = sh;
+        }
+      }
+
+      function toggleGainsDs(dsIdx) {
+        const chart = CH['gains'];
+        if (!chart) return;
+        const vis = chart.isDatasetVisible(dsIdx);
+        chart.setDatasetVisibility(dsIdx, !vis);
+        chart.update('none');
+        // Re-render legend buttons
+        const legendEl = document.getElementById('gains-chart-legend');
+        if (legendEl) {
+          legendEl.querySelectorAll('button[data-ds]').forEach(btn => {
+            const i = parseInt(btn.dataset.ds);
+            const v = chart.isDatasetVisible(i);
+            const dot = btn.querySelector('span');
+            btn.style.background = v ? 'var(--s2)' : 'transparent';
+            btn.style.color = v ? 'var(--ink)' : 'var(--ink4)';
+            dot.style.opacity = v ? '1' : '0.4';
+            dot.style.background = v ? chart.data.datasets[i].borderColor : 'var(--ink4)';
+          });
         }
       }
 
