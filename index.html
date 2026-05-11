@@ -613,7 +613,7 @@
                   investment</span>
               </div>
             </div>
-            <div class="chart-wrap" style="position:relative;flex-grow:1;min-height:0"><canvas id="projChart"></canvas>
+            <div class="chart-wrap" style="position:relative;flex-grow:1;min-height:0"><canvas id="projChart"></canvas><div id="proj-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
             </div>
           </div>
         </div>
@@ -657,7 +657,7 @@
             <span>NW vs Goal Targets</span>
             <div style="display:flex;gap:10px;flex-wrap:wrap" id="goals-legend"></div>
           </div>
-          <div class="chart-wrap" style="position:relative;height:300px"><canvas id="goalsChart"></canvas></div>
+          <div class="chart-wrap" style="position:relative;height:300px"><canvas id="goalsChart"></canvas><div id="goals-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div></div>
         </div>
         <div id="goals-grid" class="goals-grid">
         </div>
@@ -691,11 +691,11 @@
         <div class="g2 mb-3">
           <div class="card">
             <div class="sec">Net Worth Trajectory</div>
-            <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeNW"></canvas></div>
+            <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeNW"></canvas><div id="lifeNW-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div></div>
           </div>
           <div class="card">
             <div class="sec">Income vs Expenses</div>
-            <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeInc"></canvas></div>
+            <div class="chart-wrap" style="position:relative;height:200px"><canvas id="lifeInc"></canvas><div id="lifeInc-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div></div>
           </div>
         </div>
         <div class="ss-toolbar" id="ss-tb">
@@ -775,6 +775,7 @@
             <div
               style="position:relative;height:220px;min-height:120px;max-height:280px;overflow:hidden;margin-top:4px">
               <canvas id="ft-chart" role="img" aria-label="Net worth projection">Projection from age 25 to 100.</canvas>
+              <div id="ft-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
             </div>
           </div>
         </div>
@@ -2806,6 +2807,41 @@
         if (tabId ? isTabHidden(tabId) : isGlobalHidden()) return '—';
         return datasetLabel ? datasetLabel + ': ' + value : value;
       }
+
+      // Shared external tooltip for all charts
+      // buildRows(idx, chart) should return { title: string, rows: [{ color?, label, value }], footer?: string }
+      function makeExternalTooltip(tipElId, buildRows) {
+        return ctx => {
+          const tipEl = document.getElementById(tipElId);
+          if (!tipEl) return;
+          if (ctx.tooltip.opacity === 0) { tipEl.style.display = 'none'; return; }
+          const idx = ctx.tooltip.dataPoints?.[0]?.dataIndex;
+          if (idx == null) { tipEl.style.display = 'none'; return; }
+          const info = buildRows(idx, ctx.chart);
+          if (!info) { tipEl.style.display = 'none'; return; }
+
+          let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh3);padding:12px 14px;font-size:12px;min-width:160px;max-width:300px">`;
+          html += `<div style="font-weight:700;font-size:13px;margin-bottom:8px">${info.title}</div>`;
+          info.rows.forEach(r => {
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">`;
+            if (r.color) html += `<span style="width:8px;height:8px;border-radius:2px;background:${r.color};flex-shrink:0"></span>`;
+            html += `<span style="flex:1;color:var(--ink2)">${r.label}</span>`;
+            html += `<span style="font-family:var(--mono);font-weight:500;white-space:nowrap">${r.value}</span>`;
+            html += `</div>`;
+          });
+          if (info.extra) html += info.extra;
+          html += `</div>`;
+          tipEl.innerHTML = html;
+
+          const cx = ctx.tooltip.caretX;
+          const tipW = tipEl.offsetWidth || 180;
+          let left = cx + 14;
+          if (cx + tipW + 24 > ctx.chart.width) left = cx - tipW - 14;
+          tipEl.style.display = '';
+          tipEl.style.left = Math.max(0, left) + 'px';
+          tipEl.style.top = Math.max(0, ctx.tooltip.caretY - 30) + 'px';
+        };
+      }
       function chartXAxis(opts = {}) {
         return { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 }, ...opts } };
       }
@@ -2901,7 +2937,7 @@
             // Filter and aggregate snapshots by period
             const filtered = ovFilterSnaps(snaps);
             const agg = ovAggregateSnaps(filtered);
-            h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><div style="display:flex">${ptabs}</div></div>${agg.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Not enough data for this period yet</div>'}</div>`;
+            h += `<div class="card"><div class="sec" style="display:flex;align-items:center;justify-content:space-between"><span>Net worth history</span><div style="display:flex">${ptabs}</div></div>${agg.length >= 2 ? '<div style="position:relative;height:150px;min-width:0"><canvas id="snapChart"></canvas><div id="snap-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div></div>' : '<div style="text-align:center;padding:2rem 0;color:var(--ink3);font-size:12px">Not enough data for this period yet</div>'}</div>`;
           }
           if (vis.breakdown) {
             h += `<div class="card">
@@ -2928,7 +2964,10 @@
             CH['snap'] = new Chart(document.getElementById('snapChart'), { type: 'line', data: {
               labels: agg.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', ovNwPeriod === '1M' ? { month: 'short', day: 'numeric' } : { month: 'short', year: '2-digit' })),
               datasets: [{ data: agg.map(s => cvt(s.nw)), borderColor: tc0, backgroundColor: tc0 + '18', fill: true, tension: 0.3, pointRadius: showDots ? 3 : 0, borderWidth: 2 }]
-            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { title: items => snapFullDates[items[0].dataIndex], label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } });
+            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('snap-chart-tip', (idx) => {
+              if (isTabHidden('dashboard')) return { title: snapFullDates[idx], rows: [{ label: 'Net Worth', value: '—' }] };
+              return { title: snapFullDates[idx], rows: [{ color: tc0, label: 'Net Worth', value: fmt(agg[idx].nw, 0) }] };
+            }) } }, scales: { x: chartXAxis(), y: chartYAxis(v => fmt(v / cvt(1)), 'dashboard') } } });
           }
         }
         if (vis.breakdown) {
@@ -4232,7 +4271,15 @@
         }
         const nf = nomD[yrs], rf = realD[yrs], tc = Array.from({ length: yrs }, (_, i) => c * Math.pow(1 + cg, i)).reduce((s, x) => s + x, 0);
         document.getElementById('p-nom').innerHTML = MT(fmt(nf), 'projections'); document.getElementById('p-real').innerHTML = MT(fmt(rf), 'projections'); document.getElementById('p-contrib').innerHTML = MT(fmt(tc), 'projections'); document.getElementById('p-gains').innerHTML = MT(fmt(nf - nwTotal() - tc), 'projections'); document.getElementById('p-gains-real').textContent = fmt(rf - nwTotal() - tc) + ' real';
-        dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }, { label: 'No investment', data: cashD.map(v => cvt(v)), borderColor: '#9CA3AF', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 4] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => isTabHidden('projections') ? '—' : c.dataset.label + ': ' + fmt(c.parsed.y / cvt(1)), afterBody: items => { if (isTabHidden('projections') || !items.length) return ''; const i = items[0].dataIndex; const rv = realD[i], cv = cashD[i]; return 'Real market gains: ' + fmt(rv - cv); } } } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
+        dC('proj'); const ptc = getThemeColors(); CH['proj'] = new Chart(document.getElementById('projChart'), { type: 'line', data: { labels, datasets: [{ label: 'Nominal', data: nomD.map(v => cvt(v)), borderColor: ptc[0], backgroundColor: ptc[0] + '0D', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }, { label: 'Real', data: realD.map(v => cvt(v)), borderColor: ptc[1], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [5, 4] }, { label: 'w/ events', data: stD.map(v => cvt(v)), borderColor: ptc[3], backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [3, 3] }, { label: 'No investment', data: cashD.map(v => cvt(v)), borderColor: '#9CA3AF', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 4] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('proj-chart-tip', (idx, chart) => {
+              const hide = isTabHidden('projections');
+              const rows = chart.data.datasets.map((ds, i) => {
+                if (!chart.isDatasetVisible(i)) return null;
+                return { color: ds.borderColor, label: ds.label, value: hide ? '—' : fmt(ds.data[idx] / cvt(1)) };
+              }).filter(Boolean);
+              const footer = !hide ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3)">Real market gains: ${fmt(realD[idx] - cashD[idx])}</div>` : '';
+              return { title: labels[idx], rows, extra: footer };
+            }) } }, scales: { x: chartXAxis({ maxTicksLimit: 9 }), y: chartYAxis(v => fmt(v / cvt(1)), 'projections') } } });
       }
       function renderRetTbl() { const off = SCEN[curScen] || 0; document.getElementById('ret-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Accounts</th><th>Expected return (editable)</th><th>Scenario adjusted</th></tr></thead><tbody>${S.funds.map(f => { const acctChips = Object.keys(f.accounts).map(id => { const a = S.accounts.find(x => String(x.id) === id); return `<span class="tag tb" style="font-size:10px">${a?.name || id}</span>`; }).join(' '); return `<tr><td style="font-weight:600">${f.ticker}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td><input class="inp inpm inpsm" style="width:75px" type="number" step="0.1" value="${f.retPct}" onchange="updRet('${f.id}',this.value)"> %</td><td class="mo">${(f.retPct + off).toFixed(1)}% <span class="mut">(${off >= 0 ? '+' : ''}${off}%)</span></td></tr>`; }).join('')}</tbody>`; }
       function updRet(id, v) { const f = S.funds.find(x => String(x.id) === String(id)); if (f) { f.retPct = parseFloat(v) || 10; ps(S); updateProj(); } }
@@ -4255,7 +4302,14 @@
         const nr = blendRet(), t = nwTotal(), yrs = Math.max(...S.goals.map(g => g.year)) - NY + 5;
         const labels = Array.from({ length: Math.min(yrs + 1, 51) }, (_, i) => NY + i);
         const nwD = labels.map(yr => cvt(fvCalc(t, nr, yr - NY, S.settings.annualContrib)));
-        dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => isTabHidden('goals') ? '—' : ctx.dataset.label + ': ' + fmt(ctx.parsed.y / cvt(1)) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'goals') } } });
+        dC('goals'); const gtc = getThemeColors(); CH['goals'] = new Chart(document.getElementById('goalsChart'), { type: 'line', data: { labels, datasets: [{ label: 'Projected NW', data: nwD, borderColor: gtc[0], backgroundColor: gtc[0] + '0F', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5 }, ...S.goals.map(g => ({ label: g.name, data: labels.map(() => cvt(g.amount)), borderColor: GCOL[g.cat], borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false }))] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('goals-chart-tip', (idx, chart) => {
+              const hide = isTabHidden('goals');
+              const rows = chart.data.datasets.map((ds, i) => {
+                if (!chart.isDatasetVisible(i)) return null;
+                return { color: ds.borderColor, label: ds.label, value: hide ? '—' : fmt(ds.data[idx] / cvt(1)) };
+              }).filter(Boolean);
+              return { title: String(labels[idx]), rows };
+            }) } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'goals') } } });
         document.getElementById('goals-legend').innerHTML = [{ label: 'Projected NW', color: gtc[0] }, ...S.goals.filter(g => !g.hidden).map(g => ({ label: g.name, color: GCOL[g.cat] }))].map(x => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)"><span style="width:16px;height:2px;background:${x.color};display:inline-block"></span>${x.label}</span>`).join('');
         document.getElementById('goals-grid').innerHTML = S.goals.filter(g => !g.hidden).map(g => {
           const f = Math.min(100, (t / g.amount) * 100), yl = g.year - NY, proj = fvCalc(t, nr, yl, S.settings.annualContrib), ok = proj >= g.amount;
@@ -4829,8 +4883,17 @@
         const nwVals = rows.map((r, i) => { const v = evalCell(r[1], i, 1); const n = parseFloat(v); return cvt(isFinite(n) ? clamp(n) : 0); });
         const incVals = rows.map((r, i) => { const kr = parseFloat(evalCell(r[3], i, 3)) || 0, us = parseFloat(evalCell(r[4], i, 4)) || 0, sp = parseFloat(evalCell(r[5], i, 5)) || 0; return cvt(clamp(kr + us + sp)); });
         const expVals = rows.map((r, i) => { const ex = parseFloat(evalCell(r[6], i, 6)) || 0, hs = parseFloat(evalCell(r[7], i, 7)) || 0; return cvt(clamp(-(ex + hs))); });
-        dC('lifeNW'); CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: getThemeColors()[0], backgroundColor: getThemeColors()[0] + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel('NW', fmt(c.parsed.y / cvt(1))) } } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'life') } } });
-        dC('lifeInc'); CH['lifeInc'] = new Chart(document.getElementById('lifeInc'), { type: 'bar', data: { labels, datasets: [{ label: 'Income', data: incVals, backgroundColor: getThemeColors()[0] + '55', stack: 'a' }, { label: 'Expenses', data: expVals, backgroundColor: getThemeColors()[3] + '44', stack: 'b' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => chartTooltipLabel(c.dataset.label, fmt(Math.abs(c.parsed.y) / cvt(1)), 'life') } } }, scales: { x: { ...chartXAxis({ maxTicksLimit: 10 }), stacked: true }, y: { ...chartYAxis(v => fmt(Math.abs(v) / cvt(1)), 'life'), stacked: true } } } });
+        dC('lifeNW'); const _lifeNwColor = getThemeColors()[0]; CH['lifeNW'] = new Chart(document.getElementById('lifeNW'), { type: 'line', data: { labels, datasets: [{ data: nwVals, borderColor: _lifeNwColor, backgroundColor: _lifeNwColor + '12', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('lifeNW-chart-tip', idx => {
+          const hide = isTabHidden('life');
+          return { title: labels[idx], rows: [{ color: _lifeNwColor, label: 'Net Worth', value: hide ? '—' : fmt(nwVals[idx] / cvt(1)) }] };
+        }) } }, scales: { x: chartXAxis({ maxTicksLimit: 10 }), y: chartYAxis(v => fmt(v / cvt(1)), 'life') } } });
+        dC('lifeInc'); const _lifeIncColor = getThemeColors()[0], _lifeExpColor = getThemeColors()[3]; CH['lifeInc'] = new Chart(document.getElementById('lifeInc'), { type: 'bar', data: { labels, datasets: [{ label: 'Income', data: incVals, backgroundColor: _lifeIncColor + '55', stack: 'a' }, { label: 'Expenses', data: expVals, backgroundColor: _lifeExpColor + '44', stack: 'b' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('lifeInc-chart-tip', (idx, chart) => {
+          const hide = isTabHidden('life');
+          const rows = chart.data.datasets.map((ds, i) => ({
+            color: ds.backgroundColor, label: ds.label, value: hide ? '—' : fmt(Math.abs(ds.data[idx]) / cvt(1))
+          }));
+          return { title: labels[idx], rows };
+        }) } }, scales: { x: { ...chartXAxis({ maxTicksLimit: 10 }), stacked: true }, y: { ...chartYAxis(v => fmt(Math.abs(v) / cvt(1)), 'life'), stacked: true } } } });
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -5802,60 +5865,39 @@
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                   legend: { display: false },
-                  tooltip: { enabled: false,
+                  tooltip: { enabled: false, mode: 'index', intersect: false,
                     external: ctx => {
-                      const tipEl = document.getElementById('gains-chart-tooltip');
-                      if (!tipEl) return;
-                      if (ctx.tooltip.opacity === 0 || _sel.active) {
-                        tipEl.style.display = 'none';
-                        return;
-                      }
-                      const idx = ctx.tooltip.dataPoints?.[0]?.dataIndex;
-                      if (idx == null) { tipEl.style.display = 'none'; return; }
-                      const chart = ctx.chart;
-                      const snap = chartSnaps[idx];
-                      const hide = isTabHidden('gains');
-
-                      // Build dataset rows (only visible ones)
+                      // Hide during drag selection
+                      if (_sel.active) { const t = document.getElementById('gains-chart-tooltip'); if (t) t.style.display = 'none'; return; }
                       const dsColors = [tc0, tcContrib, tcGainResolved];
                       const dsNames = ['Portfolio Value', 'Contributions', 'Gains'];
-                      const dsVals = [values[idx], cumContribs[idx], gainsData[idx]];
-                      let dsRows = '';
-                      dsNames.forEach((name, di) => {
-                        if (!chart.isDatasetVisible(di)) return;
-                        const v = hide ? '—' : fmt(dsVals[di], 2);
-                        dsRows += `<div style="display:flex;align-items:center;gap:8px;padding:2px 0"><span style="width:8px;height:8px;border-radius:2px;background:${dsColors[di]};flex-shrink:0"></span><span style="flex:1">${name}</span><span style="font-family:var(--mono);font-weight:500">${v}</span></div>`;
-                      });
-
-                      // Build per-account section
-                      let acctRows = '';
-                      if (!hide && snap?.accounts && acctIds.length >= 2) {
-                        acctRows = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">By Account</div>`;
-                        acctIds.forEach(id => {
-                          const acct = S.accounts.find(a => String(a.id) === id);
-                          if (!acct) return;
-                          const val = snap.accounts[id] || 0;
-                          const cumC = filteredContribs.filter(c => String(c.account) === id && c.date <= snap.date).reduce((s, c) => s + contribToUSD(c), 0);
-                          const gain = val - cumC;
-                          const sign = gain >= 0 ? '+' : '-';
-                          const gFmt = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
-                          const gCol = gain >= 0 ? 'var(--fm)' : 'var(--rose)';
-                          acctRows += `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0"><span style="font-size:11px">${acct.name}</span><span style="font-family:var(--mono);font-size:11px"><span style="color:${gCol}">${gFmt}</span></span></div>`;
-                        });
-                        acctRows += '</div>';
-                      }
-
-                      tipEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh3);padding:12px 14px;font-size:12px;min-width:180px;max-width:280px"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${gainsFullDates[idx]}</div>${dsRows}${acctRows}</div>`;
-
-                      // Position tooltip
-                      const pos = chart.canvas.getBoundingClientRect();
-                      const tipW = tipEl.offsetWidth || 200;
-                      const cx = ctx.tooltip.caretX;
-                      let left = cx + 12;
-                      if (cx + tipW + 20 > chart.width) left = cx - tipW - 12;
-                      tipEl.style.display = '';
-                      tipEl.style.left = Math.max(0, left) + 'px';
-                      tipEl.style.top = Math.max(0, ctx.tooltip.caretY - 40) + 'px';
+                      const dsVals = [values, cumContribs, gainsData];
+                      makeExternalTooltip('gains-chart-tooltip', (idx, chart) => {
+                        const hide = isTabHidden('gains');
+                        const snap = chartSnaps[idx];
+                        const rows = dsNames.map((name, di) => {
+                          if (!chart.isDatasetVisible(di)) return null;
+                          return { color: dsColors[di], label: name, value: hide ? '—' : fmt(dsVals[di][idx], 2) };
+                        }).filter(Boolean);
+                        // Per-account breakdown
+                        let extra = '';
+                        if (!hide && snap?.accounts && acctIds.length >= 2) {
+                          extra = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">By Account</div>`;
+                          acctIds.forEach(id => {
+                            const acct = S.accounts.find(a => String(a.id) === id);
+                            if (!acct) return;
+                            const val = snap.accounts[id] || 0;
+                            const cumC = filteredContribs.filter(c => String(c.account) === id && c.date <= snap.date).reduce((s, c) => s + contribToUSD(c), 0);
+                            const gain = val - cumC;
+                            const sign = gain >= 0 ? '+' : '-';
+                            const gFmt = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
+                            const gCol = gain >= 0 ? 'var(--fm)' : 'var(--rose)';
+                            extra += `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0"><span style="font-size:11px;color:var(--ink2)">${acct.name}</span><span style="font-family:var(--mono);font-size:11px"><span style="color:${gCol}">${gFmt}</span></span></div>`;
+                          });
+                          extra += '</div>';
+                        }
+                        return { title: gainsFullDates[idx], rows, extra };
+                      })(ctx);
                     }
                   }
                 },
@@ -9155,7 +9197,13 @@
               { label: 'Net worth', data: ftRows.map(r => r.nw), borderColor: tc[0], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
               { label: 'Cumulative savings', data: ftRows.map(r => r.cumSav), borderColor: 'var(--teal)', borderDash: [5, 3], borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(30,122,122,.07)', tension: 0.3 }
             ]
-          }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + ftFmt(c.raw) } } }, scales: { x: chartXAxis({ maxTicksLimit: 16 }), y: chartYAxis(v => ftFmt(v), 'future') } }
+          }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { enabled: false, mode: 'index', intersect: false, external: makeExternalTooltip('ft-chart-tip', (idx, chart) => {
+              const hide = isTabHidden('future');
+              const rows = chart.data.datasets.map((ds, i) => ({
+                color: ds.borderColor, label: ds.label, value: hide ? '—' : ftFmt(ds.data[idx])
+              }));
+              return { title: 'Age ' + ftRows[idx]?.age, rows };
+            }) } }, scales: { x: chartXAxis({ maxTicksLimit: 16 }), y: chartYAxis(v => ftFmt(v), 'future') } }
         });
       }
 
