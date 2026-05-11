@@ -887,15 +887,8 @@
         <div id="gains-period-body"></div>
         <!-- Value over time chart -->
         <div id="gains-chart-card" class="card mb-2" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div class="sec" style="margin-bottom:0">Portfolio Value Over Time</div>
-            <div id="gains-drag-hint" style="font-size:10.5px;color:var(--ink4)">Drag to select range</div>
-          </div>
-          <div id="gains-chart-sel" style="display:none;margin:10px 0 4px;padding:10px 14px;border-radius:var(--rs);background:var(--s2);font-size:12px;line-height:1.7"></div>
-          <div style="height:240px;position:relative">
-            <canvas id="gainsChart"></canvas>
-            <div id="gains-sel-overlay" style="display:none;position:absolute;top:0;bottom:0;background:var(--primary);opacity:0.08;pointer-events:none;border-left:1.5px dashed var(--primary);border-right:1.5px dashed var(--primary)"></div>
-          </div>
+          <div class="sec">Portfolio Value Over Time</div>
+          <div style="height:260px;position:relative"><canvas id="gainsChart"></canvas></div>
         </div>
         <!-- All-time summary -->
         <div id="gains-alltime"></div>
@@ -5606,9 +5599,123 @@
             const showDots = chartSnaps.length <= 60;
             const gainsFullDates = chartSnaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
             dC('gains');
-            // Store chart data for drag selection
-            const _gcData = { chartSnaps, values, cumContribs, gainsData, gainsFullDates, acctIds };
-            CH['gains'] = new Chart(document.getElementById('gainsChart'), {
+            // Drag selection state stored on the chart instance
+            const _sel = { active: false, startX: 0, startIdx: -1, endIdx: -1, locked: false };
+
+            // Chart.js plugin: draws selection overlay + label directly on canvas
+            const dragSelectPlugin = {
+              id: 'gainsDragSelect',
+              afterDraw(chart) {
+                const { ctx, chartArea: area, scales: { x: xScale } } = chart;
+                const s = chart._sel;
+                if (!s || s.startIdx < 0 || s.endIdx < 0) return;
+                const minI = Math.min(s.startIdx, s.endIdx), maxI = Math.max(s.startIdx, s.endIdx);
+                if (minI === maxI) return;
+
+                const x1 = xScale.getPixelForValue(minI);
+                const x2 = xScale.getPixelForValue(maxI);
+
+                // Fill area under the curve between the two indices
+                const ds = chart.data.datasets[0];
+                const meta = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.beginPath();
+                // Top edge: follow the line from minI to maxI
+                for (let i = minI; i <= maxI; i++) {
+                  const pt = meta.data[i];
+                  if (i === minI) ctx.moveTo(pt.x, pt.y);
+                  else ctx.lineTo(pt.x, pt.y);
+                }
+                // Bottom edge: straight across the bottom of chart area
+                ctx.lineTo(x2, area.bottom);
+                ctx.lineTo(x1, area.bottom);
+                ctx.closePath();
+                const selColor = tcGainResolved || tc0;
+                ctx.fillStyle = selColor + '25';
+                ctx.fill();
+
+                // Dashed vertical lines at boundaries
+                ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = selColor + '60';
+                ctx.lineWidth = 1.5;
+                [x1, x2].forEach(x => {
+                  ctx.beginPath();
+                  ctx.moveTo(x, area.top);
+                  ctx.lineTo(x, area.bottom);
+                  ctx.stroke();
+                });
+                ctx.setLineDash([]);
+
+                // Dots at the start/end points on the line
+                [minI, maxI].forEach(i => {
+                  const pt = meta.data[i];
+                  ctx.beginPath();
+                  ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+                  ctx.fillStyle = selColor;
+                  ctx.fill();
+                  ctx.strokeStyle = '#fff';
+                  ctx.lineWidth = 1.5;
+                  ctx.stroke();
+                });
+
+                // Floating label with gain info
+                if (!isTabHidden('gains')) {
+                  const startVal = chart._selData.values[minI];
+                  const endVal = chart._selData.values[maxI];
+                  const startC = chart._selData.cumContribs[minI];
+                  const endC = chart._selData.cumContribs[maxI];
+                  const periodC = endC - startC;
+                  const gain = (endVal - startVal) - periodC;
+                  const pct = startVal > 0 ? (gain / startVal) * 100 : 0;
+                  const sign = gain >= 0 ? '+' : '';
+                  const arrow = gain >= 0 ? '\u2191' : '\u2193';
+                  const d1 = chart._selData.gainsFullDates[minI];
+                  const d2 = chart._selData.gainsFullDates[maxI];
+                  // Short date range
+                  const rangeStr = d1.replace(/, \d{4}$/, '') + ' \u2013 ' + d2.replace(/, \d{4}$/, '');
+                  const valStr = sign + fmt(Math.abs(gain) / cvt(1));
+                  const pctStr = `(${sign}${pct.toFixed(1)}%)`;
+                  const label = `${valStr} ${pctStr} ${arrow}  ${rangeStr}`;
+
+                  const midX = (x1 + x2) / 2;
+                  const topY = Math.min(meta.data[minI].y, meta.data[maxI].y);
+                  const labelY = Math.max(area.top + 18, topY - 16);
+
+                  ctx.font = '600 12px -apple-system, BlinkMacSystemFont, sans-serif';
+                  const tw = ctx.measureText(label).width;
+                  const px = 10, py = 5;
+                  let lx = midX - tw / 2 - px;
+                  // Clamp within chart area
+                  if (lx < area.left + 4) lx = area.left + 4;
+                  if (lx + tw + px * 2 > area.right - 4) lx = area.right - 4 - tw - px * 2;
+
+                  ctx.fillStyle = gain >= 0 ? (selColor + '18') : 'rgba(220,60,60,0.1)';
+                  const r = 6;
+                  const bx = lx, by = labelY - py - 12, bw = tw + px * 2, bh = 12 + py * 2;
+                  ctx.beginPath();
+                  ctx.moveTo(bx + r, by); ctx.lineTo(bx + bw - r, by);
+                  ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+                  ctx.lineTo(bx + bw, by + bh - r);
+                  ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+                  ctx.lineTo(bx + r, by + bh);
+                  ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+                  ctx.lineTo(bx, by + r);
+                  ctx.quadraticCurveTo(bx, by, bx + r, by);
+                  ctx.closePath();
+                  ctx.fill();
+
+                  const roseResolved = getComputedStyle(document.documentElement).getPropertyValue('--rose').trim() || '#dc3c3c';
+                  ctx.fillStyle = gain >= 0 ? selColor : roseResolved;
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText(label, lx + px, labelY);
+                }
+
+                ctx.restore();
+              }
+            };
+
+            const gainsCanvas = document.getElementById('gainsChart');
+            CH['gains'] = new Chart(gainsCanvas, {
               type: 'line',
               data: {
                 labels,
@@ -5650,6 +5757,7 @@
                   },
                 ]
               },
+              plugins: [dragSelectPlugin],
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -5663,7 +5771,7 @@
                   },
                   tooltip: {
                     mode: 'index', intersect: false,
-                    filter: () => !_gainsDrag,
+                    filter: () => !_sel.active,
                     callbacks: {
                       title: items => gainsFullDates[items[0].dataIndex],
                       label: c => {
@@ -5681,7 +5789,60 @@
                 }
               }
             });
-            setupGainsChartDrag(_gcData);
+            // Attach selection data to chart instance
+            CH['gains']._sel = _sel;
+            CH['gains']._selData = { values, cumContribs, gainsData, gainsFullDates, acctIds };
+
+            // Desktop drag handlers
+            if (window.innerWidth > 768) {
+              gainsCanvas.style.cursor = 'crosshair';
+              const getIdx = (clientX) => {
+                const chart = CH['gains'];
+                if (!chart) return -1;
+                const rect = gainsCanvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const scale = chart.scales.x;
+                const pct = Math.max(0, Math.min(1, (x - scale.left) / (scale.right - scale.left)));
+                return Math.round(pct * (values.length - 1));
+              };
+
+              gainsCanvas.addEventListener('mousedown', e => {
+                if (e.button !== 0) return;
+                const chart = CH['gains'];
+                if (!chart) return;
+                const rect = gainsCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                // Only start drag if within chart area
+                if (x < chart.chartArea.left || x > chart.chartArea.right) return;
+                _sel.active = true;
+                _sel.locked = false;
+                _sel.startX = e.clientX;
+                _sel.startIdx = getIdx(e.clientX);
+                _sel.endIdx = _sel.startIdx;
+              });
+
+              gainsCanvas.addEventListener('mousemove', e => {
+                if (!_sel.active || _sel.locked) return;
+                _sel.endIdx = getIdx(e.clientX);
+                CH['gains']?.update('none');
+              });
+
+              gainsCanvas.addEventListener('mouseup', e => {
+                if (!_sel.active) return;
+                if (Math.abs(e.clientX - _sel.startX) < 5) {
+                  // Click — clear selection
+                  _sel.active = false;
+                  _sel.startIdx = -1;
+                  _sel.endIdx = -1;
+                  _sel.locked = false;
+                  CH['gains']?.update('none');
+                  return;
+                }
+                _sel.endIdx = getIdx(e.clientX);
+                _sel.locked = true; // Keep showing until next click
+                CH['gains']?.update('none');
+              });
+            }
           } else {
             chartCard.style.display = 'none';
             dC('gains');
@@ -5822,126 +5983,6 @@
           sh += `</div></div>`;
           snapLogEl.innerHTML = sh;
         }
-      }
-
-      // ── Chart drag-to-select (desktop) ──
-      let _gainsDrag = null; // { startX, startIdx }
-
-      function setupGainsChartDrag(data) {
-        const canvas = document.getElementById('gainsChart');
-        if (!canvas || window.innerWidth <= 768) return;
-        canvas.style.cursor = 'crosshair';
-
-        const overlay = document.getElementById('gains-sel-overlay');
-        const selBox = document.getElementById('gains-chart-sel');
-        const hint = document.getElementById('gains-drag-hint');
-
-        // Clear previous listeners by replacing canvas event target
-        const getIdx = (x) => {
-          const chart = CH['gains'];
-          if (!chart) return -1;
-          const pts = chart.getElementsAtEventForMode({ x, y: chart.chartArea.top + 1 }, 'index', { intersect: false }, false);
-          if (pts.length) return pts[0].index;
-          // Fallback: find nearest by pixel
-          const scale = chart.scales.x;
-          const left = scale.left, right = scale.right;
-          const pct = Math.max(0, Math.min(1, (x - left) / (right - left)));
-          return Math.round(pct * (data.values.length - 1));
-        };
-
-        const showOverlay = (i1, i2) => {
-          const chart = CH['gains'];
-          if (!chart || !overlay) return;
-          const scale = chart.scales.x;
-          const minI = Math.min(i1, i2), maxI = Math.max(i1, i2);
-          const x1 = scale.getPixelForValue(minI);
-          const x2 = scale.getPixelForValue(maxI);
-          overlay.style.display = '';
-          overlay.style.left = x1 + 'px';
-          overlay.style.width = Math.max(2, x2 - x1) + 'px';
-        };
-
-        const showSelSummary = (i1, i2) => {
-          if (!selBox) return;
-          const minI = Math.min(i1, i2), maxI = Math.max(i1, i2);
-          if (minI === maxI) { clearSel(); return; }
-
-          const startDate = data.gainsFullDates[minI];
-          const endDate = data.gainsFullDates[maxI];
-          const startVal = data.values[minI];
-          const endVal = data.values[maxI];
-          const startContrib = data.cumContribs[minI];
-          const endContrib = data.cumContribs[maxI];
-          const periodContribs = endContrib - startContrib;
-          const periodGain = (endVal - startVal) - periodContribs;
-          const pct = startVal > 0 ? (periodGain / startVal) * 100 : 0;
-          const gainCol = periodGain >= 0 ? 'var(--fm)' : 'var(--rose)';
-          const sign = periodGain >= 0 ? '+' : '';
-          const hide = isTabHidden('gains');
-          const fv = v => hide ? '<span class="hval">Hidden</span>' : fmt(v, 2);
-
-          selBox.style.display = '';
-          selBox.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.3px;text-transform:uppercase">${startDate} — ${endDate}</span>
-              <button class="btn bsm bgh" onclick="clearGainsChartSel()" style="padding:1px 6px;font-size:10px">Clear</button>
-            </div>
-            <div style="display:flex;gap:20px;flex-wrap:wrap">
-              <div><span style="color:var(--ink3)">Start:</span> <span style="font-family:var(--mono)">${fv(startVal)}</span></div>
-              <div><span style="color:var(--ink3)">End:</span> <span style="font-family:var(--mono)">${fv(endVal)}</span></div>
-              <div><span style="color:var(--ink3)">Contributions:</span> <span style="font-family:var(--mono)">${fv(periodContribs)}</span></div>
-              <div><span style="color:var(--ink3)">Gain:</span> <span style="font-family:var(--mono);color:${gainCol};font-weight:600">${hide ? '<span class="hval">Hidden</span>' : sign + fmt(Math.abs(periodGain), 2)}</span> <span style="font-size:11px;color:${gainCol}">${hide ? '' : sign + pct.toFixed(1) + '%'}</span></div>
-            </div>`;
-          if (hint) hint.style.display = 'none';
-        };
-
-        const clearSel = () => {
-          if (overlay) overlay.style.display = 'none';
-          if (selBox) selBox.style.display = 'none';
-          if (hint) hint.style.display = '';
-        };
-
-        // Expose for the clear button
-        window.clearGainsChartSel = clearSel;
-
-        canvas.addEventListener('mousedown', e => {
-          if (e.button !== 0) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          _gainsDrag = { startX: e.clientX, startIdx: getIdx(x) };
-          clearSel();
-        });
-
-        canvas.addEventListener('mousemove', e => {
-          if (!_gainsDrag) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const curIdx = getIdx(x);
-          showOverlay(_gainsDrag.startIdx, curIdx);
-        });
-
-        canvas.addEventListener('mouseup', e => {
-          if (!_gainsDrag) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const endIdx = getIdx(x);
-          if (Math.abs(e.clientX - _gainsDrag.startX) < 5) {
-            // Click, not drag
-            clearSel();
-            _gainsDrag = null;
-            return;
-          }
-          showOverlay(_gainsDrag.startIdx, endIdx);
-          showSelSummary(_gainsDrag.startIdx, endIdx);
-          _gainsDrag = null;
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-          if (_gainsDrag) {
-            clearSel();
-            _gainsDrag = null;
-          }
-        });
       }
 
       // ── Contribution modal ──
