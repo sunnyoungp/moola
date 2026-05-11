@@ -2910,7 +2910,7 @@
         const nw = nwTotal();
         const idx = S.snapshots.findIndex(s => s.date === today);
         if (idx >= 0) {
-          S.snapshots[idx].nw = nw;
+          if (nw > S.snapshots[idx].nw) S.snapshots[idx].nw = nw;
         } else {
           S.snapshots.push({ date: today, nw, contributed: 0, note: '' });
           S.snapshots.sort((a, b) => a.date.localeCompare(b.date));
@@ -4203,23 +4203,25 @@
           const barW = Math.min(100, Math.abs(allocUSD) / barMax * 100);
           const barCol = allocUSD >= 0 ? 'var(--fm)' : 'var(--rose)';
           const driftColor = Math.abs(driftBefore) > 3 ? (driftBefore > 0 ? 'color:var(--gold)' : 'color:var(--rose)') : 'color:var(--ink3)';
-          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-            <div style="min-width:130px;flex-shrink:0">
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
               <div style="font-size:13px;font-weight:600">${MT(f.ticker, 'rebalance')}</div>
-              <div style="font-size:10.5px;margin-top:2px;color:var(--ink3)">
+              <div style="font-size:10.5px;color:var(--ink3)">
                 Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of portfolio
               </div>
-              <div style="font-size:10px;margin-top:1px">
-                <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
-                <span style="color:var(--ink4)"> → </span>
-                <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : driftAfter === 0 ? 'var(--fm)' : 'var(--ink3)'}" title="Drift after this action">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
+            </div>
+            <div style="font-size:10px;margin-bottom:6px">
+              <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
+              <span style="color:var(--ink4)"> → </span>
+              <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : driftAfter === 0 ? 'var(--fm)' : 'var(--ink3)'}" title="Drift after this action">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;height:5px;background:var(--s3);border-radius:3px">
+                <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
               </div>
+              <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
             </div>
-            <div style="flex:1;min-width:80px;height:5px;background:var(--s3);border-radius:3px">
-              <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
-            </div>
-            <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
-            <span style="font-family:var(--mono);font-size:13px;font-weight:600;min-width:80px;text-align:right;flex-shrink:0;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</span>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:600;margin-top:4px;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</div>
           </div>`;
         };
 
