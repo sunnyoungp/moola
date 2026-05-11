@@ -5667,30 +5667,18 @@
 
                 const x1 = xScale.getPixelForValue(minI);
                 const x2 = xScale.getPixelForValue(maxI);
+                const isDark = document.documentElement.classList.contains('dark') || getComputedStyle(document.documentElement).getPropertyValue('--surface').trim().match(/^#[0-3]/);
 
-                // Fill area under the curve between the two indices
-                const ds = chart.data.datasets[0];
-                const meta = chart.getDatasetMeta(0);
                 ctx.save();
-                ctx.beginPath();
-                // Top edge: follow the line from minI to maxI
-                for (let i = minI; i <= maxI; i++) {
-                  const pt = meta.data[i];
-                  if (i === minI) ctx.moveTo(pt.x, pt.y);
-                  else ctx.lineTo(pt.x, pt.y);
-                }
-                // Bottom edge: straight across the bottom of chart area
-                ctx.lineTo(x2, area.bottom);
-                ctx.lineTo(x1, area.bottom);
-                ctx.closePath();
-                const selColor = tcGainResolved || tc0;
-                ctx.fillStyle = selColor + '25';
-                ctx.fill();
 
-                // Dashed vertical lines at boundaries
+                // Neutral full-height selection band
+                ctx.fillStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+                ctx.fillRect(x1, area.top, x2 - x1, area.bottom - area.top);
+
+                // Dashed vertical boundary lines
                 ctx.setLineDash([5, 4]);
-                ctx.strokeStyle = selColor + '60';
-                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
+                ctx.lineWidth = 1;
                 [x1, x2].forEach(x => {
                   ctx.beginPath();
                   ctx.moveTo(x, area.top);
@@ -5699,69 +5687,65 @@
                 });
                 ctx.setLineDash([]);
 
-                // Dots at the start/end points on the line
-                [minI, maxI].forEach(i => {
-                  const pt = meta.data[i];
-                  ctx.beginPath();
-                  ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-                  ctx.fillStyle = selColor;
-                  ctx.fill();
-                  ctx.strokeStyle = '#fff';
-                  ctx.lineWidth = 1.5;
-                  ctx.stroke();
-                });
-
-                // Floating label with gain info
+                // Floating label with all three values
                 if (!isTabHidden('gains')) {
-                  const startVal = chart._selData.values[minI];
-                  const endVal = chart._selData.values[maxI];
-                  const startC = chart._selData.cumContribs[minI];
-                  const endC = chart._selData.cumContribs[maxI];
-                  const periodC = endC - startC;
+                  const d = chart._selData;
+                  const startVal = d.values[minI], endVal = d.values[maxI];
+                  const periodC = d.cumContribs[maxI] - d.cumContribs[minI];
                   const gain = (endVal - startVal) - periodC;
-                  const pct = startVal > 0 ? (gain / startVal) * 100 : 0;
-                  const sign = gain >= 0 ? '+' : '';
-                  const arrow = gain >= 0 ? '\u2191' : '\u2193';
-                  const d1 = chart._selData.gainsFullDates[minI];
-                  const d2 = chart._selData.gainsFullDates[maxI];
-                  // Short date range
-                  const rangeStr = d1.replace(/, \d{4}$/, '') + ' \u2013 ' + d2.replace(/, \d{4}$/, '');
-                  const valStr = sign + fmt(Math.abs(gain) / cvt(1));
-                  const pctStr = `(${sign}${pct.toFixed(1)}%)`;
-                  const label = `${valStr} ${pctStr} ${arrow}  ${rangeStr}`;
+                  const pctBase = startVal + periodC;
+                  const pct = pctBase > 0 ? (gain / pctBase) * 100 : 0;
+                  const d1 = d.gainsFullDates[minI].replace(/, \d{4}$/, '');
+                  const d2 = d.gainsFullDates[maxI].replace(/, \d{4}$/, '');
+
+                  const fmtSel = v => fmt(v / cvt(1));
+                  const gSign = gain >= 0 ? '+' : '';
+                  const lines = [
+                    { text: `${d1} \u2013 ${d2}`, bold: true },
+                    { text: `Value: ${fmtSel(startVal)} \u2192 ${fmtSel(endVal)}` },
+                    { text: `Contributions: ${fmtSel(periodC)}` },
+                    { text: `Gain: ${gSign}${fmtSel(gain)} (${gSign}${pct.toFixed(1)}%)`, color: gain >= 0 ? tcGainResolved : (getComputedStyle(document.documentElement).getPropertyValue('--rose').trim() || '#dc3c3c') },
+                  ];
+
+                  const fontSize = 11;
+                  const lineH = 16;
+                  const px = 10, py = 8;
+                  ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+                  const maxW = Math.max(...lines.map(l => ctx.measureText(l.text).width));
+                  const bw = maxW + px * 2, bh = lines.length * lineH + py * 2;
 
                   const midX = (x1 + x2) / 2;
-                  const topY = Math.min(meta.data[minI].y, meta.data[maxI].y);
-                  const labelY = Math.max(area.top + 18, topY - 16);
-
-                  ctx.font = '600 12px -apple-system, BlinkMacSystemFont, sans-serif';
-                  const tw = ctx.measureText(label).width;
-                  const px = 10, py = 5;
-                  let lx = midX - tw / 2 - px;
-                  // Clamp within chart area
+                  let lx = midX - bw / 2;
                   if (lx < area.left + 4) lx = area.left + 4;
-                  if (lx + tw + px * 2 > area.right - 4) lx = area.right - 4 - tw - px * 2;
+                  if (lx + bw > area.right - 4) lx = area.right - 4 - bw;
+                  const by = area.top + 8;
 
-                  ctx.fillStyle = gain >= 0 ? (selColor + '18') : 'rgba(220,60,60,0.1)';
-                  const r = 6, fontSize = 12;
-                  const bw = tw + px * 2, bh = fontSize + py * 2;
-                  const bx = lx, by = labelY - bh / 2;
+                  // Background
+                  const r = 8;
+                  ctx.fillStyle = isDark ? 'rgba(30,30,30,0.92)' : 'rgba(255,255,255,0.95)';
+                  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+                  ctx.lineWidth = 1;
                   ctx.beginPath();
-                  ctx.moveTo(bx + r, by); ctx.lineTo(bx + bw - r, by);
-                  ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
-                  ctx.lineTo(bx + bw, by + bh - r);
-                  ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
-                  ctx.lineTo(bx + r, by + bh);
-                  ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
-                  ctx.lineTo(bx, by + r);
-                  ctx.quadraticCurveTo(bx, by, bx + r, by);
+                  ctx.moveTo(lx + r, by); ctx.lineTo(lx + bw - r, by);
+                  ctx.quadraticCurveTo(lx + bw, by, lx + bw, by + r);
+                  ctx.lineTo(lx + bw, by + bh - r);
+                  ctx.quadraticCurveTo(lx + bw, by + bh, lx + bw - r, by + bh);
+                  ctx.lineTo(lx + r, by + bh);
+                  ctx.quadraticCurveTo(lx, by + bh, lx, by + bh - r);
+                  ctx.lineTo(lx, by + r);
+                  ctx.quadraticCurveTo(lx, by, lx + r, by);
                   ctx.closePath();
                   ctx.fill();
+                  ctx.stroke();
 
-                  const roseResolved = getComputedStyle(document.documentElement).getPropertyValue('--rose').trim() || '#dc3c3c';
-                  ctx.fillStyle = gain >= 0 ? selColor : roseResolved;
+                  // Text lines
+                  const textColor = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)';
                   ctx.textBaseline = 'middle';
-                  ctx.fillText(label, lx + px, by + bh / 2);
+                  lines.forEach((l, i) => {
+                    ctx.font = `${l.bold ? '700' : '500'} ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+                    ctx.fillStyle = l.color || textColor;
+                    ctx.fillText(l.text, lx + px, by + py + i * lineH + lineH / 2);
+                  });
                 }
 
                 ctx.restore();
