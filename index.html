@@ -6045,20 +6045,69 @@
       // ── Historical snapshot modal ──
       let _editingSnapDate = null; // date string of snapshot being edited, or null for new
 
+      function _sortedSnapAccts() {
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const order = S.settings.snapAcctOrder || [];
+        if (!order.length) return invAccts;
+        return invAccts.slice().sort((a, b) => {
+          const ai = order.indexOf(String(a.id)), bi = order.indexOf(String(b.id));
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+      }
+
+      function _snapAcctRow(a, value) {
+        const display = value ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        return `<div class="hs-row" draggable="true" data-acct-id="${a.id}"
+          style="display:flex;align-items:center;gap:8px;margin-bottom:8px"
+          ondragstart="hsRowDragStart(event)" ondragover="hsRowDragOver(event)" ondrop="hsRowDrop(event)" ondragend="hsRowDragEnd(event)">
+          <span style="cursor:grab;color:var(--ink4);font-size:14px;flex-shrink:0;padding:0 2px" title="Drag to reorder">&#8942;&#8942;</span>
+          <div class="fr" style="flex:1;margin-bottom:0">
+            <label style="font-size:12px">${a.name}</label>
+            <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" data-acct-id="${a.id}" type="text" placeholder="0" value="${display}" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          </div>
+        </div>`;
+      }
+
+      let _hsDragEl = null;
+      function hsRowDragStart(e) {
+        _hsDragEl = e.currentTarget;
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.style.opacity = '0.4';
+      }
+      function hsRowDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }
+      function hsRowDrop(e) {
+        e.preventDefault();
+        if (!_hsDragEl) return;
+        const target = e.currentTarget;
+        if (_hsDragEl === target) return;
+        const container = document.getElementById('hs-acct-rows');
+        const rows = [...container.querySelectorAll('.hs-row')];
+        const fromIdx = rows.indexOf(_hsDragEl);
+        const toIdx = rows.indexOf(target);
+        if (fromIdx < toIdx) target.after(_hsDragEl);
+        else target.before(_hsDragEl);
+        // Persist order
+        const newOrder = [...container.querySelectorAll('.hs-row')].map(r => r.dataset.acctId);
+        if (!S.settings) S.settings = {};
+        S.settings.snapAcctOrder = newOrder;
+        ps(S);
+      }
+      function hsRowDragEnd(e) {
+        _hsDragEl = null;
+        e.currentTarget.style.opacity = '1';
+      }
+
       function openHistSnapModal(prefillDate) {
         _editingSnapDate = null;
         const titleEl = document.getElementById('m-hist-snap-title');
         if (titleEl) titleEl.textContent = 'Add historical value';
         document.getElementById('hs-date').value = prefillDate || '';
-        document.getElementById('hs-date').removeAttribute('readonly');
-        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const invAccts = _sortedSnapAccts();
         const rows = document.getElementById('hs-acct-rows');
-        rows.innerHTML = invAccts.map(a =>
-          `<div class="fr" style="margin-bottom:8px">
-            <label style="font-size:12px">${a.name}</label>
-            <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" data-acct-id="${a.id}" type="text" placeholder="0" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-          </div>`
-        ).join('');
+        rows.innerHTML = invAccts.map(a => _snapAcctRow(a, 0)).join('');
         openModal('m-hist-snap');
       }
 
@@ -6069,16 +6118,11 @@
         const titleEl = document.getElementById('m-hist-snap-title');
         if (titleEl) titleEl.textContent = 'Edit snapshot';
         document.getElementById('hs-date').value = dateStr;
-        document.getElementById('hs-date').setAttribute('readonly', 'readonly');
-        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const invAccts = _sortedSnapAccts();
         const rows = document.getElementById('hs-acct-rows');
         rows.innerHTML = invAccts.map(a => {
           const val = snap.accounts?.[String(a.id)] || 0;
-          const display = val ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-          return `<div class="fr" style="margin-bottom:8px">
-            <label style="font-size:12px">${a.name}</label>
-            <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" data-acct-id="${a.id}" type="text" placeholder="0" value="${display}" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
-          </div>`;
+          return _snapAcctRow(a, val);
         }).join('');
         openModal('m-hist-snap');
       }
@@ -6101,10 +6145,22 @@
         if (!Object.keys(accounts).length) return;
         if (!S.gainSnapshots) S.gainSnapshots = [];
         if (_editingSnapDate) {
-          // Editing existing: replace accounts entirely for this date
+          // Editing existing: update accounts and allow date change
           const idx = S.gainSnapshots.findIndex(s => s.date === _editingSnapDate);
           if (idx >= 0) {
             S.gainSnapshots[idx].accounts = accounts;
+            if (date !== _editingSnapDate) {
+              // Date changed — check for collision
+              const conflictIdx = S.gainSnapshots.findIndex(s => s.date === date);
+              if (conflictIdx >= 0 && conflictIdx !== idx) {
+                // Merge into existing snapshot at new date
+                S.gainSnapshots[conflictIdx].accounts = { ...S.gainSnapshots[conflictIdx].accounts, ...accounts };
+                S.gainSnapshots.splice(idx, 1);
+              } else {
+                S.gainSnapshots[idx].date = date;
+              }
+              S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+            }
           }
         } else {
           const idx = S.gainSnapshots.findIndex(s => s.date === date);
