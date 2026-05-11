@@ -2963,12 +2963,7 @@
         const state = getFilteredState();
         syncPrivacyUI();
         document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
-        // Pull total contributed from gains contribution log
-        const totalContrib = (S.gainContribs || []).reduce((s, c) => s + contribToUSD(c), 0);
-        const snaps = S.snapshots || [];
-        const gain = snaps.length ? nwTotal() - (snaps[0]?.nw || nwTotal()) - totalContrib : 0;
-        const contribSince = snaps.length && snaps[0]?.date ? new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
-        document.getElementById('ov-gain').innerHTML = isNWHidden() ? '' : (snaps.length ? `<span class="tag ${gain >= 0 ? 'tg' : 'tr'}">${gain >= 0 ? '+' : ''}${fmt(gain)} gains</span><span class="mut" style="font-size:11px">vs ${fmt(totalContrib)} contributed${contribSince ? ' since ' + contribSince : ''}</span>` : `<span class="mut" style="font-size:11px">Snapshots are recorded automatically</span>`);
+        document.getElementById('ov-gain').innerHTML = '';
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) {
           const _nw = nwTotal(); const _cash = totByBucket('cash') + totByBucket('restricted'); const _inv = totByBucket('investments'); const _ret = totByBucket('retirement'); const _re = totRealEstateEquity();
