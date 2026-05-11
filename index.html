@@ -5572,22 +5572,34 @@
             } else {
               // For CUSTOM with end date in the past, use nearest snapshot to end date
               const endInPast = end < todayStr();
-              let endValue = currentValue;
-              if (endInPast) {
-                const endSnap = nearestSnap(end, acctIds);
-                endValue = endSnap ? snapValueForAccts(endSnap, acctIds) : currentValue;
-              }
+              const endSnap = endInPast ? nearestSnap(end, acctIds) : null;
+              let endValue = endInPast && endSnap ? snapValueForAccts(endSnap, acctIds) : currentValue;
               const periodContribs = contribsInRange(start, end, acctIds);
               const periodGain = endValue - startValue - periodContribs;
               const periodBase = startValue + periodContribs;
               const periodPct = periodBase > 0 ? (periodGain / periodBase) * 100 : 0;
+
+              // Per-account tooltip breakdowns
+              const pTipStyle = 'display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap';
+              const pTipWrap = 'position:relative;display:inline-block;cursor:help';
+              const pTipEvt = `onmouseenter="this.querySelector('.gains-tip').style.display='block'" onmouseleave="this.querySelector('.gains-tip').style.display='none'" onclick="const t=this.querySelector('.gains-tip');t.style.display=t.style.display==='block'?'none':'block'"`;
+              const pDotUl = 'text-decoration:underline dotted var(--ink4);text-underline-offset:3px';
+              const pMkTip = rows => `<div class="gains-tip" style="${pTipStyle}"><div style="font-size:11px;min-width:200px">${rows}</div></div>`;
+              const pMkRow = (name, val) => `<div style="display:flex;justify-content:space-between;gap:16px"><span>${name}</span><span style="font-family:var(--mono)">${val}</span></div>`;
+
+              const startTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const v = startSnap?.accounts?.[id] || 0; return pMkRow(a.name, fmt(v, 2)); }).join('');
+              const contribTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const sum = contribs.filter(c => String(c.account) === id && c.date > start && c.date <= end).reduce((s, c) => s + contribToUSD(c), 0); return pMkRow(a.name, fmt(sum, 2)); }).join('');
+              const endTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const v = endInPast && endSnap ? (endSnap.accounts?.[id] || 0) : getAcctUSD(a); return pMkRow(a.name, fmt(v, 2)); }).join('');
+              const gainTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const sv = startSnap?.accounts?.[id] || 0; const ev = endInPast && endSnap ? (endSnap.accounts?.[id] || 0) : getAcctUSD(a); const ac = contribs.filter(c => String(c.account) === id && c.date > start && c.date <= end).reduce((s, c) => s + contribToUSD(c), 0); const g = ev - sv - ac; return pMkRow(a.name, `<span style="color:${g >= 0 ? 'var(--fm)' : 'var(--rose)'}">${g >= 0 ? '+' : ''}${fmt(Math.abs(g), 2)}</span>`); }).join('');
+
               ph += `<div class="card mb-2">
                 <div class="sec">Period Gain / Loss</div>
                 <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
                 <div style="display:flex;gap:28px;flex-wrap:wrap">
-                  <div><div class="lbl">Starting value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(startValue)}</div></div>
-                  <div><div class="lbl">Contributions</div><div class="mnum" style="font-family:var(--mono)">${fmtV(periodContribs)}</div></div>
-                  <div><div class="lbl">${endInPast ? 'End value' : 'Current value'}</div><div class="mnum" style="font-family:var(--mono)">${fmtV(endValue)}</div></div>
+                  <div><div class="lbl">Starting value</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(startValue)}</div>${pMkTip(startTip)}</div></div>
+                  <div><div class="lbl">Contributions</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(periodContribs)}</div>${pMkTip(contribTip)}</div></div>
+                  <div><div class="lbl">${endInPast ? 'End value' : 'Current value'}</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(endValue)}</div>${pMkTip(endTip)}</div></div>
+                  <div><div class="lbl">Gain / Loss</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl};color:${periodGain >= 0 ? 'var(--fm)' : 'var(--rose)'}">${fmtV(periodGain)}</div>${pMkTip(gainTip)}</div></div>
                 </div>
               </div>`;
             }
