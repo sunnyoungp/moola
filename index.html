@@ -888,6 +888,8 @@
         </div>
         <!-- Period gain display -->
         <div id="gains-period-body"></div>
+        <!-- All-time summary (only shown on ALL toggle) -->
+        <div id="gains-alltime"></div>
         <!-- Value over time chart -->
         <div id="gains-chart-card" class="card mb-2" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -899,8 +901,6 @@
             <div id="gains-chart-tooltip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
           </div>
         </div>
-        <!-- All-time summary -->
-        <div id="gains-alltime"></div>
         <!-- Contribution log -->
         <div id="gains-contrib-log"></div>
         <!-- Snapshot history -->
@@ -6033,9 +6033,12 @@
           }
         }
 
-        // ── All-time summary ──
+        // ── All-time summary (only on ALL toggle) ──
         const allTimeEl = document.getElementById('gains-alltime');
-        if (allTimeEl) {
+        if (allTimeEl && !isAllTime) {
+          allTimeEl.innerHTML = '';
+        }
+        if (allTimeEl && isAllTime) {
           const totalContribs = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + contribToUSD(c), 0);
           const totalGained = currentValue - totalContribs;
           const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
