@@ -1392,6 +1392,35 @@
               </div>
             </div>
             <div class="card">
+              <div class="sec"
+                style="display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none"
+                onclick="toggleSettingsSection('s-daily-snap')">
+                <svg id="s-daily-snap-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  style="transition:transform 0.2s;transform:rotate(-90deg)">
+                  <polyline points="4 6 8 10 12 6" />
+                </svg>
+                <span
+                  style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.5px;text-transform:uppercase">Daily
+                  Snapshots</span>
+              </div>
+              <div id="s-daily-snap-body" style="display:none;margin-top:14px">
+                <div style="font-size:12.5px;color:var(--ink2);margin-bottom:12px;line-height:1.6">Per-account investment
+                  values recorded daily. Used for gain/loss calculations.</div>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                  <button class="btn bsm bp" onclick="openHistSnapModal()">
+                    <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round">
+                      <line x1="7" y1="2" x2="7" y2="12" />
+                      <line x1="2" y1="7" x2="12" y2="7" />
+                    </svg>
+                    Add snapshot
+                  </button>
+                </div>
+                <div id="daily-snap-list" style="max-height:500px;overflow-y:auto"></div>
+              </div>
+            </div>
+            <div class="card">
               <div class="sec" style="margin-bottom:8px">Sidebar Order</div>
               <div id="reorder-tabs-list" style="display:flex;flex-direction:column;gap:4px"></div>
             </div>
@@ -1760,7 +1789,7 @@
 
     <div class="mo-ov" id="m-hist-snap">
       <div class="modal" style="max-width:480px">
-        <div class="modal-title"><span>Add historical value</span><button class="bgh btn bsm"
+        <div class="modal-title"><span id="m-hist-snap-title">Add historical value</span><button class="bgh btn bsm"
             onclick="closeModal('m-hist-snap')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="2" y1="2" x2="10" y2="10" />
@@ -5708,7 +5737,7 @@
               <th>Date</th>`;
             // Column per investment account
             invAccts.forEach(a => { sh += `<th style="text-align:right">${a.name}</th>`; });
-            sh += `<th style="text-align:right">Total</th></tr></thead><tbody>`;
+            sh += `<th style="text-align:right">Total</th><th style="width:1px"></th></tr></thead><tbody>`;
             snaps.forEach(s => {
               let total = 0;
               sh += `<tr><td style="white-space:nowrap;font-size:12px">${s.date}</td>`;
@@ -5717,7 +5746,9 @@
                 total += val;
                 sh += `<td class="mo" style="text-align:right;font-size:12px">${fmtV(val)}</td>`;
               });
-              sh += `<td class="mo" style="text-align:right;font-weight:600;font-size:12px">${fmtV(total)}</td></tr>`;
+              sh += `<td class="mo" style="text-align:right;font-weight:600;font-size:12px">${fmtV(total)}</td>`;
+              sh += `<td style="white-space:nowrap;text-align:right"><button class="btn bsm bgh" onclick="editGainSnap('${s.date}')" style="padding:2px 6px;font-size:11px">Edit</button> <button class="btn bsm bgh" onclick="deleteGainSnap('${s.date}')" style="padding:2px 6px;font-size:11px;color:var(--rose)">Del</button></td>`;
+              sh += `</tr>`;
             });
             sh += `</tbody></table></div>`;
           }
@@ -5825,8 +5856,14 @@
       }
 
       // ── Historical snapshot modal ──
+      let _editingSnapDate = null; // date string of snapshot being edited, or null for new
+
       function openHistSnapModal(prefillDate) {
+        _editingSnapDate = null;
+        const titleEl = document.getElementById('m-hist-snap-title');
+        if (titleEl) titleEl.textContent = 'Add historical value';
         document.getElementById('hs-date').value = prefillDate || '';
+        document.getElementById('hs-date').removeAttribute('readonly');
         const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
         const rows = document.getElementById('hs-acct-rows');
         rows.innerHTML = invAccts.map(a =>
@@ -5836,6 +5873,34 @@
           </div>`
         ).join('');
         openModal('m-hist-snap');
+      }
+
+      function editGainSnap(dateStr) {
+        _editingSnapDate = dateStr;
+        const snap = (S.gainSnapshots || []).find(s => s.date === dateStr);
+        if (!snap) return;
+        const titleEl = document.getElementById('m-hist-snap-title');
+        if (titleEl) titleEl.textContent = 'Edit snapshot';
+        document.getElementById('hs-date').value = dateStr;
+        document.getElementById('hs-date').setAttribute('readonly', 'readonly');
+        const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+        const rows = document.getElementById('hs-acct-rows');
+        rows.innerHTML = invAccts.map(a => {
+          const val = snap.accounts?.[String(a.id)] || 0;
+          const display = val ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+          return `<div class="fr" style="margin-bottom:8px">
+            <label style="font-size:12px">${a.name}</label>
+            <div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span><input class="inp" style="padding-left:24px" data-acct-id="${a.id}" type="text" placeholder="0" value="${display}" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+          </div>`;
+        }).join('');
+        openModal('m-hist-snap');
+      }
+
+      function deleteGainSnap(dateStr) {
+        moConfirm('Delete snapshot for ' + dateStr + '?', () => {
+          S.gainSnapshots = (S.gainSnapshots || []).filter(s => s.date !== dateStr);
+          ps(S); renderGains(); renderSettings();
+        });
       }
 
       function saveHistSnap() {
@@ -5848,17 +5913,24 @@
         });
         if (!Object.keys(accounts).length) return;
         if (!S.gainSnapshots) S.gainSnapshots = [];
-        const idx = S.gainSnapshots.findIndex(s => s.date === date);
-        if (idx >= 0) {
-          // Merge with existing snapshot (don't overwrite other accounts)
-          Object.assign(S.gainSnapshots[idx].accounts || {}, accounts);
-          if (!S.gainSnapshots[idx].accounts) S.gainSnapshots[idx] = { date, accounts };
-          else S.gainSnapshots[idx].accounts = { ...S.gainSnapshots[idx].accounts, ...accounts };
+        if (_editingSnapDate) {
+          // Editing existing: replace accounts entirely for this date
+          const idx = S.gainSnapshots.findIndex(s => s.date === _editingSnapDate);
+          if (idx >= 0) {
+            S.gainSnapshots[idx].accounts = accounts;
+          }
         } else {
-          S.gainSnapshots.push({ date, accounts });
-          S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+          const idx = S.gainSnapshots.findIndex(s => s.date === date);
+          if (idx >= 0) {
+            // Merge with existing snapshot (don't overwrite other accounts)
+            S.gainSnapshots[idx].accounts = { ...S.gainSnapshots[idx].accounts, ...accounts };
+          } else {
+            S.gainSnapshots.push({ date, accounts });
+            S.gainSnapshots.sort((a, b) => a.date.localeCompare(b.date));
+          }
         }
-        ps(S); closeModal('m-hist-snap'); renderGains();
+        _editingSnapDate = null;
+        ps(S); closeModal('m-hist-snap'); renderGains(); renderSettings();
       }
 
       // ── renderSettings extension ──────────────────────────────────
@@ -5911,6 +5983,33 @@
               <button class="btn bsm bgh" onclick="openSnapModal(${i})" style="flex-shrink:0">Edit</button>
             </div>`;
           }).join('');
+        }
+        // Daily snapshots (gainSnapshots) in settings
+        const dsEl = document.getElementById('daily-snap-list');
+        if (dsEl) {
+          const gSnaps = (S.gainSnapshots || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+          const invAccts = S.accounts.filter(a => isInvestmentAcct(a));
+          if (!gSnaps.length) {
+            dsEl.innerHTML = '<div class="mut" style="font-size:12px;padding:8px 0">No daily snapshots yet. One is recorded each time you open the app.</div>';
+          } else {
+            let dt = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th>Date</th>`;
+            invAccts.forEach(a => { dt += `<th style="text-align:right">${a.name}</th>`; });
+            dt += `<th style="text-align:right">Total</th><th style="width:1px"></th></tr></thead><tbody>`;
+            gSnaps.forEach(s => {
+              let total = 0;
+              dt += `<tr><td style="white-space:nowrap;font-size:12px">${s.date}</td>`;
+              invAccts.forEach(a => {
+                const val = s.accounts?.[String(a.id)] || 0;
+                total += val;
+                dt += `<td class="mo" style="text-align:right;font-size:12px">${M(gainFmtUSD(val))}</td>`;
+              });
+              dt += `<td class="mo" style="text-align:right;font-weight:600;font-size:12px">${M(gainFmtUSD(total))}</td>`;
+              dt += `<td style="white-space:nowrap;text-align:right"><button class="btn bsm bgh" onclick="editGainSnap('${s.date}')" style="padding:2px 6px;font-size:11px">Edit</button> <button class="btn bsm bgh" onclick="deleteGainSnap('${s.date}')" style="padding:2px 6px;font-size:11px;color:var(--rose)">Del</button></td>`;
+              dt += `</tr>`;
+            });
+            dt += `</tbody></table></div>`;
+            dsEl.innerHTML = dt;
+          }
         }
         buildPresets();
         syncAllInputsFromDOM();
