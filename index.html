@@ -5917,9 +5917,9 @@
                         // Per-account breakdown — gains relative to period start
                         let extra = '';
                         if (!hide && snap?.accounts && acctIds.length >= 2) {
-                          const periodLabel = isAllTime ? 'All-time gain' : { '1D': '1D gain', '1M': '1M gain', '3M': '3M gain', 'YTD': 'YTD gain', '1Y': '1Y gain', 'CUSTOM': 'Period gain' }[gainsPeriod] || 'Gain';
                           const baseSnap = chartSnaps[0];
-                          extra = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${periodLabel} by account</div>`;
+                          const baseDate = new Date(baseSnap.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                          extra = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Gain by account since ${baseDate}</div>`;
                           acctIds.forEach(id => {
                             const acct = S.accounts.find(a => String(a.id) === id);
                             if (!acct) return;
