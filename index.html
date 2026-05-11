@@ -869,6 +869,7 @@
             <div class="page-sub">Track returns across all investment accounts</div>
           </div>
           <div class="page-actions">
+            <button class="btn bsm bgh" onclick="openImportDataModal()">+ Import data</button>
             <button class="btn bsm bgh" onclick="openHistSnapModal()">+ Historical value</button>
             <button class="btn bp bsm" onclick="openContribModal(null)">+ Add contribution</button>
           </div>
@@ -1801,6 +1802,35 @@
         <div class="modal-footer">
           <button class="btn" onclick="closeModal('m-hist-snap')">Cancel</button>
           <button class="btn bp" onclick="saveHistSnap()">Save snapshot</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mo-ov" id="m-import-data">
+      <div class="modal" style="max-width:560px">
+        <div class="modal-title"><span>Import Data</span><button class="bgh btn bsm"
+            onclick="closeModal('m-import-data')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="2" y1="2" x2="10" y2="10" />
+              <line x1="10" y1="2" x2="2" y2="10" />
+            </svg></button></div>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:14px">Import snapshots and contributions from a JSON file. This replaces all existing data.</div>
+        <div class="fr" style="margin-bottom:10px">
+          <label>Upload JSON file</label>
+          <input class="inp" type="file" id="import-file" accept=".json" onchange="handleImportFile(this)">
+        </div>
+        <div class="fr">
+          <label>Or paste JSON</label>
+          <textarea class="inp" id="import-json" rows="6" style="font-family:var(--mono);font-size:11px;resize:vertical" placeholder='{"snapshots":[...],"contributions":[...]}'></textarea>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn bsm bgh" onclick="validateImportData()" style="width:100%">Validate</button>
+        </div>
+        <div id="import-error" style="display:none;margin-top:10px;padding:10px 12px;border-radius:var(--rs);background:var(--rose-l);color:var(--rose);font-size:12px;line-height:1.5"></div>
+        <div id="import-preview" style="display:none;margin-top:10px"></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('m-import-data')">Cancel</button>
+          <button class="btn bp" id="import-apply-btn" onclick="applyImportData()" disabled>Apply</button>
         </div>
       </div>
     </div>
@@ -6009,6 +6039,169 @@
           sh += `</div></div>`;
           snapLogEl.innerHTML = sh;
         }
+      }
+
+      // ── Import Data ──
+      let _importParsed = null; // validated + resolved data ready to apply
+
+      function openImportDataModal() {
+        _importParsed = null;
+        document.getElementById('import-file').value = '';
+        document.getElementById('import-json').value = '';
+        document.getElementById('import-error').style.display = 'none';
+        document.getElementById('import-preview').style.display = 'none';
+        document.getElementById('import-apply-btn').disabled = true;
+        openModal('m-import-data');
+      }
+
+      function handleImportFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          document.getElementById('import-json').value = e.target.result;
+          validateImportData();
+        };
+        reader.readAsText(file);
+      }
+
+      function validateImportData() {
+        _importParsed = null;
+        const errEl = document.getElementById('import-error');
+        const previewEl = document.getElementById('import-preview');
+        const applyBtn = document.getElementById('import-apply-btn');
+        errEl.style.display = 'none';
+        previewEl.style.display = 'none';
+        applyBtn.disabled = true;
+
+        const showErr = msg => {
+          errEl.textContent = msg;
+          errEl.style.display = '';
+        };
+
+        const raw = document.getElementById('import-json').value.trim();
+        if (!raw) return showErr('No data to validate. Upload a file or paste JSON.');
+
+        let data;
+        try { data = JSON.parse(raw); } catch (e) {
+          return showErr('Invalid JSON. Check your file and try again.');
+        }
+        if (!data.snapshots || !data.contributions) {
+          return showErr('File is missing required fields: snapshots, contributions');
+        }
+        if (!Array.isArray(data.snapshots) || !Array.isArray(data.contributions)) {
+          return showErr('snapshots and contributions must be arrays.');
+        }
+
+        // Validate snapshots
+        for (let i = 0; i < data.snapshots.length; i++) {
+          const s = data.snapshots[i];
+          if (!s.date) return showErr(`Snapshot at index ${i} is missing a date.`);
+          if (!s.accounts || typeof s.accounts !== 'object') return showErr(`Snapshot at index ${i} is missing accounts.`);
+        }
+
+        // Validate contributions
+        for (let i = 0; i < data.contributions.length; i++) {
+          const c = data.contributions[i];
+          const missing = [];
+          if (!c.date) missing.push('date');
+          if (!c.account) missing.push('account');
+          if (c.amount == null) missing.push('amount');
+          if (missing.length) return showErr(`Contribution at index ${i} is missing required fields: ${missing.join(', ')}`);
+        }
+
+        // Collect all account names referenced in import
+        const acctNames = new Set();
+        data.snapshots.forEach(s => Object.keys(s.accounts).forEach(n => acctNames.add(n)));
+        data.contributions.forEach(c => acctNames.add(c.account));
+
+        // Resolve each to an account ID
+        const nameToId = {};
+        for (const importName of acctNames) {
+          const match = S.accounts.find(a =>
+            a.name.toLowerCase().trim() === importName.toLowerCase().trim()
+          );
+          if (!match) {
+            return showErr(`Account "${importName}" not found. Your accounts: ${S.accounts.map(a => a.name).join(', ')}`);
+          }
+          nameToId[importName] = String(match.id);
+        }
+
+        // Build resolved snapshots
+        const resolvedSnaps = data.snapshots.map(s => {
+          const accounts = {};
+          for (const [name, val] of Object.entries(s.accounts)) {
+            accounts[nameToId[name]] = val || 0;
+          }
+          return { date: s.date, accounts };
+        }).sort((a, b) => a.date.localeCompare(b.date));
+
+        // Build resolved contributions
+        const resolvedContribs = data.contributions.map((c, i) => ({
+          id: Date.now() + i,
+          date: c.date,
+          amount: c.amount,
+          account: nameToId[c.account],
+          currency: c.currency || 'USD',
+          note: c.note || ''
+        })).sort((a, b) => a.date.localeCompare(b.date));
+
+        // Calculate total contributed (converting KRW at current rate)
+        const totalContrib = resolvedContribs.reduce((s, c) => {
+          return s + (c.currency === 'KRW' ? (c.amount || 0) / getFX() : (c.amount || 0));
+        }, 0);
+
+        _importParsed = { snapshots: resolvedSnaps, contributions: resolvedContribs };
+
+        // Show preview
+        const curSnaps = (S.gainSnapshots || []).length;
+        const curContribs = (S.gainContribs || []).length;
+        previewEl.style.display = '';
+        previewEl.innerHTML = `
+          <div style="padding:12px 14px;border-radius:var(--rs);background:var(--s2);font-size:12.5px;line-height:1.8">
+            <div style="font-weight:600;margin-bottom:4px">Import Preview</div>
+            <div>Replacing <strong>${curSnaps}</strong> snapshots with <strong>${resolvedSnaps.length}</strong></div>
+            <div>Replacing <strong>${curContribs}</strong> contributions with <strong>${resolvedContribs.length}</strong></div>
+            <div>New total contributed: <strong style="font-family:var(--mono)">${fmtUSD(totalContrib)}</strong></div>
+            <div style="margin-top:8px;padding:8px 10px;border-radius:var(--rs);background:var(--rose-l);color:var(--rose);font-size:11.5px">
+              This replaces ALL your current snapshots and contributions. A backup downloads automatically before any changes are made.
+            </div>
+          </div>`;
+        applyBtn.disabled = false;
+      }
+
+      function applyImportData() {
+        if (!_importParsed) return;
+
+        // Back up current data
+        const backup = {
+          timestamp: new Date().toISOString(),
+          gainSnapshots: JSON.parse(JSON.stringify(S.gainSnapshots || [])),
+          gainContribs: JSON.parse(JSON.stringify(S.gainContribs || [])),
+        };
+        try {
+          const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `moola-backup-${todayStr()}.json`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {
+          const errEl = document.getElementById('import-error');
+          errEl.textContent = 'Backup failed — import aborted. Please try again.';
+          errEl.style.display = '';
+          return;
+        }
+
+        // Apply
+        S.gainSnapshots = _importParsed.snapshots;
+        S.gainContribs = _importParsed.contributions;
+        ps(S);
+        _importParsed = null;
+        closeModal('m-import-data');
+        renderGains();
+        if (typeof renderSettings === 'function') renderSettings();
       }
 
       // ── Contribution modal ──
