@@ -365,7 +365,7 @@
             <div class="card mb-3" id="acc-chart-card" style="padding: 20px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
                 <div class="sec" style="margin-bottom:0">Allocation</div>
-                <select class="inp inpm" style="width:110px;font-size:11px;padding:3px 8px;height:28px"
+                <select class="inp inpm" style="font-size:11px;padding:3px 8px;height:28px;width:auto;min-width:0"
                   onchange="setChartGroup(this.value)">
                   <option value="bucket" ${S.chartGroupingMode==='bucket' ? 'selected' : '' }>By Bucket</option>
                   <option value="category" ${S.chartGroupingMode==='category' ? 'selected' : '' }>By Category</option>
@@ -394,7 +394,7 @@
             <div
               style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;height:28px">
               <div style="font-size:12px;font-weight:600;color:var(--ink2)">Breakdown</div>
-              <select class="inp inpm" style="width:130px;font-size:11px;padding:3px 8px;height:28px"
+              <select class="inp inpm" style="font-size:11px;padding:3px 8px;height:28px;width:auto;min-width:0"
                 onchange="setTableGroup(this.value)">
                 <option value="bucket" ${S.tableGroupingMode==='bucket' ? 'selected' : '' }>Group: Bucket</option>
                 <option value="category" ${S.tableGroupingMode==='category' ? 'selected' : '' }>Group: Category</option>
@@ -511,7 +511,7 @@
             <div class="flex gsm" id="contrib-input-row" style="align-items:center">
               <label style="font-size:12px;color:var(--ink2);white-space:nowrap;font-weight:600"
                 id="r-contrib-label">Amount to invest ($)</label>
-              <input type="number" class="inp inpm inpsm" style="width:120px" id="r-contrib" value="0"
+              <input type="number" class="inp inpm inpsm" style="width:140px;max-width:50%" id="r-contrib" value="0"
                 oninput="calcRebal()">
             </div>
             <div style="font-size:12px;color:var(--ink2)" id="rebal-mode-desc"></div>
@@ -800,7 +800,7 @@
             <div style="display:flex;align-items:center;gap:12px;margin-left:auto" onclick="event.stopPropagation()">
               <div id="ft-buy-ctrl" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink2)">
                 <span style="white-space:nowrap">Buy at age</span>
-                <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:64px"
+                <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:80px"
                   oninput="ftSetBuyAge(+this.value)">
                 <span id="ft-buy-out"
                   style="font-size:12px;font-weight:600;color:var(--ink);min-width:20px;font-family:var(--mono)">—</span>
@@ -882,9 +882,9 @@
         <!-- Period selector -->
         <div class="atab-group" id="gains-period-tabs" style="margin-bottom:16px"></div>
         <div id="gains-custom-range" class="gains-custom-range" style="display:none;gap:10px;align-items:center;margin-bottom:16px">
-          <input type="date" class="inp" id="gains-start" style="width:150px" onchange="renderGains()">
+          <input type="date" class="inp" id="gains-start" style="flex:1;min-width:0" onchange="renderGains()">
           <span style="color:var(--ink3)">to</span>
-          <input type="date" class="inp" id="gains-end" style="width:150px" onchange="renderGains()">
+          <input type="date" class="inp" id="gains-end" style="flex:1;min-width:0" onchange="renderGains()">
         </div>
         <!-- Period gain display -->
         <div id="gains-period-body"></div>
@@ -1335,7 +1335,7 @@
             <div class="card mb-2">
               <div class="sec">Currency</div>
               <div class="fr"><label>KRW / USD exchange rate (&#8361; per $1)</label><input type="number"
-                  class="inp inpm" id="fx-set" value="1370" step="1" style="width:150px" onchange="updFX(this.value)">
+                  class="inp inpm" id="fx-set" value="1370" step="1" style="width:150px;max-width:100%" onchange="updFX(this.value)">
               </div>
             </div>
             <div class="card mb-2">

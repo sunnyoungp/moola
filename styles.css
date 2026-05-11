@@ -52,7 +52,7 @@
   /* Layout */
   --sb: 200px;
   --sb-collapsed: 56px;
-  --mob-nav-h: 62px;
+  --mob-nav-h: 56px;
   /* Borders — legacy aliases (keep for backward compat) */
   --line: rgba(var(--ink-rgb), 0.09);
   --line-s: rgba(var(--ink-rgb), 0.16);
@@ -3204,18 +3204,18 @@ body.sb-collapsed .priv-section {
     font-size: 16px; /* prevents iOS zoom on focus */
   }
 
-  /* ── Typography: larger, more readable ── */
+  /* ── Page header: clean stacking ── */
   .page-hdr {
-    padding: 24px 20px 0;
+    padding: 20px 16px 0;
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
   }
 
   .page-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
-    letter-spacing: -.5px;
+    letter-spacing: -.4px;
   }
 
   .page-sub {
@@ -3223,41 +3223,52 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
+  /* Page actions: total on own row, buttons below left-aligned */
   .page-actions {
     width: 100%;
+    display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    align-items: center;
+  }
+
+  .page-actions .bnum {
+    width: 100%;
+    order: -1;
+    font-size: 26px !important;
+    margin-right: 0 !important;
+    margin-bottom: 2px;
   }
 
   .page-actions .btn {
     min-width: 0;
   }
 
-  /* ── Spacing: generous like Stripe/Mint ── */
+  /* ── Spacing: 16px page padding (Stripe/Plaid standard) ── */
   .tc {
-    padding: 16px 20px 28px;
+    padding: 16px 16px 28px;
   }
 
   .card {
-    padding: 18px;
-    border-radius: 16px;
+    padding: 16px;
+    border-radius: 14px;
     border-color: var(--border);
-    box-shadow: var(--sh2);
+    box-shadow: var(--sh1);
   }
 
   .card:hover {
     border-color: var(--border);
-    box-shadow: var(--sh2);
+    box-shadow: var(--sh1);
   }
 
   .csm {
     padding: 14px 16px;
-    border-radius: 14px;
+    border-radius: 12px;
   }
 
   .sec {
     font-size: 11px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .lbl {
@@ -3265,22 +3276,22 @@ body.sb-collapsed .priv-section {
   }
 
   .mnum {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .bnum {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .mut {
     font-size: 12px;
   }
 
-  /* ── Grids: single column with breathing room ── */
+  /* ── Grids: single column ── */
   .g2,
   .g3 {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 12px;
   }
 
   .g4 {
@@ -3288,59 +3299,73 @@ body.sb-collapsed .priv-section {
     gap: 10px;
   }
 
-  /* ── NW hero: big bold balance ── */
+  /* ── NW hero: prominent balance ── */
   .nw-hero {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    padding: 22px 20px;
-    border-radius: 18px;
+    gap: 10px;
+    padding: 20px 18px;
+    border-radius: 16px;
   }
 
   .nw-hero-value {
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 600;
     letter-spacing: -1px;
   }
 
   .nw-hero .bnum {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .nw-hero-right {
     align-self: flex-start;
   }
 
-  /* ── Buttons: 44px touch targets ── */
+  /* ── Buttons: 36px standard, properly sized ── */
   .btn {
-    height: 42px;
-    padding: 0 16px;
-    font-size: 14px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
     border-radius: 10px;
   }
 
   .bsm {
-    height: 34px !important;
-    padding: 0 12px !important;
-    font-size: 13px !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
     border-radius: 8px !important;
   }
 
-  /* ── Inputs: taller, more padded ── */
+  /* Modal footer buttons: 44px full-width CTA */
+  .modal-footer .btn {
+    height: 44px;
+    font-size: 14px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── Vis-toggle: comfortable touch target ── */
+  .vis-toggle {
+    padding: 5px 12px 5px 10px;
+    font-size: 12px;
+  }
+
+  /* ── Inputs: 44px height, 16px font (iOS zoom threshold) ── */
   .inp {
     height: 44px;
     padding: 0 14px;
-    font-size: 15px;
+    font-size: 16px;
     border-radius: 10px;
   }
 
   .inpm {
-    font-size: 15px;
+    font-size: 16px;
   }
 
   .inpsm {
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .fr {
@@ -3349,18 +3374,18 @@ body.sb-collapsed .priv-section {
   }
 
   .fr label {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
   }
 
-  /* ── Tags: slightly larger, more padded ── */
+  /* ── Tags: clean, readable ── */
   .tag {
-    padding: 3px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
     font-size: 11px;
   }
 
-  /* ── Segment tabs: larger touch targets ── */
+  /* ── Segment tabs ── */
   .stabs {
     flex-wrap: wrap;
     border-radius: 10px;
@@ -3373,7 +3398,7 @@ body.sb-collapsed .priv-section {
     border-radius: 7px;
   }
 
-  /* ── Anchor tabs: horizontal scroll, larger ── */
+  /* ── Anchor tabs: horizontal scroll ── */
   .atab-group {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -3383,7 +3408,7 @@ body.sb-collapsed .priv-section {
   }
 
   .atab {
-    padding: 10px 14px;
+    padding: 8px 14px;
     font-size: 13px;
     white-space: nowrap;
     flex-shrink: 0;
@@ -3403,7 +3428,7 @@ body.sb-collapsed .priv-section {
   #port-sync-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
   }
 
   #port-sync-chips {
@@ -3418,10 +3443,10 @@ body.sb-collapsed .priv-section {
   .price-chip {
     flex-shrink: 0;
     padding: 4px 10px;
-    font-size: 11.5px;
+    font-size: 11px;
   }
 
-  /* ── Tray: clean separator ── */
+  /* ── Tray ── */
   #mob-tray-cur {
     border-bottom: none !important;
     padding: 12px 16px 8px;
@@ -3432,8 +3457,8 @@ body.sb-collapsed .priv-section {
   .inv-tbl-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    margin: 0 -18px;
-    padding: 0 18px;
+    margin: 0 -16px;
+    padding: 0 16px;
   }
 
   .tbl {
@@ -3454,7 +3479,7 @@ body.sb-collapsed .priv-section {
 
   .modal {
     padding: 24px 20px 28px;
-    border-radius: 20px 20px 0 0;
+    border-radius: 18px 18px 0 0;
     width: 100%;
     max-width: 100%;
     margin: 0;
@@ -3462,18 +3487,13 @@ body.sb-collapsed .priv-section {
   }
 
   .modal-title {
-    font-size: 18px;
-    margin-bottom: 20px;
+    font-size: 17px;
+    margin-bottom: 18px;
   }
 
   .modal-footer {
     margin-top: 20px;
     padding-top: 16px;
-  }
-
-  .modal-footer .btn {
-    flex: 1;
-    justify-content: center;
   }
 
   /* ── Life: spreadsheet toolbar compact ── */
@@ -3507,7 +3527,7 @@ body.sb-collapsed .priv-section {
   /* ── Gains: stat grids 2-col ── */
   .gains-stat-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    gap: 10px !important;
   }
 
   /* ── Gains: custom date range stacks ── */
@@ -3525,12 +3545,12 @@ body.sb-collapsed .priv-section {
     flex-wrap: wrap;
   }
 
-  /* ── Charts: taller for readability ── */
+  /* ── Charts: 200px on mobile ── */
   .chart-wrap {
     height: 200px !important;
   }
 
-  /* ── Tooltips: constrained ── */
+  /* ── Tooltips ── */
   .gains-tip {
     max-width: calc(100vw - 40px);
     white-space: normal !important;
