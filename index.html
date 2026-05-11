@@ -5815,6 +5815,25 @@
                         const val = fmt(c.parsed.y / cvt(1));
                         if (isTabHidden('gains')) return name + ': —';
                         return name + ': ' + val;
+                      },
+                      afterBody: items => {
+                        if (isTabHidden('gains') || !items.length) return [];
+                        const idx = items[0].dataIndex;
+                        const snap = chartSnaps[idx];
+                        if (!snap || !snap.accounts || acctIds.length < 2) return [];
+                        const lines = ['', '── By Account ──'];
+                        acctIds.forEach(id => {
+                          const acct = S.accounts.find(a => String(a.id) === id);
+                          if (!acct) return;
+                          const val = snap.accounts[id] || 0;
+                          const cumC = filteredContribs
+                            .filter(c => String(c.account) === id && c.date <= snap.date)
+                            .reduce((s, c) => s + contribToUSD(c), 0);
+                          const gain = val - cumC;
+                          const gStr = (gain >= 0 ? '+' : '-') + fmt(Math.abs(gain), 2).replace(/^-/, '');
+                          lines.push(`  ${acct.name}: ${fmt(val, 2)} (${gStr})`);
+                        });
+                        return lines;
                       }
                     }
                   }
