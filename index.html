@@ -6820,8 +6820,14 @@
         return start + '-' + (start + 4);
       }
 
-      function getRankAge() {
-        return S.settings.rank?.age || (typeof ftGlobals !== 'undefined' && ftGlobals?.projectionStartingAge) || 25;
+      function getRankBracket() {
+        if (S.settings.rank?.bracket) return S.settings.rank.bracket;
+        const age = (typeof ftGlobals !== 'undefined' && ftGlobals?.projectionStartingAge) || 25;
+        return getAgeBracket(age);
+      }
+
+      function getAllBrackets() {
+        return ['18-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65+'];
       }
 
       function getRankCountry() {
@@ -6888,7 +6894,10 @@
           // User's row shows THEIR value; other rows show the tier threshold
           const displayVal = isUser ? fmtTierVal(compareVal) : fmtTierVal(t.threshold);
           const tag = isUser ? `<span style="color:var(--fm);font-size:10px;font-weight:600;margin-left:4px">← You</span>` : '';
-          html += `<div style="display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:8px">
+          const hoverText = isUser
+            ? `Your value: ${fmtTierVal(compareVal)}`
+            : `You need at least ${fmtTierVal(t.threshold)} to be in the ${t.label}`;
+          html += `<div title="${hoverText}" style="display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:8px;cursor:default;padding:2px 0;border-radius:6px;transition:background .1s" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='transparent'">
             <span style="font-size:10.5px;color:${textCol};font-weight:${textWeight};text-align:right">${t.label}</span>
             <div style="height:${isUser ? 16 : 12}px;border-radius:${isUser ? 5 : 3}px;background:${isUser ? 'var(--fm)' : 'var(--s3)'};width:${isUser ? Math.max(3, (Math.abs(compareVal) / maxVal) * 100) : barPct}%;transition:width .3s"></div>
             <span style="font-size:10.5px;color:${textCol};font-weight:${textWeight};font-family:var(--mono);white-space:nowrap">${displayVal}${tag}</span>
@@ -6899,9 +6908,8 @@
       }
 
       function renderRank() {
-        const age = getRankAge();
+        const bracket = getRankBracket();
         const country = getRankCountry();
-        const bracket = getAgeBracket(age);
         const isKR = country === 'KR';
         const fx = getFX();
         const hide = isTabHidden('rank');
@@ -6967,6 +6975,7 @@
         // ── Config bar ──
         const configEl = document.getElementById('rank-config');
         if (configEl) {
+          const bracketOpts = getAllBrackets().map(b => `<option value="${b}" ${b === bracket ? 'selected' : ''}>${b}</option>`).join('');
           configEl.innerHTML = `<div class="card mb-2" style="padding:12px 16px">
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:6px">
@@ -6977,9 +6986,8 @@
                 </div>
               </div>
               <div style="display:flex;align-items:center;gap:6px">
-                <span class="lbl" style="margin-bottom:0">Age</span>
-                <input class="inp" type="number" value="${age}" min="18" max="85" style="width:60px;font-size:12px;padding:4px 8px" onchange="S.settings.rank.age=parseInt(this.value)||25;ps(S);renderRank()">
-                <span class="mut" style="font-size:11px">(${bracket})</span>
+                <span class="lbl" style="margin-bottom:0">Age group</span>
+                <select class="inp" style="font-size:12px;padding:4px 8px" onchange="S.settings.rank.bracket=this.value;ps(S);renderRank()">${bracketOpts}</select>
               </div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="lbl" style="margin-bottom:0">Debt</span>
