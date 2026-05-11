@@ -887,8 +887,15 @@
         <div id="gains-period-body"></div>
         <!-- Value over time chart -->
         <div id="gains-chart-card" class="card mb-2" style="display:none">
-          <div class="sec">Portfolio Value Over Time</div>
-          <div style="height:240px;position:relative"><canvas id="gainsChart"></canvas></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="sec" style="margin-bottom:0">Portfolio Value Over Time</div>
+            <div id="gains-drag-hint" style="font-size:10.5px;color:var(--ink4)">Drag to select range</div>
+          </div>
+          <div id="gains-chart-sel" style="display:none;margin:10px 0 4px;padding:10px 14px;border-radius:var(--rs);background:var(--s2);font-size:12px;line-height:1.7"></div>
+          <div style="height:240px;position:relative">
+            <canvas id="gainsChart"></canvas>
+            <div id="gains-sel-overlay" style="display:none;position:absolute;top:0;bottom:0;background:var(--primary);opacity:0.08;pointer-events:none;border-left:1.5px dashed var(--primary);border-right:1.5px dashed var(--primary)"></div>
+          </div>
         </div>
         <!-- All-time summary -->
         <div id="gains-alltime"></div>
@@ -5599,6 +5606,8 @@
             const showDots = chartSnaps.length <= 60;
             const gainsFullDates = chartSnaps.map(s => new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
             dC('gains');
+            // Store chart data for drag selection
+            const _gcData = { chartSnaps, values, cumContribs, gainsData, gainsFullDates, acctIds };
             CH['gains'] = new Chart(document.getElementById('gainsChart'), {
               type: 'line',
               data: {
@@ -5654,6 +5663,7 @@
                   },
                   tooltip: {
                     mode: 'index', intersect: false,
+                    filter: () => !_gainsDrag,
                     callbacks: {
                       title: items => gainsFullDates[items[0].dataIndex],
                       label: c => {
@@ -5671,6 +5681,7 @@
                 }
               }
             });
+            setupGainsChartDrag(_gcData);
           } else {
             chartCard.style.display = 'none';
             dC('gains');
@@ -5811,6 +5822,126 @@
           sh += `</div></div>`;
           snapLogEl.innerHTML = sh;
         }
+      }
+
+      // ── Chart drag-to-select (desktop) ──
+      let _gainsDrag = null; // { startX, startIdx }
+
+      function setupGainsChartDrag(data) {
+        const canvas = document.getElementById('gainsChart');
+        if (!canvas || window.innerWidth <= 768) return;
+        canvas.style.cursor = 'crosshair';
+
+        const overlay = document.getElementById('gains-sel-overlay');
+        const selBox = document.getElementById('gains-chart-sel');
+        const hint = document.getElementById('gains-drag-hint');
+
+        // Clear previous listeners by replacing canvas event target
+        const getIdx = (x) => {
+          const chart = CH['gains'];
+          if (!chart) return -1;
+          const pts = chart.getElementsAtEventForMode({ x, y: chart.chartArea.top + 1 }, 'index', { intersect: false }, false);
+          if (pts.length) return pts[0].index;
+          // Fallback: find nearest by pixel
+          const scale = chart.scales.x;
+          const left = scale.left, right = scale.right;
+          const pct = Math.max(0, Math.min(1, (x - left) / (right - left)));
+          return Math.round(pct * (data.values.length - 1));
+        };
+
+        const showOverlay = (i1, i2) => {
+          const chart = CH['gains'];
+          if (!chart || !overlay) return;
+          const scale = chart.scales.x;
+          const minI = Math.min(i1, i2), maxI = Math.max(i1, i2);
+          const x1 = scale.getPixelForValue(minI);
+          const x2 = scale.getPixelForValue(maxI);
+          overlay.style.display = '';
+          overlay.style.left = x1 + 'px';
+          overlay.style.width = Math.max(2, x2 - x1) + 'px';
+        };
+
+        const showSelSummary = (i1, i2) => {
+          if (!selBox) return;
+          const minI = Math.min(i1, i2), maxI = Math.max(i1, i2);
+          if (minI === maxI) { clearSel(); return; }
+
+          const startDate = data.gainsFullDates[minI];
+          const endDate = data.gainsFullDates[maxI];
+          const startVal = data.values[minI];
+          const endVal = data.values[maxI];
+          const startContrib = data.cumContribs[minI];
+          const endContrib = data.cumContribs[maxI];
+          const periodContribs = endContrib - startContrib;
+          const periodGain = (endVal - startVal) - periodContribs;
+          const pct = startVal > 0 ? (periodGain / startVal) * 100 : 0;
+          const gainCol = periodGain >= 0 ? 'var(--fm)' : 'var(--rose)';
+          const sign = periodGain >= 0 ? '+' : '';
+          const hide = isTabHidden('gains');
+          const fv = v => hide ? '<span class="hval">Hidden</span>' : fmt(v, 2);
+
+          selBox.style.display = '';
+          selBox.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-weight:600;font-size:11px;color:var(--ink3);letter-spacing:0.3px;text-transform:uppercase">${startDate} — ${endDate}</span>
+              <button class="btn bsm bgh" onclick="clearGainsChartSel()" style="padding:1px 6px;font-size:10px">Clear</button>
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <div><span style="color:var(--ink3)">Start:</span> <span style="font-family:var(--mono)">${fv(startVal)}</span></div>
+              <div><span style="color:var(--ink3)">End:</span> <span style="font-family:var(--mono)">${fv(endVal)}</span></div>
+              <div><span style="color:var(--ink3)">Contributions:</span> <span style="font-family:var(--mono)">${fv(periodContribs)}</span></div>
+              <div><span style="color:var(--ink3)">Gain:</span> <span style="font-family:var(--mono);color:${gainCol};font-weight:600">${hide ? '<span class="hval">Hidden</span>' : sign + fmt(Math.abs(periodGain), 2)}</span> <span style="font-size:11px;color:${gainCol}">${hide ? '' : sign + pct.toFixed(1) + '%'}</span></div>
+            </div>`;
+          if (hint) hint.style.display = 'none';
+        };
+
+        const clearSel = () => {
+          if (overlay) overlay.style.display = 'none';
+          if (selBox) selBox.style.display = 'none';
+          if (hint) hint.style.display = '';
+        };
+
+        // Expose for the clear button
+        window.clearGainsChartSel = clearSel;
+
+        canvas.addEventListener('mousedown', e => {
+          if (e.button !== 0) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          _gainsDrag = { startX: e.clientX, startIdx: getIdx(x) };
+          clearSel();
+        });
+
+        canvas.addEventListener('mousemove', e => {
+          if (!_gainsDrag) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const curIdx = getIdx(x);
+          showOverlay(_gainsDrag.startIdx, curIdx);
+        });
+
+        canvas.addEventListener('mouseup', e => {
+          if (!_gainsDrag) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const endIdx = getIdx(x);
+          if (Math.abs(e.clientX - _gainsDrag.startX) < 5) {
+            // Click, not drag
+            clearSel();
+            _gainsDrag = null;
+            return;
+          }
+          showOverlay(_gainsDrag.startIdx, endIdx);
+          showSelSummary(_gainsDrag.startIdx, endIdx);
+          _gainsDrag = null;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+          if (_gainsDrag) {
+            clearSel();
+            _gainsDrag = null;
+          }
+        });
       }
 
       // ── Contribution modal ──
