@@ -5914,16 +5914,19 @@
                           if (!chart.isDatasetVisible(di)) return null;
                           return { color: dsColors[di], label: name, value: hide ? '—' : fmt(dsVals[di][idx], 2) };
                         }).filter(Boolean);
-                        // Per-account breakdown
+                        // Per-account breakdown — gains relative to period start
                         let extra = '';
                         if (!hide && snap?.accounts && acctIds.length >= 2) {
-                          extra = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">By Account</div>`;
+                          const periodLabel = isAllTime ? 'All-time gain' : { '1D': '1D gain', '1M': '1M gain', '3M': '3M gain', 'YTD': 'YTD gain', '1Y': '1Y gain', 'CUSTOM': 'Period gain' }[gainsPeriod] || 'Gain';
+                          const baseSnap = chartSnaps[0];
+                          extra = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--ink4);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${periodLabel} by account</div>`;
                           acctIds.forEach(id => {
                             const acct = S.accounts.find(a => String(a.id) === id);
                             if (!acct) return;
                             const val = snap.accounts[id] || 0;
-                            const cumC = filteredContribs.filter(c => String(c.account) === id && c.date <= snap.date).reduce((s, c) => s + contribToUSD(c), 0);
-                            const gain = val - cumC;
+                            const baseVal = baseSnap?.accounts?.[id] || 0;
+                            const periodC = filteredContribs.filter(c => String(c.account) === id && c.date > baseSnap.date && c.date <= snap.date).reduce((s, c) => s + contribToUSD(c), 0);
+                            const gain = val - baseVal - periodC;
                             const sign = gain >= 0 ? '+' : '-';
                             const gFmt = sign + fmt(Math.abs(gain), 2).replace(/^-/, '');
                             const gCol = gain >= 0 ? 'var(--fm)' : 'var(--rose)';
