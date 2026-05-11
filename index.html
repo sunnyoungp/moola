@@ -6894,9 +6894,16 @@
           // User's row shows THEIR value; other rows show the tier threshold
           const displayVal = isUser ? fmtTierVal(compareVal) : fmtTierVal(t.threshold);
           const tag = isUser ? `<span style="color:var(--fm);font-size:10px;font-weight:600;margin-left:4px">← You</span>` : '';
-          const hoverText = isUser
-            ? `Your value: ${fmtTierVal(compareVal)}`
-            : `You need at least ${fmtTierVal(t.threshold)} to be in the ${t.label}`;
+          // Hover: show the range for this tier
+          const upperVal = i > 0 ? filtered[i - 1].threshold : null;
+          let hoverText;
+          if (isUser) {
+            hoverText = `Your value: ${fmtTierVal(compareVal)}`;
+          } else if (upperVal !== null) {
+            hoverText = `${t.label}: ${fmtTierVal(t.threshold)} – ${fmtTierVal(upperVal)}`;
+          } else {
+            hoverText = `${t.label}: ${fmtTierVal(t.threshold)}+`;
+          }
           html += `<div title="${hoverText}" style="display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:8px;cursor:default;padding:2px 0;border-radius:6px;transition:background .1s" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background='transparent'">
             <span style="font-size:10.5px;color:${textCol};font-weight:${textWeight};text-align:right">${t.label}</span>
             <div style="height:${isUser ? 16 : 12}px;border-radius:${isUser ? 5 : 3}px;background:${isUser ? 'var(--fm)' : 'var(--s3)'};width:${isUser ? Math.max(3, (Math.abs(compareVal) / maxVal) * 100) : barPct}%;transition:width .3s"></div>
@@ -6914,23 +6921,28 @@
         const fx = getFX();
         const hide = isTabHidden('rank');
 
-        // User values (all in USD)
-        const userNW = nwTotal();
-        const userInv = totByBucket('investments');
-        const userCash = totByBucket('cash') + totByBucket('restricted');
-        const userRet = totByBucket('retirement');
-        const userRE = totRealEstateEquity();
-        const userDebt = S.settings.rank?.debt || 0;
-
-        // Savings rate
-        let userSavingsRate = null;
+        // User values (all in USD) — use overrides in what-if mode
+        const ov = S.settings.rank?.overrides || {};
+        const wif = !!S.settings.rank?.whatIf;
+        const liveNW = nwTotal();
+        const liveInv = totByBucket('investments');
+        const liveCash = totByBucket('cash') + totByBucket('restricted');
+        const liveRet = totByBucket('retirement');
+        const liveRE = totRealEstateEquity();
+        const liveDebt = S.settings.rank?.debt || 0;
+        let liveSavingsRate = null;
         if (typeof ftIncomeStreams !== 'undefined' && ftIncomeStreams?.length) {
           const totalIncome = ftIncomeStreams.reduce((s, inc) => s + (inc.annual || 0), 0);
-          if (totalIncome > 0) {
-            const annualSav = S.settings.annualContrib || 0;
-            userSavingsRate = (annualSav / totalIncome) * 100;
-          }
+          if (totalIncome > 0) liveSavingsRate = ((S.settings.annualContrib || 0) / totalIncome) * 100;
         }
+
+        const userNW = wif && ov.netWorth != null ? ov.netWorth : liveNW;
+        const userInv = wif && ov.investments != null ? ov.investments : liveInv;
+        const userCash = wif && ov.cash != null ? ov.cash : liveCash;
+        const userRet = wif && ov.retirement != null ? ov.retirement : liveRet;
+        const userRE = wif && ov.realEstate != null ? ov.realEstate : liveRE;
+        const userDebt = wif && ov.debt != null ? ov.debt : liveDebt;
+        const userSavingsRate = wif && ov.savingsRate != null ? ov.savingsRate : liveSavingsRate;
 
         const toCompare = (usdVal, cat) => {
           if (cat === 'savingsRate') return usdVal;
@@ -6976,6 +6988,7 @@
         const configEl = document.getElementById('rank-config');
         if (configEl) {
           const bracketOpts = getAllBrackets().map(b => `<option value="${b}" ${b === bracket ? 'selected' : ''}>${b}</option>`).join('');
+          const isWhatIf = !!S.settings.rank?.whatIf;
           configEl.innerHTML = `<div class="card mb-2" style="padding:12px 16px">
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:6px">
@@ -6992,6 +7005,12 @@
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="lbl" style="margin-bottom:0">Debt</span>
                 <div style="position:relative"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:11px">$</span><input class="inp" type="text" value="${userDebt ? userDebt.toLocaleString() : '0'}" style="width:100px;font-size:12px;padding:4px 8px 4px 20px" onchange="S.settings.rank.debt=parseFloat(this.value.replace(/,/g,''))||0;ps(S);renderRank()" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${isWhatIf ? 'var(--fm)' : 'var(--ink3)'}">
+                  <input type="checkbox" ${isWhatIf ? 'checked' : ''} onchange="S.settings.rank.whatIf=this.checked;if(!this.checked)S.settings.rank.overrides={};ps(S);renderRank()" style="accent-color:var(--fm)">
+                  What-if mode
+                </label>
               </div>
             </div>
           </div>`;
@@ -7025,7 +7044,10 @@
             <div class="mut" style="margin-bottom:20px">${bracket} year olds in the ${country === 'KR' ? 'Korea' : 'United States'}</div>
             <div style="text-align:left;margin-bottom:16px">
               <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-                <div><span class="lbl">Your net worth</span><div class="mnum" style="font-family:var(--mono)">${fmtVal(nw)}</div></div>
+                <div><span class="lbl">Your net worth</span>${wif
+                  ? `<div style="display:flex;align-items:center;gap:4px"><span style="color:var(--ink3);font-size:15px">$</span><input class="inp" type="text" value="${userNW.toLocaleString('en-US',{maximumFractionDigits:0})}" style="font-family:var(--mono);font-size:15px;font-weight:500;padding:4px 8px;width:140px" onchange="if(!S.settings.rank.overrides)S.settings.rank.overrides={};S.settings.rank.overrides.netWorth=parseFloat(this.value.replace(/,/g,''))||0;ps(S);renderRank()" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>`
+                  : `<div class="mnum" style="font-family:var(--mono)">${fmtVal(nw)}</div>`
+                }</div>
               </div>
               <div class="lbl" style="margin-bottom:8px">Distribution</div>
               ${barsHtml}
@@ -7039,21 +7061,38 @@
         const cardsEl = document.getElementById('rank-cards');
         if (cardsEl) {
           const cardHtml = results.slice(1).map(r => {
-            if (r.pctl === null) {
+            if (r.pctl === null && !wif) {
               return `<div class="gc" style="padding:16px"><div class="lbl">${r.label}</div><div class="mut" style="font-size:12px;margin-top:8px">Not tracked</div></div>`;
             }
-            const col = r.pctl >= 50 ? 'var(--fm)' : 'var(--rose)';
-            const tagClass = r.pctl >= 50 ? 'tg' : 'tr';
-            const { html: barsHtml } = buildBracketBars(r.bp, r.compareVal, r, isKR, hide);
+            const pctl = r.pctl ?? 0;
+            const col = pctl >= 50 ? 'var(--fm)' : 'var(--rose)';
+            const tagClass = pctl >= 50 ? 'tg' : 'tr';
+            const bp = r.bp || RANK_DATA[country]?.[r.key]?.[bracket] || [];
+            const cv = r.compareVal ?? 0;
+            const { html: barsHtml } = buildBracketBars(bp, cv, r, isKR, hide);
+
+            // What-if mode: show editable input
+            let valHtml;
+            if (wif) {
+              const rawVal = r.value ?? 0;
+              const inputVal = r.unit === '%' ? rawVal.toFixed(1) : rawVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
+              const sym = r.unit === '%' ? '' : '$';
+              const suffix = r.unit === '%' ? '%' : '';
+              valHtml = `<div style="margin-bottom:10px;display:flex;align-items:center;gap:4px">
+                <span style="color:var(--ink3);font-size:13px">${sym}</span>
+                <input class="inp" type="text" value="${inputVal}" style="font-family:var(--mono);font-size:15px;font-weight:500;padding:4px 8px;width:120px" onchange="if(!S.settings.rank.overrides)S.settings.rank.overrides={};S.settings.rank.overrides['${r.key}']=${r.unit === '%' ? 'parseFloat(this.value)||0' : "parseFloat(this.value.replace(/,/g,''))||0"};ps(S);renderRank()" oninput="handleBalInput(this)" onblur="formatBalInput(this)">
+                <span style="color:var(--ink3);font-size:13px">${suffix}</span>
+              </div>`;
+            } else {
+              valHtml = `<div style="margin-bottom:10px"><span class="mnum" style="font-family:var(--mono)">${fmtVal(r)}</span></div>`;
+            }
 
             return `<div class="gc" style="padding:16px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <div class="lbl" style="margin-bottom:0">${r.label}</div>
-                <span class="tag ${tagClass}" style="font-size:11px;font-weight:600">${hide ? '—' : fmtRank(r.pctl)}</span>
+                <span class="tag ${tagClass}" style="font-size:11px;font-weight:600">${hide ? '—' : fmtRank(pctl)}</span>
               </div>
-              <div style="margin-bottom:10px">
-                <span class="mnum" style="font-family:var(--mono)">${fmtVal(r)}</span>
-              </div>
+              ${valHtml}
               ${barsHtml}
             </div>`;
           }).join('');
