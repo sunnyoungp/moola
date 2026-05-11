@@ -6835,6 +6835,63 @@
         return med ? med.v : 0;
       }
 
+      // Build bracket bar chart HTML (Bank Salad style)
+      // tiers: [{ label, value, pctWidth }], userTierIdx: which tier user is in
+      function buildBracketBars(bp, compareVal, cat, isKR, hide) {
+        // Define tiers matching Bank Salad: ~5%, ~10%, ~20%, ~40%, ~60%, ~100%
+        const tiers = [
+          { label: '~5%', pIdx: 6 },   // p99 → top 1% → use p95 as ~5% threshold
+          { label: '~10%', pIdx: 5 },   // p95 → top 5% → use p90 as ~10%
+          { label: '~20%', pIdx: 4 },   // p90 → top 10% → use p75 as ~20%
+          { label: '~40%', pIdx: 3 },   // p75
+          { label: '~60%', pIdx: 2 },   // p50
+          { label: '~100%', pIdx: 1 },  // p25
+        ];
+        // Map tier thresholds from breakpoints (p99, p95, p90, p75, p50, p25)
+        const pMap = [99, 95, 90, 75, 50, 25];
+        const tierData = tiers.map((t, i) => {
+          const bpEntry = bp.find(b => b.p === pMap[i]);
+          const val = bpEntry ? bpEntry.v : 0;
+          return { label: t.label, threshold: val };
+        });
+        // Find which tier the user falls in
+        let userTier = tierData.length - 1; // default: bottom
+        for (let i = 0; i < tierData.length; i++) {
+          if (compareVal >= tierData[i].threshold) { userTier = i; break; }
+        }
+        // Max bar width proportional to highest tier value
+        const maxVal = Math.max(...tierData.map(t => Math.abs(t.threshold)), 1);
+
+        const fmtTierVal = v => {
+          if (hide) return '—';
+          if (cat.unit === '%') return Math.abs(v).toFixed(0) + '%';
+          if (isKR) {
+            const krw = v * KR_UNIT;
+            if (Math.abs(krw) >= 1e8) return (krw / 1e8).toFixed(1) + '억원';
+            if (Math.abs(krw) >= 1e4) return Math.round(krw / 1e4) + '만원';
+            return Math.round(krw).toLocaleString() + '원';
+          }
+          return fmtUSD(v);
+        };
+
+        let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+        tierData.forEach((t, i) => {
+          const isUser = i === userTier;
+          const barPct = Math.max(4, (Math.abs(t.threshold) / maxVal) * 100);
+          const barCol = isUser ? 'var(--fm)' : 'var(--s3)';
+          const textWeight = isUser ? '600' : '400';
+          const textCol = isUser ? 'var(--ink)' : 'var(--ink3)';
+          const suffix = isUser ? ' <span style="color:var(--fm);font-size:10px">(you)</span>' : '';
+          html += `<div style="display:grid;grid-template-columns:50px 1fr auto;align-items:center;gap:10px">
+            <span style="font-size:11px;color:${textCol};font-weight:${textWeight};text-align:right">${t.label}</span>
+            <div style="height:14px;border-radius:4px;background:${isUser ? 'var(--fm)' : 'var(--s3)'};width:${barPct}%;transition:width .3s"></div>
+            <span style="font-size:11px;color:${textCol};font-weight:${textWeight};font-family:var(--mono);white-space:nowrap">${fmtTierVal(t.threshold)}${suffix}</span>
+          </div>`;
+        });
+        html += `</div>`;
+        return { html, userTier };
+      }
+
       function renderRank() {
         const age = getRankAge();
         const country = getRankCountry();
@@ -6851,55 +6908,43 @@
         const userRE = totRealEstateEquity();
         const userDebt = S.settings.rank?.debt || 0;
 
-        // Savings rate: try to derive from life plan
+        // Savings rate
         let userSavingsRate = null;
         if (typeof ftIncomeStreams !== 'undefined' && ftIncomeStreams?.length) {
           const totalIncome = ftIncomeStreams.reduce((s, inc) => s + (inc.annual || 0), 0);
           if (totalIncome > 0) {
-            // Simple: (income - expenses) / income as %
-            // Use annual contrib from settings as proxy for savings
             const annualSav = S.settings.annualContrib || 0;
             userSavingsRate = (annualSav / totalIncome) * 100;
           }
         }
 
-        // Convert user values to comparison units
         const toCompare = (usdVal, cat) => {
-          if (cat === 'savingsRate') return usdVal; // already a %
-          if (isKR) return (usdVal * fx) / KR_UNIT; // USD → 만원
+          if (cat === 'savingsRate') return usdVal;
+          if (isKR) return (usdVal * fx) / KR_UNIT;
           return usdVal;
         };
 
         const categories = [
-          { key: 'netWorth', label: 'Net Worth', value: userNW, icon: '💰' },
-          { key: 'investments', label: 'Investments', value: userInv, icon: '📈' },
-          { key: 'cash', label: 'Cash & Savings', value: userCash, icon: '🏦' },
-          { key: 'retirement', label: 'Retirement', value: userRet, icon: '🏖️' },
-          { key: 'realEstate', label: 'Real Estate', value: userRE, icon: '🏠' },
-          { key: 'savingsRate', label: 'Savings Rate', value: userSavingsRate, icon: '💵', unit: '%' },
-          { key: 'debt', label: 'Debt', value: userDebt, icon: '💳', inverted: true },
+          { key: 'netWorth', label: 'Net Worth', value: userNW },
+          { key: 'investments', label: 'Investments', value: userInv },
+          { key: 'cash', label: 'Cash & Savings', value: userCash },
+          { key: 'retirement', label: 'Retirement', value: userRet },
+          { key: 'realEstate', label: 'Real Estate', value: userRE },
+          { key: 'savingsRate', label: 'Savings Rate', value: userSavingsRate, unit: '%' },
+          { key: 'debt', label: 'Debt', value: userDebt, inverted: true },
         ];
 
-        // Compute percentiles
         const results = categories.map(cat => {
           const bp = RANK_DATA[country]?.[cat.key]?.[bracket];
-          if (!bp || cat.value === null) return { ...cat, pctl: null, median: null };
+          if (!bp || cat.value === null) return { ...cat, pctl: null, bp: null };
           const compareVal = toCompare(cat.value, cat.key);
           let pctl = computePercentile(compareVal, bp);
-          // For debt, higher = worse, so invert: "less debt = higher rank"
           if (cat.inverted) pctl = 100 - pctl;
           const median = getRankMedian(country, cat.key, bracket);
-          return { ...cat, pctl, median, compareVal };
+          return { ...cat, pctl, median, compareVal, bp };
         });
 
-        const nwResult = results[0];
-        const fmtRank = p => p >= 50 ? `Top ${Math.round(100 - p)}%` : `Bottom ${Math.round(p)}%`;
-        const fmtR = v => hide ? '<span class="hval">Hidden</span>' : fmt(v, 0);
-        const fmtMed = (v, cat) => {
-          if (cat.unit === '%') return v.toFixed(0) + '%';
-          if (isKR) return '₩' + (v * KR_UNIT).toLocaleString('ko-KR');
-          return fmtUSD(v);
-        };
+        const fmtRank = p => p >= 50 ? `Top ${Math.max(1, Math.round(100 - p))}%` : `Bottom ${Math.round(p)}%`;
         const fmtVal = cat => {
           if (hide) return '<span class="hval">Hidden</span>';
           if (cat.value === null) return '<span class="mut">Not tracked</span>';
@@ -6932,53 +6977,64 @@
           </div>`;
         }
 
-        // ── Hero card ──
+        // ── Hero card (Net Worth with triangle + bracket bars) ──
         const heroEl = document.getElementById('rank-hero');
-        if (heroEl && nwResult.pctl !== null) {
-          const pctl = nwResult.pctl;
-          const isGood = pctl >= 50;
-          const col = isGood ? 'var(--fm)' : 'var(--rose)';
+        const nw = results[0];
+        if (heroEl && nw.pctl !== null) {
+          const pctl = nw.pctl;
+          const col = pctl >= 50 ? 'var(--fm)' : 'var(--rose)';
           const rankText = fmtRank(pctl);
-          heroEl.innerHTML = `<div class="card mb-2" style="padding:24px">
-            <div class="sec">Net Worth Rank</div>
-            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px">
-              <span class="bnum" style="color:${col}">${hide ? '<span class="hval">Hidden</span>' : rankText}</span>
-              <span class="mut">of ${bracket} year olds in the ${country}</span>
-            </div>
-            <div class="pb" style="position:relative;height:6px;margin-bottom:12px">
-              <div class="pf" style="width:${pctl}%;background:${col}"></div>
-              <div class="rank-marker" style="left:${pctl}%;background:${col}"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
-              <div><span class="lbl">Your net worth</span><div class="mnum" style="font-family:var(--mono)">${fmtVal(nwResult)}</div></div>
-              <div><span class="lbl">Median for ${bracket}</span><div class="mnum mut" style="font-family:var(--mono)">${fmtMed(nwResult.median, nwResult)}</div></div>
+
+          // SVG triangle with marker
+          const markerX = 100 - Math.min(99, Math.max(1, 100 - pctl)); // left = top%, right = bottom%
+          const triH = 80, triW = 200;
+          const triSvg = `<svg viewBox="0 0 ${triW} ${triH + 20}" style="width:100%;max-width:280px;display:block;margin:0 auto">
+            <defs><linearGradient id="triFill" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="var(--fm)" stop-opacity="0.08"/><stop offset="100%" stop-color="var(--fm)" stop-opacity="0.25"/></linearGradient></defs>
+            <polygon points="${triW / 2},2 ${triW - 10},${triH} 10,${triH}" fill="url(#triFill)" stroke="none"/>
+            <line x1="10" y1="0" x2="${triW - 10}" y2="0" stroke="var(--fm)" stroke-width="2" stroke-dasharray="6 4"/>
+            <polygon points="${markerX * triW / 100},0 ${markerX * triW / 100 - 6},10 ${markerX * triW / 100 + 6},10" fill="var(--fm)"/>
+          </svg>`;
+
+          // Bracket bars for NW
+          const { html: barsHtml } = buildBracketBars(nw.bp, nw.compareVal, nw, isKR, hide);
+
+          heroEl.innerHTML = `<div class="card mb-2" style="padding:24px;text-align:center">
+            <div class="sec" style="text-align:left">Net Worth Rank</div>
+            ${triSvg}
+            <div style="margin:16px 0 4px"><span style="font-size:28px;font-weight:700;font-family:var(--mono);color:${col}">${hide ? '<span class="hval">Hidden</span>' : rankText}</span></div>
+            <div class="mut" style="margin-bottom:20px">${bracket} year olds in the ${country === 'KR' ? 'Korea' : 'United States'}</div>
+            <div style="text-align:left;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+                <div><span class="lbl">Your net worth</span><div class="mnum" style="font-family:var(--mono)">${fmtVal(nw)}</div></div>
+              </div>
+              <div class="lbl" style="margin-bottom:8px">Distribution</div>
+              ${barsHtml}
             </div>
           </div>`;
         } else if (heroEl) {
           heroEl.innerHTML = '';
         }
 
-        // ── Category cards ──
+        // ── Category cards with bracket bars ──
         const cardsEl = document.getElementById('rank-cards');
         if (cardsEl) {
           const cardHtml = results.slice(1).map(r => {
             if (r.pctl === null) {
-              return `<div class="gc"><div class="lbl">${r.label}</div><div class="mut" style="font-size:12px;margin-top:8px">Not tracked</div></div>`;
+              return `<div class="gc" style="padding:16px"><div class="lbl">${r.label}</div><div class="mut" style="font-size:12px;margin-top:8px">Not tracked</div></div>`;
             }
-            const isGood = r.inverted ? r.pctl >= 50 : r.pctl >= 50;
-            const col = isGood ? 'var(--fm)' : 'var(--rose)';
-            const tagClass = isGood ? 'tg' : 'tr';
+            const col = r.pctl >= 50 ? 'var(--fm)' : 'var(--rose)';
+            const tagClass = r.pctl >= 50 ? 'tg' : 'tr';
+            const { html: barsHtml } = buildBracketBars(r.bp, r.compareVal, r, isKR, hide);
+
             return `<div class="gc" style="padding:16px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <div class="lbl" style="margin-bottom:0">${r.label}</div>
-                <span class="tag ${tagClass}" style="font-size:11px">${hide ? '—' : fmtRank(r.pctl)}</span>
+                <span class="tag ${tagClass}" style="font-size:11px;font-weight:600">${hide ? '—' : fmtRank(r.pctl)}</span>
               </div>
-              <div class="pb mb-2" style="position:relative;height:4px">
-                <div class="pf" style="width:${r.pctl}%;background:${col}"></div>
-                <div class="rank-marker" style="left:${r.pctl}%;background:${col};width:8px;height:8px"></div>
+              <div style="margin-bottom:10px">
+                <span class="mnum" style="font-family:var(--mono)">${fmtVal(r)}</span>
               </div>
-              <div class="mnum" style="font-family:var(--mono);margin-bottom:4px">${fmtVal(r)}</div>
-              <div class="mut" style="font-size:10.5px">Median: ${fmtMed(r.median, r)}</div>
+              ${barsHtml}
             </div>`;
           }).join('');
           cardsEl.innerHTML = `<div class="g2 mb-3">${cardHtml}</div>`;
@@ -6987,7 +7043,7 @@
         // ── Footer ──
         const footerEl = document.getElementById('rank-footer');
         if (footerEl) {
-          footerEl.innerHTML = `<div class="mut" style="font-size:10.5px;text-align:center;padding:8px 0">Based on US Federal Reserve SCF 2022 and KOSTAT 가계금융복지조사 2025 survey data. Distributions are approximate.</div>`;
+          footerEl.innerHTML = `<div class="mut" style="font-size:10.5px;text-align:center;padding:8px 0">Based on US Federal Reserve SCF 2022 and KOSTAT 가계금융복지조사 2025. Distributions are approximate.</div>`;
         }
       }
 
