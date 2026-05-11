@@ -2964,6 +2964,7 @@
         syncPrivacyUI();
         document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
         document.getElementById('ov-gain').innerHTML = '';
+        const snaps = S.snapshots || [];
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) {
           const _nw = nwTotal(); const _cash = totByBucket('cash') + totByBucket('restricted'); const _inv = totByBucket('investments'); const _ret = totByBucket('retirement'); const _re = totRealEstateEquity();
