@@ -3330,6 +3330,52 @@ body.sb-collapsed .priv-section {
   .goals-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Gains: stat grids → 2 columns */
+  .gains-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Gains: period tabs scroll horizontally */
+  .atab-group {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .atab {
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Gains: custom date range stack */
+  .gains-custom-range {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .gains-custom-range input {
+    width: 100% !important;
+  }
+
+  /* Gains: chart legend pills wrap */
+  .gains-legend {
+    flex-wrap: wrap;
+  }
+
+  /* Chart heights on mobile */
+  .chart-wrap {
+    height: 180px !important;
+  }
+
+  /* Gains-tip tooltips: constrain width */
+  .gains-tip {
+    max-width: calc(100vw - 40px);
+    white-space: normal !important;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════

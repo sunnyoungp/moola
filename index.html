@@ -881,7 +881,7 @@
         <div id="gains-acct-toggles"></div>
         <!-- Period selector -->
         <div class="atab-group" id="gains-period-tabs" style="margin-bottom:16px"></div>
-        <div id="gains-custom-range" style="display:none;gap:10px;align-items:center;margin-bottom:16px">
+        <div id="gains-custom-range" class="gains-custom-range" style="display:none;gap:10px;align-items:center;margin-bottom:16px">
           <input type="date" class="inp" id="gains-start" style="width:150px" onchange="renderGains()">
           <span style="color:var(--ink3)">to</span>
           <input type="date" class="inp" id="gains-end" style="width:150px" onchange="renderGains()">
@@ -892,9 +892,9 @@
         <div id="gains-chart-card" class="card mb-2" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <div class="sec" style="margin-bottom:0">Portfolio Value Over Time</div>
-            <div id="gains-chart-legend" style="display:flex;gap:6px"></div>
+            <div id="gains-chart-legend" class="gains-legend" style="display:flex;gap:6px"></div>
           </div>
-          <div style="height:260px;position:relative">
+          <div class="chart-wrap" style="height:260px;position:relative">
             <canvas id="gainsChart"></canvas>
             <div id="gains-chart-tooltip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
           </div>
@@ -5699,7 +5699,7 @@
               ph += `<div class="card mb-2">
                 <div class="sec">Period Gain / Loss</div>
                 <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
-                <div style="display:flex;gap:28px;flex-wrap:wrap">
+                <div class="gains-stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
                   <div><div class="lbl">Starting value</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(startValue)}</div>${pMkTip(startTip)}</div></div>
                   <div><div class="lbl">Contributions</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(periodContribs)}</div>${pMkTip(contribTip)}</div></div>
                   <div><div class="lbl">${endInPast ? 'End value' : 'Current value'}</div><div style="${pTipWrap}" ${pTipEvt}><div class="mnum" style="font-family:var(--mono);${pDotUl}">${fmtV(endValue)}</div>${pMkTip(endTip)}</div></div>
@@ -6056,7 +6056,7 @@
           allTimeEl.innerHTML = `<div class="card mb-2">
             <div class="sec" style="margin-bottom:12px">All-Time Summary</div>
             ${gainHeadline}
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+            <div class="gains-stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
               <div>
                 <div class="lbl">Total Contributed</div>
                 <div style="${tipWrap}" ${tipEvt}>
