@@ -5572,16 +5572,24 @@
                 </div>`;
               }
             } else {
+              // For CUSTOM with end date in the past, use nearest snapshot to end date
+              const endInPast = end < todayStr();
+              let endValue = currentValue;
+              if (endInPast) {
+                const endSnap = nearestSnap(end, acctIds);
+                endValue = endSnap ? snapValueForAccts(endSnap, acctIds) : currentValue;
+              }
               const periodContribs = contribsInRange(start, end, acctIds);
-              const periodGain = currentValue - startValue - periodContribs;
-              const periodPct = startValue > 0 ? (periodGain / startValue) * 100 : 0;
+              const periodGain = endValue - startValue - periodContribs;
+              const periodBase = startValue + periodContribs;
+              const periodPct = periodBase > 0 ? (periodGain / periodBase) * 100 : 0;
               ph += `<div class="card mb-2">
                 <div class="sec">Period Gain / Loss</div>
                 <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
                 <div style="display:flex;gap:28px;flex-wrap:wrap">
                   <div><div class="lbl">Starting value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(startValue)}</div></div>
                   <div><div class="lbl">Contributions</div><div class="mnum" style="font-family:var(--mono)">${fmtV(periodContribs)}</div></div>
-                  <div><div class="lbl">Current value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(currentValue)}</div></div>
+                  <div><div class="lbl">${endInPast ? 'End value' : 'Current value'}</div><div class="mnum" style="font-family:var(--mono)">${fmtV(endValue)}</div></div>
                 </div>
               </div>`;
             }
@@ -5599,9 +5607,9 @@
             .filter(s => snapValueForAccts(s, acctIds) !== null)
             .sort((a, b) => a.date.localeCompare(b.date));
 
-          // Add current value as the last point if latest snap isn't today
+          // Add current value as the last point only if end date is today or later
           const today = todayStr();
-          if (chartSnaps.length > 0 && chartSnaps[chartSnaps.length - 1].date !== today) {
+          if (cEnd >= today && chartSnaps.length > 0 && chartSnaps[chartSnaps.length - 1].date !== today) {
             chartSnaps.push(buildSnapshotForDate(today));
           }
 
