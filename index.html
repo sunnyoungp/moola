@@ -377,6 +377,7 @@
 
               <div style="position:relative;height:220px;width:100%;max-width:220px;margin: 0 auto 20px">
                 <canvas id="accAllocChart"></canvas>
+                <div id="acc-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
                 <div id="acc-chart-center"
                   style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
                   <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Total
@@ -465,7 +466,7 @@
             <div class="sec">Allocation</div>
             <div class="allocation-content">
               <div class="chart-wrap">
-                <canvas id="allocChart"></canvas>
+                <canvas id="allocChart"></canvas><div id="alloc-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
               </div>
               <div id="port-alloc-legend" class="custom-legend"></div>
             </div>
@@ -2808,6 +2809,44 @@
         return datasetLabel ? datasetLabel + ': ' + value : value;
       }
 
+      // External tooltip for doughnut charts (single segment hover)
+      // buildInfo(dataIndex, chart) should return { color, label, value, pct }
+      function makeDoughnutTooltip(tipElId, buildInfo) {
+        return ctx => {
+          const tipEl = document.getElementById(tipElId);
+          if (!tipEl) return;
+          if (ctx.tooltip.opacity === 0) { tipEl.style.display = 'none'; return; }
+          const dp = ctx.tooltip.dataPoints?.[0];
+          if (!dp) { tipEl.style.display = 'none'; return; }
+          const info = buildInfo(dp.dataIndex, ctx.chart);
+          if (!info) { tipEl.style.display = 'none'; return; }
+
+          tipEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh3);padding:10px 14px;font-size:12px;white-space:nowrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:3px;background:${info.color};flex-shrink:0"></span>
+              <span style="font-weight:600">${info.label}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:16px;margin-top:6px">
+              <span style="font-family:var(--mono);font-weight:500">${info.value}</span>
+              <span style="color:var(--ink3)">${info.pct}</span>
+            </div>
+          </div>`;
+
+          const cx = ctx.tooltip.caretX;
+          const cy = ctx.tooltip.caretY;
+          const tipW = tipEl.offsetWidth || 150;
+          const tipH = tipEl.offsetHeight || 60;
+          let left = cx + 14;
+          if (cx + tipW + 24 > ctx.chart.width) left = cx - tipW - 14;
+          let top = cy - tipH / 2;
+          if (top < 0) top = 4;
+          if (top + tipH > ctx.chart.height) top = ctx.chart.height - tipH - 4;
+          tipEl.style.display = '';
+          tipEl.style.left = Math.max(0, left) + 'px';
+          tipEl.style.top = Math.max(0, top) + 'px';
+        };
+      }
+
       // Shared external tooltip for all charts
       // buildRows(idx, chart) should return { title: string, rows: [{ color?, label, value }], footer?: string }
       function makeExternalTooltip(tipElId, buildRows) {
@@ -2945,6 +2984,7 @@
               <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap">
                 <div style="position:relative;height:170px;flex:1.2;min-width:150px">
                   <canvas id="donutChart"></canvas>
+                  <div id="donut-chart-tip" style="display:none;position:absolute;pointer-events:none;z-index:50"></div>
                 </div>
                 <div id="ov-donut-legend" class="custom-legend" style="flex:1;min-width:130px;display:flex;flex-direction:column;gap:5px"></div>
               </div>
@@ -2997,11 +3037,10 @@
               responsive: true, maintainAspectRatio: false, cutout: '66%',
               plugins: {
                 legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: c => isTabHidden('dashboard') ? c.label + ': —' : c.label + ': ' + fmt(c.parsed) + ' (' + pct((c.parsed / total) * 100) + ')'
-                  }
-                }
+                tooltip: { enabled: false, external: makeDoughnutTooltip('donut-chart-tip', (i, chart) => {
+                  const hide = isTabHidden('dashboard');
+                  return { color: chartData[i].color, label: chartData[i].label, value: hide ? '—' : fmt(chartData[i].value), pct: hide ? '' : pct((chartData[i].value / total) * 100) };
+                }) }
               }
             }
           });
@@ -3311,15 +3350,22 @@
               responsive: true,
               maintainAspectRatio: false,
               cutout: '75%',
-              plugins: { legend: { display: false } },
+              plugins: { legend: { display: false }, tooltip: { enabled: false, external: makeDoughnutTooltip('acc-chart-tip', (i, chart) => {
+                const d = chart._accData;
+                if (!d || !d.entries[i]) return null;
+                const hide = isTabHidden('accounts');
+                return { color: d.colors[i], label: d.entries[i].name, value: hide ? '—' : fmt(d.entries[i].val), pct: hide ? '' : pct((d.entries[i].val / d.total) * 100) };
+              }) } },
               animation: { duration: 600 }
             }
           });
+        accChart._accData = { entries: dataEntries, colors, total: netWorth };
         } else {
           accChart.data.labels = labels;
           accChart.data.datasets[0].data = values;
           accChart.data.datasets[0].backgroundColor = colors;
           accChart.data.datasets[0].borderWidth = document.documentElement.classList.contains('dark') ? 0 : 2;
+          accChart._accData = { entries: dataEntries, colors, total: netWorth };
           accChart.update();
         }
 
@@ -3929,11 +3975,10 @@
             cutout: '68%',
             plugins: {
               legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: c => isTabHidden('portfolio') ? c.label + ': —' : c.label + ': ' + MT(fmt(c.parsed), 'portfolio') + ' (' + pct((c.parsed / totalAlloc) * 100) + ')'
-                }
-              }
+              tooltip: { enabled: false, external: makeDoughnutTooltip('alloc-chart-tip', (i, chart) => {
+                const hide = isTabHidden('portfolio');
+                return { color: chartData[i].color, label: chartData[i].label, value: hide ? '—' : fmt(chartData[i].value), pct: hide ? '' : pct((chartData[i].value / totalAlloc) * 100) };
+              }) }
             }
           }
         });
