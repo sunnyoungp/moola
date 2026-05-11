@@ -907,6 +907,21 @@
         <div id="gains-snap-log"></div>
       </div>
 
+      <!-- RANK -->
+      <div id="tab-rank" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Financial Rank</div>
+            <div class="page-sub">See how you compare to peers your age</div>
+          </div>
+        </div>
+        <div style="height:20px"></div>
+        <div id="rank-config"></div>
+        <div id="rank-hero"></div>
+        <div id="rank-cards"></div>
+        <div id="rank-footer"></div>
+      </div>
+
       <!-- SETTINGS -->
       <div id="tab-settings" class="tc">
         <div class="page-hdr">
@@ -2202,6 +2217,7 @@
             { id: 'life', name: 'Life', icon: 'layout', archived: false },
             { id: 'future', name: 'Life plan', icon: 'future', archived: false },
             { id: 'gains', name: 'Gains', icon: 'activity', archived: false },
+            { id: 'rank', name: 'Rank', icon: 'sparkles', archived: false },
             { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
           ],
           accounts: [],
@@ -2276,6 +2292,7 @@
         if (!S.gainSnapshots) S.gainSnapshots = [];
         if (!S.gainContribs) S.gainContribs = [];
         if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        if (!S.settings.rank) S.settings.rank = { country: S.settings.currency === 'KRW' ? 'KR' : 'US', age: null, debt: 0 };
         migrateGainSnapshots();
 
         // Ensure accountCategories + accountTypes exist (for old saves)
@@ -2789,7 +2806,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -6591,6 +6608,387 @@
         }
         _editingSnapDate = null;
         ps(S); closeModal('m-hist-snap'); renderGains(); renderSettings();
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // FINANCIAL RANK
+      // ══════════════════════════════════════════════════════════════
+
+      // Benchmark data: percentile breakpoints by age bracket
+      // US: Federal Reserve SCF 2022 (via DQYDJ). KR: KOSTAT 가계금융복지조사 2025 (만원 converted to KRW)
+      const RANK_DATA = {
+        US: {
+          netWorth: {
+            '18-24': [{p:10,v:-15000},{p:25,v:88},{p:50,v:10222},{p:75,v:33898},{p:90,v:184516},{p:95,v:350000},{p:99,v:653224}],
+            '25-29': [{p:10,v:-22000},{p:25,v:3784},{p:50,v:31470},{p:75,v:130606},{p:90,v:296830},{p:95,v:600000},{p:99,v:2121910}],
+            '30-34': [{p:10,v:-12000},{p:25,v:11016},{p:50,v:88631},{p:75,v:186140},{p:90,v:538750},{p:95,v:1000000},{p:99,v:2636882}],
+            '35-39': [{p:10,v:-5000},{p:25,v:16548},{p:50,v:138588},{p:75,v:389432},{p:90,v:864340},{p:95,v:1800000},{p:99,v:4741320}],
+            '40-44': [{p:10,v:-3000},{p:25,v:23812},{p:50,v:134382},{p:75,v:436892},{p:90,v:1182580},{p:95,v:2500000},{p:99,v:7835420}],
+            '45-49': [{p:10,v:1000},{p:25,v:47668},{p:50,v:213586},{p:75,v:680298},{p:90,v:1428714},{p:95,v:3200000},{p:99,v:8701500}],
+            '50-54': [{p:10,v:2000},{p:25,v:54414},{p:50,v:266140},{p:75,v:913012},{p:90,v:2576540},{p:95,v:5000000},{p:99,v:13231940}],
+            '55-59': [{p:10,v:5000},{p:25,v:84977},{p:50,v:321074},{p:75,v:1137318},{p:90,v:2672160},{p:95,v:6000000},{p:99,v:15371684}],
+            '60-64': [{p:10,v:8000},{p:25,v:80372},{p:50,v:392860},{p:75,v:1131122},{p:90,v:3042280},{p:95,v:7000000},{p:99,v:17869960}],
+            '65+':   [{p:10,v:10000},{p:25,v:94000},{p:50,v:390000},{p:75,v:1130000},{p:90,v:2980000},{p:95,v:6500000},{p:99,v:19000000}]
+          },
+          investments: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:2000},{p:90,v:15000},{p:95,v:40000},{p:99,v:150000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:1000},{p:75,v:15000},{p:90,v:60000},{p:95,v:120000},{p:99,v:500000}],
+            '30-34': [{p:10,v:0},{p:25,v:0},{p:50,v:5000},{p:75,v:40000},{p:90,v:150000},{p:95,v:300000},{p:99,v:1000000}],
+            '35-39': [{p:10,v:0},{p:25,v:0},{p:50,v:10000},{p:75,v:80000},{p:90,v:300000},{p:95,v:600000},{p:99,v:2000000}],
+            '40-44': [{p:10,v:0},{p:25,v:0},{p:50,v:15000},{p:75,v:120000},{p:90,v:450000},{p:95,v:900000},{p:99,v:3500000}],
+            '45-49': [{p:10,v:0},{p:25,v:2000},{p:50,v:30000},{p:75,v:180000},{p:90,v:600000},{p:95,v:1200000},{p:99,v:4500000}],
+            '50-54': [{p:10,v:0},{p:25,v:5000},{p:50,v:50000},{p:75,v:250000},{p:90,v:900000},{p:95,v:1800000},{p:99,v:6000000}],
+            '55-59': [{p:10,v:0},{p:25,v:8000},{p:50,v:70000},{p:75,v:350000},{p:90,v:1100000},{p:95,v:2200000},{p:99,v:8000000}],
+            '60-64': [{p:10,v:0},{p:25,v:10000},{p:50,v:80000},{p:75,v:400000},{p:90,v:1300000},{p:95,v:2600000},{p:99,v:9000000}],
+            '65+':   [{p:10,v:0},{p:25,v:12000},{p:50,v:90000},{p:75,v:420000},{p:90,v:1350000},{p:95,v:2800000},{p:99,v:9500000}]
+          },
+          cash: {
+            '18-24': [{p:10,v:0},{p:25,v:200},{p:50,v:1500},{p:75,v:5000},{p:90,v:15000},{p:95,v:30000},{p:99,v:80000}],
+            '25-29': [{p:10,v:100},{p:25,v:600},{p:50,v:3000},{p:75,v:10000},{p:90,v:30000},{p:95,v:55000},{p:99,v:150000}],
+            '30-34': [{p:10,v:200},{p:25,v:1000},{p:50,v:5000},{p:75,v:18000},{p:90,v:50000},{p:95,v:90000},{p:99,v:250000}],
+            '35-39': [{p:10,v:300},{p:25,v:1500},{p:50,v:7000},{p:75,v:25000},{p:90,v:70000},{p:95,v:130000},{p:99,v:400000}],
+            '40-44': [{p:10,v:400},{p:25,v:2000},{p:50,v:8000},{p:75,v:30000},{p:90,v:80000},{p:95,v:160000},{p:99,v:500000}],
+            '45-49': [{p:10,v:500},{p:25,v:2500},{p:50,v:10000},{p:75,v:40000},{p:90,v:100000},{p:95,v:200000},{p:99,v:600000}],
+            '50-54': [{p:10,v:600},{p:25,v:3000},{p:50,v:13000},{p:75,v:50000},{p:90,v:130000},{p:95,v:260000},{p:99,v:800000}],
+            '55-59': [{p:10,v:800},{p:25,v:4000},{p:50,v:16000},{p:75,v:60000},{p:90,v:160000},{p:95,v:320000},{p:99,v:1000000}],
+            '60-64': [{p:10,v:1000},{p:25,v:5000},{p:50,v:20000},{p:75,v:70000},{p:90,v:200000},{p:95,v:380000},{p:99,v:1200000}],
+            '65+':   [{p:10,v:1200},{p:25,v:6000},{p:50,v:25000},{p:75,v:80000},{p:90,v:220000},{p:95,v:400000},{p:99,v:1300000}]
+          },
+          retirement: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:3000},{p:90,v:15000},{p:95,v:30000},{p:99,v:80000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:5000},{p:75,v:22000},{p:90,v:65000},{p:95,v:110000},{p:99,v:300000}],
+            '30-34': [{p:10,v:0},{p:25,v:2000},{p:50,v:18000},{p:75,v:68000},{p:90,v:160000},{p:95,v:280000},{p:99,v:700000}],
+            '35-39': [{p:10,v:0},{p:25,v:5000},{p:50,v:32000},{p:75,v:120000},{p:90,v:310000},{p:95,v:500000},{p:99,v:1400000}],
+            '40-44': [{p:10,v:0},{p:25,v:8000},{p:50,v:50000},{p:75,v:180000},{p:90,v:480000},{p:95,v:800000},{p:99,v:2200000}],
+            '45-49': [{p:10,v:0},{p:25,v:15000},{p:50,v:75000},{p:75,v:260000},{p:90,v:680000},{p:95,v:1100000},{p:99,v:3000000}],
+            '50-54': [{p:10,v:0},{p:25,v:20000},{p:50,v:100000},{p:75,v:360000},{p:90,v:900000},{p:95,v:1500000},{p:99,v:4200000}],
+            '55-59': [{p:10,v:0},{p:25,v:30000},{p:50,v:130000},{p:75,v:460000},{p:90,v:1100000},{p:95,v:1900000},{p:99,v:5500000}],
+            '60-64': [{p:10,v:0},{p:25,v:35000},{p:50,v:170000},{p:75,v:550000},{p:90,v:1300000},{p:95,v:2200000},{p:99,v:6500000}],
+            '65+':   [{p:10,v:0},{p:25,v:25000},{p:50,v:150000},{p:75,v:500000},{p:90,v:1200000},{p:95,v:2000000},{p:99,v:6000000}]
+          },
+          realEstate: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:0},{p:90,v:0},{p:95,v:20000},{p:99,v:150000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:0},{p:90,v:50000},{p:95,v:120000},{p:99,v:400000}],
+            '30-34': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:50000},{p:90,v:150000},{p:95,v:250000},{p:99,v:700000}],
+            '35-39': [{p:10,v:0},{p:25,v:0},{p:50,v:30000},{p:75,v:120000},{p:90,v:300000},{p:95,v:500000},{p:99,v:1500000}],
+            '40-44': [{p:10,v:0},{p:25,v:0},{p:50,v:50000},{p:75,v:160000},{p:90,v:400000},{p:95,v:650000},{p:99,v:2000000}],
+            '45-49': [{p:10,v:0},{p:25,v:0},{p:50,v:70000},{p:75,v:200000},{p:90,v:500000},{p:95,v:800000},{p:99,v:2500000}],
+            '50-54': [{p:10,v:0},{p:25,v:0},{p:50,v:90000},{p:75,v:250000},{p:90,v:600000},{p:95,v:1000000},{p:99,v:3000000}],
+            '55-59': [{p:10,v:0},{p:25,v:0},{p:50,v:100000},{p:75,v:280000},{p:90,v:650000},{p:95,v:1100000},{p:99,v:3500000}],
+            '60-64': [{p:10,v:0},{p:25,v:0},{p:50,v:120000},{p:75,v:300000},{p:90,v:700000},{p:95,v:1200000},{p:99,v:4000000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:130000},{p:75,v:300000},{p:90,v:680000},{p:95,v:1100000},{p:99,v:3800000}]
+          },
+          savingsRate: {
+            '18-24': [{p:10,v:-5},{p:25,v:0},{p:50,v:5},{p:75,v:12},{p:90,v:22},{p:95,v:35},{p:99,v:55}],
+            '25-29': [{p:10,v:-3},{p:25,v:2},{p:50,v:8},{p:75,v:15},{p:90,v:25},{p:95,v:38},{p:99,v:60}],
+            '30-34': [{p:10,v:-2},{p:25,v:3},{p:50,v:10},{p:75,v:18},{p:90,v:28},{p:95,v:40},{p:99,v:62}],
+            '35-39': [{p:10,v:-1},{p:25,v:4},{p:50,v:11},{p:75,v:20},{p:90,v:30},{p:95,v:42},{p:99,v:65}],
+            '40-44': [{p:10,v:0},{p:25,v:5},{p:50,v:12},{p:75,v:22},{p:90,v:33},{p:95,v:45},{p:99,v:68}],
+            '45-49': [{p:10,v:0},{p:25,v:5},{p:50,v:13},{p:75,v:23},{p:90,v:35},{p:95,v:48},{p:99,v:70}],
+            '50-54': [{p:10,v:0},{p:25,v:6},{p:50,v:14},{p:75,v:25},{p:90,v:38},{p:95,v:50},{p:99,v:72}],
+            '55-59': [{p:10,v:0},{p:25,v:7},{p:50,v:15},{p:75,v:27},{p:90,v:40},{p:95,v:52},{p:99,v:75}],
+            '60-64': [{p:10,v:0},{p:25,v:5},{p:50,v:14},{p:75,v:26},{p:90,v:40},{p:95,v:52},{p:99,v:75}],
+            '65+':   [{p:10,v:0},{p:25,v:3},{p:50,v:10},{p:75,v:22},{p:90,v:38},{p:95,v:50},{p:99,v:72}]
+          },
+          debt: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:5000},{p:75,v:25000},{p:90,v:50000},{p:95,v:80000},{p:99,v:180000}],
+            '25-29': [{p:10,v:0},{p:25,v:2000},{p:50,v:18000},{p:75,v:55000},{p:90,v:130000},{p:95,v:220000},{p:99,v:500000}],
+            '30-34': [{p:10,v:0},{p:25,v:5000},{p:50,v:50000},{p:75,v:180000},{p:90,v:320000},{p:95,v:450000},{p:99,v:900000}],
+            '35-39': [{p:10,v:0},{p:25,v:8000},{p:50,v:75000},{p:75,v:230000},{p:90,v:420000},{p:95,v:600000},{p:99,v:1200000}],
+            '40-44': [{p:10,v:0},{p:25,v:10000},{p:50,v:85000},{p:75,v:250000},{p:90,v:480000},{p:95,v:700000},{p:99,v:1500000}],
+            '45-49': [{p:10,v:0},{p:25,v:8000},{p:50,v:70000},{p:75,v:220000},{p:90,v:440000},{p:95,v:650000},{p:99,v:1400000}],
+            '50-54': [{p:10,v:0},{p:25,v:5000},{p:50,v:55000},{p:75,v:190000},{p:90,v:380000},{p:95,v:580000},{p:99,v:1300000}],
+            '55-59': [{p:10,v:0},{p:25,v:3000},{p:50,v:40000},{p:75,v:160000},{p:90,v:320000},{p:95,v:500000},{p:99,v:1100000}],
+            '60-64': [{p:10,v:0},{p:25,v:0},{p:50,v:25000},{p:75,v:130000},{p:90,v:270000},{p:95,v:430000},{p:99,v:1000000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:10000},{p:75,v:80000},{p:90,v:200000},{p:95,v:350000},{p:99,v:850000}]
+          }
+        },
+        KR: {
+          // Values in 만원 (10,000 KRW). Source: KOSTAT 가계금융복지조사 2025
+          // 30세미만 평균순자산 22,158만원, 30대 ~24,000, 40대 45,064, 50대 51,131, 60+ 51,922
+          netWorth: {
+            '18-24': [{p:10,v:-500},{p:25,v:0},{p:50,v:500},{p:75,v:2000},{p:90,v:5000},{p:95,v:8000},{p:99,v:20000}],
+            '25-29': [{p:10,v:-1000},{p:25,v:200},{p:50,v:2000},{p:75,v:6000},{p:90,v:15000},{p:95,v:25000},{p:99,v:60000}],
+            '30-34': [{p:10,v:0},{p:25,v:2000},{p:50,v:8000},{p:75,v:20000},{p:90,v:40000},{p:95,v:60000},{p:99,v:120000}],
+            '35-39': [{p:10,v:500},{p:25,v:5000},{p:50,v:15000},{p:75,v:35000},{p:90,v:65000},{p:95,v:90000},{p:99,v:180000}],
+            '40-44': [{p:10,v:1000},{p:25,v:8000},{p:50,v:25000},{p:75,v:50000},{p:90,v:90000},{p:95,v:130000},{p:99,v:250000}],
+            '45-49': [{p:10,v:2000},{p:25,v:12000},{p:50,v:32000},{p:75,v:65000},{p:90,v:110000},{p:95,v:160000},{p:99,v:320000}],
+            '50-54': [{p:10,v:3000},{p:25,v:15000},{p:50,v:38000},{p:75,v:75000},{p:90,v:130000},{p:95,v:190000},{p:99,v:400000}],
+            '55-59': [{p:10,v:3500},{p:25,v:16000},{p:50,v:40000},{p:75,v:80000},{p:90,v:140000},{p:95,v:200000},{p:99,v:420000}],
+            '60-64': [{p:10,v:3000},{p:25,v:14000},{p:50,v:38000},{p:75,v:78000},{p:90,v:135000},{p:95,v:195000},{p:99,v:410000}],
+            '65+':   [{p:10,v:2000},{p:25,v:10000},{p:50,v:30000},{p:75,v:65000},{p:90,v:120000},{p:95,v:180000},{p:99,v:380000}]
+          },
+          investments: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:100},{p:90,v:500},{p:95,v:1500},{p:99,v:5000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:100},{p:75,v:800},{p:90,v:3000},{p:95,v:6000},{p:99,v:20000}],
+            '30-34': [{p:10,v:0},{p:25,v:0},{p:50,v:500},{p:75,v:2500},{p:90,v:8000},{p:95,v:15000},{p:99,v:50000}],
+            '35-39': [{p:10,v:0},{p:25,v:0},{p:50,v:1000},{p:75,v:5000},{p:90,v:15000},{p:95,v:28000},{p:99,v:80000}],
+            '40-44': [{p:10,v:0},{p:25,v:0},{p:50,v:1500},{p:75,v:8000},{p:90,v:22000},{p:95,v:40000},{p:99,v:110000}],
+            '45-49': [{p:10,v:0},{p:25,v:0},{p:50,v:2000},{p:75,v:10000},{p:90,v:28000},{p:95,v:50000},{p:99,v:140000}],
+            '50-54': [{p:10,v:0},{p:25,v:0},{p:50,v:2500},{p:75,v:12000},{p:90,v:32000},{p:95,v:58000},{p:99,v:160000}],
+            '55-59': [{p:10,v:0},{p:25,v:0},{p:50,v:2000},{p:75,v:10000},{p:90,v:30000},{p:95,v:55000},{p:99,v:150000}],
+            '60-64': [{p:10,v:0},{p:25,v:0},{p:50,v:1500},{p:75,v:8000},{p:90,v:25000},{p:95,v:48000},{p:99,v:130000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:1000},{p:75,v:6000},{p:90,v:20000},{p:95,v:40000},{p:99,v:110000}]
+          },
+          cash: {
+            '18-24': [{p:10,v:0},{p:25,v:50},{p:50,v:200},{p:75,v:600},{p:90,v:1500},{p:95,v:3000},{p:99,v:8000}],
+            '25-29': [{p:10,v:0},{p:25,v:100},{p:50,v:500},{p:75,v:1500},{p:90,v:4000},{p:95,v:7000},{p:99,v:18000}],
+            '30-34': [{p:10,v:50},{p:25,v:300},{p:50,v:1000},{p:75,v:3000},{p:90,v:8000},{p:95,v:14000},{p:99,v:35000}],
+            '35-39': [{p:10,v:100},{p:25,v:500},{p:50,v:1500},{p:75,v:4500},{p:90,v:12000},{p:95,v:20000},{p:99,v:50000}],
+            '40-44': [{p:10,v:150},{p:25,v:700},{p:50,v:2000},{p:75,v:6000},{p:90,v:15000},{p:95,v:25000},{p:99,v:60000}],
+            '45-49': [{p:10,v:200},{p:25,v:800},{p:50,v:2500},{p:75,v:7000},{p:90,v:18000},{p:95,v:30000},{p:99,v:70000}],
+            '50-54': [{p:10,v:200},{p:25,v:900},{p:50,v:3000},{p:75,v:8000},{p:90,v:20000},{p:95,v:35000},{p:99,v:80000}],
+            '55-59': [{p:10,v:200},{p:25,v:800},{p:50,v:2800},{p:75,v:7500},{p:90,v:18000},{p:95,v:32000},{p:99,v:75000}],
+            '60-64': [{p:10,v:150},{p:25,v:700},{p:50,v:2500},{p:75,v:7000},{p:90,v:16000},{p:95,v:28000},{p:99,v:65000}],
+            '65+':   [{p:10,v:100},{p:25,v:500},{p:50,v:2000},{p:75,v:6000},{p:90,v:14000},{p:95,v:25000},{p:99,v:58000}]
+          },
+          retirement: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:0},{p:90,v:100},{p:95,v:300},{p:99,v:1000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:200},{p:90,v:800},{p:95,v:1500},{p:99,v:5000}],
+            '30-34': [{p:10,v:0},{p:25,v:0},{p:50,v:200},{p:75,v:1000},{p:90,v:3000},{p:95,v:5000},{p:99,v:15000}],
+            '35-39': [{p:10,v:0},{p:25,v:0},{p:50,v:500},{p:75,v:2500},{p:90,v:6000},{p:95,v:10000},{p:99,v:30000}],
+            '40-44': [{p:10,v:0},{p:25,v:100},{p:50,v:1000},{p:75,v:4000},{p:90,v:10000},{p:95,v:18000},{p:99,v:50000}],
+            '45-49': [{p:10,v:0},{p:25,v:200},{p:50,v:1500},{p:75,v:5500},{p:90,v:14000},{p:95,v:25000},{p:99,v:65000}],
+            '50-54': [{p:10,v:0},{p:25,v:300},{p:50,v:2000},{p:75,v:7000},{p:90,v:18000},{p:95,v:32000},{p:99,v:80000}],
+            '55-59': [{p:10,v:0},{p:25,v:200},{p:50,v:1800},{p:75,v:6500},{p:90,v:16000},{p:95,v:28000},{p:99,v:72000}],
+            '60-64': [{p:10,v:0},{p:25,v:100},{p:50,v:1500},{p:75,v:5500},{p:90,v:14000},{p:95,v:25000},{p:99,v:65000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:1000},{p:75,v:4000},{p:90,v:10000},{p:95,v:20000},{p:99,v:55000}]
+          },
+          realEstate: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:0},{p:90,v:0},{p:95,v:0},{p:99,v:5000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:0},{p:90,v:5000},{p:95,v:15000},{p:99,v:40000}],
+            '30-34': [{p:10,v:0},{p:25,v:0},{p:50,v:0},{p:75,v:10000},{p:90,v:25000},{p:95,v:40000},{p:99,v:80000}],
+            '35-39': [{p:10,v:0},{p:25,v:0},{p:50,v:5000},{p:75,v:20000},{p:90,v:45000},{p:95,v:65000},{p:99,v:130000}],
+            '40-44': [{p:10,v:0},{p:25,v:0},{p:50,v:10000},{p:75,v:30000},{p:90,v:60000},{p:95,v:90000},{p:99,v:180000}],
+            '45-49': [{p:10,v:0},{p:25,v:0},{p:50,v:15000},{p:75,v:38000},{p:90,v:70000},{p:95,v:105000},{p:99,v:220000}],
+            '50-54': [{p:10,v:0},{p:25,v:2000},{p:50,v:18000},{p:75,v:42000},{p:90,v:80000},{p:95,v:120000},{p:99,v:260000}],
+            '55-59': [{p:10,v:0},{p:25,v:2000},{p:50,v:20000},{p:75,v:45000},{p:90,v:85000},{p:95,v:130000},{p:99,v:280000}],
+            '60-64': [{p:10,v:0},{p:25,v:2000},{p:50,v:18000},{p:75,v:42000},{p:90,v:80000},{p:95,v:125000},{p:99,v:270000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:15000},{p:75,v:38000},{p:90,v:72000},{p:95,v:110000},{p:99,v:240000}]
+          },
+          savingsRate: {
+            '18-24': [{p:10,v:-5},{p:25,v:0},{p:50,v:8},{p:75,v:18},{p:90,v:30},{p:95,v:42},{p:99,v:60}],
+            '25-29': [{p:10,v:-3},{p:25,v:3},{p:50,v:12},{p:75,v:22},{p:90,v:35},{p:95,v:48},{p:99,v:65}],
+            '30-34': [{p:10,v:-2},{p:25,v:5},{p:50,v:14},{p:75,v:25},{p:90,v:38},{p:95,v:50},{p:99,v:68}],
+            '35-39': [{p:10,v:-1},{p:25,v:5},{p:50,v:13},{p:75,v:24},{p:90,v:36},{p:95,v:48},{p:99,v:65}],
+            '40-44': [{p:10,v:0},{p:25,v:5},{p:50,v:12},{p:75,v:22},{p:90,v:34},{p:95,v:45},{p:99,v:62}],
+            '45-49': [{p:10,v:0},{p:25,v:5},{p:50,v:12},{p:75,v:22},{p:90,v:33},{p:95,v:44},{p:99,v:60}],
+            '50-54': [{p:10,v:0},{p:25,v:5},{p:50,v:13},{p:75,v:23},{p:90,v:35},{p:95,v:46},{p:99,v:62}],
+            '55-59': [{p:10,v:0},{p:25,v:5},{p:50,v:12},{p:75,v:22},{p:90,v:34},{p:95,v:45},{p:99,v:60}],
+            '60-64': [{p:10,v:0},{p:25,v:3},{p:50,v:10},{p:75,v:20},{p:90,v:32},{p:95,v:42},{p:99,v:58}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:5},{p:75,v:15},{p:90,v:28},{p:95,v:38},{p:99,v:55}]
+          },
+          debt: {
+            '18-24': [{p:10,v:0},{p:25,v:0},{p:50,v:200},{p:75,v:1500},{p:90,v:4000},{p:95,v:7000},{p:99,v:15000}],
+            '25-29': [{p:10,v:0},{p:25,v:0},{p:50,v:1500},{p:75,v:5000},{p:90,v:12000},{p:95,v:20000},{p:99,v:50000}],
+            '30-34': [{p:10,v:0},{p:25,v:500},{p:50,v:5000},{p:75,v:15000},{p:90,v:30000},{p:95,v:45000},{p:99,v:100000}],
+            '35-39': [{p:10,v:0},{p:25,v:1000},{p:50,v:8000},{p:75,v:22000},{p:90,v:42000},{p:95,v:60000},{p:99,v:130000}],
+            '40-44': [{p:10,v:0},{p:25,v:1500},{p:50,v:10000},{p:75,v:28000},{p:90,v:52000},{p:95,v:75000},{p:99,v:160000}],
+            '45-49': [{p:10,v:0},{p:25,v:1000},{p:50,v:8000},{p:75,v:24000},{p:90,v:46000},{p:95,v:68000},{p:99,v:150000}],
+            '50-54': [{p:10,v:0},{p:25,v:500},{p:50,v:6000},{p:75,v:20000},{p:90,v:40000},{p:95,v:60000},{p:99,v:130000}],
+            '55-59': [{p:10,v:0},{p:25,v:0},{p:50,v:4000},{p:75,v:15000},{p:90,v:32000},{p:95,v:50000},{p:99,v:110000}],
+            '60-64': [{p:10,v:0},{p:25,v:0},{p:50,v:2000},{p:75,v:10000},{p:90,v:24000},{p:95,v:40000},{p:99,v:90000}],
+            '65+':   [{p:10,v:0},{p:25,v:0},{p:50,v:1000},{p:75,v:6000},{p:90,v:16000},{p:95,v:30000},{p:99,v:70000}]
+          }
+        }
+      };
+
+      // KR values are in 만원 — convert to actual KRW for comparison
+      const KR_UNIT = 10000; // 1만원 = 10,000 KRW
+
+      function computePercentile(value, breakpoints) {
+        if (!breakpoints || !breakpoints.length) return 50;
+        if (value <= breakpoints[0].v) return Math.max(0, (value / Math.max(1, breakpoints[0].v)) * breakpoints[0].p);
+        if (value >= breakpoints[breakpoints.length - 1].v) {
+          const last = breakpoints[breakpoints.length - 1];
+          return Math.min(99.9, last.p + (100 - last.p) * 0.5);
+        }
+        for (let i = 0; i < breakpoints.length - 1; i++) {
+          const lo = breakpoints[i], hi = breakpoints[i + 1];
+          if (value >= lo.v && value <= hi.v) {
+            const frac = hi.v === lo.v ? 0.5 : (value - lo.v) / (hi.v - lo.v);
+            return lo.p + frac * (hi.p - lo.p);
+          }
+        }
+        return 50;
+      }
+
+      function getAgeBracket(age) {
+        if (age < 18) return '18-24';
+        if (age >= 65) return '65+';
+        const start = Math.floor(age / 5) * 5;
+        return start + '-' + (start + 4);
+      }
+
+      function getRankAge() {
+        return S.settings.rank?.age || (typeof ftGlobals !== 'undefined' && ftGlobals?.projectionStartingAge) || 25;
+      }
+
+      function getRankCountry() {
+        return S.settings.rank?.country || 'US';
+      }
+
+      function getRankMedian(country, category, bracket) {
+        const bp = RANK_DATA[country]?.[category]?.[bracket];
+        if (!bp) return 0;
+        const med = bp.find(b => b.p === 50);
+        return med ? med.v : 0;
+      }
+
+      function renderRank() {
+        const age = getRankAge();
+        const country = getRankCountry();
+        const bracket = getAgeBracket(age);
+        const isKR = country === 'KR';
+        const fx = getFX();
+        const hide = isTabHidden('rank');
+
+        // User values (all in USD)
+        const userNW = nwTotal();
+        const userInv = totByBucket('investments');
+        const userCash = totByBucket('cash') + totByBucket('restricted');
+        const userRet = totByBucket('retirement');
+        const userRE = totRealEstateEquity();
+        const userDebt = S.settings.rank?.debt || 0;
+
+        // Savings rate: try to derive from life plan
+        let userSavingsRate = null;
+        if (typeof ftIncomeStreams !== 'undefined' && ftIncomeStreams?.length) {
+          const totalIncome = ftIncomeStreams.reduce((s, inc) => s + (inc.annual || 0), 0);
+          if (totalIncome > 0) {
+            // Simple: (income - expenses) / income as %
+            // Use annual contrib from settings as proxy for savings
+            const annualSav = S.settings.annualContrib || 0;
+            userSavingsRate = (annualSav / totalIncome) * 100;
+          }
+        }
+
+        // Convert user values to comparison units
+        const toCompare = (usdVal, cat) => {
+          if (cat === 'savingsRate') return usdVal; // already a %
+          if (isKR) return (usdVal * fx) / KR_UNIT; // USD → 만원
+          return usdVal;
+        };
+
+        const categories = [
+          { key: 'netWorth', label: 'Net Worth', value: userNW, icon: '💰' },
+          { key: 'investments', label: 'Investments', value: userInv, icon: '📈' },
+          { key: 'cash', label: 'Cash & Savings', value: userCash, icon: '🏦' },
+          { key: 'retirement', label: 'Retirement', value: userRet, icon: '🏖️' },
+          { key: 'realEstate', label: 'Real Estate', value: userRE, icon: '🏠' },
+          { key: 'savingsRate', label: 'Savings Rate', value: userSavingsRate, icon: '💵', unit: '%' },
+          { key: 'debt', label: 'Debt', value: userDebt, icon: '💳', inverted: true },
+        ];
+
+        // Compute percentiles
+        const results = categories.map(cat => {
+          const bp = RANK_DATA[country]?.[cat.key]?.[bracket];
+          if (!bp || cat.value === null) return { ...cat, pctl: null, median: null };
+          const compareVal = toCompare(cat.value, cat.key);
+          let pctl = computePercentile(compareVal, bp);
+          // For debt, higher = worse, so invert: "less debt = higher rank"
+          if (cat.inverted) pctl = 100 - pctl;
+          const median = getRankMedian(country, cat.key, bracket);
+          return { ...cat, pctl, median, compareVal };
+        });
+
+        const nwResult = results[0];
+        const fmtRank = p => p >= 50 ? `Top ${Math.round(100 - p)}%` : `Bottom ${Math.round(p)}%`;
+        const fmtR = v => hide ? '<span class="hval">Hidden</span>' : fmt(v, 0);
+        const fmtMed = (v, cat) => {
+          if (cat.unit === '%') return v.toFixed(0) + '%';
+          if (isKR) return '₩' + (v * KR_UNIT).toLocaleString('ko-KR');
+          return fmtUSD(v);
+        };
+        const fmtVal = cat => {
+          if (hide) return '<span class="hval">Hidden</span>';
+          if (cat.value === null) return '<span class="mut">Not tracked</span>';
+          if (cat.unit === '%') return cat.value.toFixed(1) + '%';
+          return fmt(cat.value, 0);
+        };
+
+        // ── Config bar ──
+        const configEl = document.getElementById('rank-config');
+        if (configEl) {
+          configEl.innerHTML = `<div class="card mb-2" style="padding:12px 16px">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="lbl" style="margin-bottom:0">Country</span>
+                <div class="atab-group" style="border:none;margin:0">
+                  <button class="atab ${country === 'US' ? 'on' : ''}" onclick="S.settings.rank.country='US';ps(S);renderRank()" style="padding:4px 10px;font-size:11px">US</button>
+                  <button class="atab ${country === 'KR' ? 'on' : ''}" onclick="S.settings.rank.country='KR';ps(S);renderRank()" style="padding:4px 10px;font-size:11px">KR</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="lbl" style="margin-bottom:0">Age</span>
+                <input class="inp" type="number" value="${age}" min="18" max="85" style="width:60px;font-size:12px;padding:4px 8px" onchange="S.settings.rank.age=parseInt(this.value)||25;ps(S);renderRank()">
+                <span class="mut" style="font-size:11px">(${bracket})</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="lbl" style="margin-bottom:0">Debt</span>
+                <div style="position:relative"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:11px">$</span><input class="inp" type="text" value="${userDebt ? userDebt.toLocaleString() : '0'}" style="width:100px;font-size:12px;padding:4px 8px 4px 20px" onchange="S.settings.rank.debt=parseFloat(this.value.replace(/,/g,''))||0;ps(S);renderRank()" oninput="handleBalInput(this)" onblur="formatBalInput(this)"></div>
+              </div>
+            </div>
+          </div>`;
+        }
+
+        // ── Hero card ──
+        const heroEl = document.getElementById('rank-hero');
+        if (heroEl && nwResult.pctl !== null) {
+          const pctl = nwResult.pctl;
+          const isGood = pctl >= 50;
+          const col = isGood ? 'var(--fm)' : 'var(--rose)';
+          const rankText = fmtRank(pctl);
+          heroEl.innerHTML = `<div class="card mb-2" style="padding:24px">
+            <div class="sec">Net Worth Rank</div>
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px">
+              <span class="bnum" style="color:${col}">${hide ? '<span class="hval">Hidden</span>' : rankText}</span>
+              <span class="mut">of ${bracket} year olds in the ${country}</span>
+            </div>
+            <div class="pb" style="position:relative;height:6px;margin-bottom:12px">
+              <div class="pf" style="width:${pctl}%;background:${col}"></div>
+              <div class="rank-marker" style="left:${pctl}%;background:${col}"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
+              <div><span class="lbl">Your net worth</span><div class="mnum" style="font-family:var(--mono)">${fmtVal(nwResult)}</div></div>
+              <div><span class="lbl">Median for ${bracket}</span><div class="mnum mut" style="font-family:var(--mono)">${fmtMed(nwResult.median, nwResult)}</div></div>
+            </div>
+          </div>`;
+        } else if (heroEl) {
+          heroEl.innerHTML = '';
+        }
+
+        // ── Category cards ──
+        const cardsEl = document.getElementById('rank-cards');
+        if (cardsEl) {
+          const cardHtml = results.slice(1).map(r => {
+            if (r.pctl === null) {
+              return `<div class="gc"><div class="lbl">${r.label}</div><div class="mut" style="font-size:12px;margin-top:8px">Not tracked</div></div>`;
+            }
+            const isGood = r.inverted ? r.pctl >= 50 : r.pctl >= 50;
+            const col = isGood ? 'var(--fm)' : 'var(--rose)';
+            const tagClass = isGood ? 'tg' : 'tr';
+            return `<div class="gc" style="padding:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div class="lbl" style="margin-bottom:0">${r.label}</div>
+                <span class="tag ${tagClass}" style="font-size:11px">${hide ? '—' : fmtRank(r.pctl)}</span>
+              </div>
+              <div class="pb mb-2" style="position:relative;height:4px">
+                <div class="pf" style="width:${r.pctl}%;background:${col}"></div>
+                <div class="rank-marker" style="left:${r.pctl}%;background:${col};width:8px;height:8px"></div>
+              </div>
+              <div class="mnum" style="font-family:var(--mono);margin-bottom:4px">${fmtVal(r)}</div>
+              <div class="mut" style="font-size:10.5px">Median: ${fmtMed(r.median, r)}</div>
+            </div>`;
+          }).join('');
+          cardsEl.innerHTML = `<div class="g2 mb-3">${cardHtml}</div>`;
+        }
+
+        // ── Footer ──
+        const footerEl = document.getElementById('rank-footer');
+        if (footerEl) {
+          footerEl.innerHTML = `<div class="mut" style="font-size:10.5px;text-align:center;padding:8px 0">Based on US Federal Reserve SCF 2022 and KOSTAT 가계금융복지조사 2025 survey data. Distributions are approximate.</div>`;
+        }
       }
 
       // ── renderSettings extension ──────────────────────────────────

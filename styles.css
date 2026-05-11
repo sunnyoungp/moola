@@ -3379,6 +3379,20 @@ body.sb-collapsed .priv-section {
 }
 
 /* ════════════════════════════════════════════════════════════
+       RANK TAB — gauge marker
+       ════════════════════════════════════════════════════════════ */
+.rank-marker {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+/* ════════════════════════════════════════════════════════════
        LIVE PRICES — sync indicator
        ════════════════════════════════════════════════════════════ */
 /* Price chips — used inside Portfolio tab sync row */
