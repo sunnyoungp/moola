@@ -5649,17 +5649,7 @@
         if (periodEl) {
           let ph = '';
           if (isAllTime) {
-            // ALL: simple formula, no snapshots needed
-            const periodGain = currentValue - totalContribsAll;
-            const periodPct = totalContribsAll > 0 ? (periodGain / totalContribsAll) * 100 : 0;
-            ph += `<div class="card mb-2">
-              <div class="sec">All-Time Gain / Loss</div>
-              <div style="font-size:26px;font-family:var(--mono);margin-bottom:14px">${fmtG(periodGain, periodPct)}</div>
-              <div style="display:flex;gap:28px;flex-wrap:wrap">
-                <div><div class="lbl">Total contributed</div><div class="mnum" style="font-family:var(--mono)">${fmtV(totalContribsAll)}</div></div>
-                <div><div class="lbl">Current value</div><div class="mnum" style="font-family:var(--mono)">${fmtV(currentValue)}</div></div>
-              </div>
-            </div>`;
+            // ALL: no period card — consolidated into All-Time Summary below
           } else {
             // 1M/3M/YTD/1Y/CUSTOM: require a valid historical snapshot
             const startSnap = nearestSnap(start, acctIds);
@@ -6062,8 +6052,10 @@
           const contribTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const sum = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); return mkRow(a.name, fmt(sum, 2)); }).join('');
           const gainedTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const acctContrib = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); const acctGain = getAcctUSD(a) - acctContrib; return mkRow(a.name, `<span style="color:${acctGain >= 0 ? 'var(--fm)' : 'var(--rose)'}">${acctGain >= 0 ? '+' : ''}${fmt(Math.abs(acctGain), 2)}</span>`); }).join('');
 
+          const gainHeadline = isAllTime ? `<div style="font-size:26px;font-family:var(--mono);margin-bottom:16px">${fmtG(totalGained, totalRetPct)}</div>` : '';
           allTimeEl.innerHTML = `<div class="card mb-2">
             <div class="sec" style="margin-bottom:12px">All-Time Summary</div>
+            ${gainHeadline}
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
               <div>
                 <div class="lbl">Total Contributed</div>
