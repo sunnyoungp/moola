@@ -1619,29 +1619,39 @@ input[type=range] {
   color: var(--fc-red);
 }
 
-/* Sidebar footer action buttons */
-.sb-foot-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sb-foot-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: none;
+/* Sidebar footer buttons */
+.sb-foot-settings {
+  flex: 1;
+  height: 28px;
   border-radius: var(--rs);
-  background: transparent;
-  color: var(--ink3);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink2);
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   transition: background .12s, color .12s;
 }
-.sb-foot-btn:hover {
+.sb-foot-settings:hover {
+  background: var(--border);
+  color: var(--ink);
+}
+.sb-foot-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--rs);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+}
+.sb-foot-icon:hover {
   background: var(--border);
   color: var(--ink);
 }
@@ -2908,13 +2918,9 @@ body.sb-collapsed #sidebar .stab {
   width: 100%;
 }
 
-body.sb-collapsed .sb-foot-btn {
-  justify-content: center;
-  padding: 7px 4px;
-  font-size: 0;
-}
-body.sb-collapsed .sb-foot-btn svg {
-  flex-shrink: 0;
+body.sb-collapsed .sb-foot-settings {
+  font-size: 9px;
+  padding: 0 2px;
 }
 
 body.sb-collapsed .priv-section {
