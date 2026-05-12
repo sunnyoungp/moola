@@ -2680,7 +2680,7 @@
       // HELPERS
       function getAcctUSD(a) { return a.currency === 'KRW' ? a.balance / getFX() : (a.balance || 0); }
       function getFundValue(f) { return Object.values(f.accounts).reduce((s, a) => s + (a.value || 0), 0); }
-      function getFundUSD(f) { let t = 0; for (const [id, held] of Object.entries(f.accounts)) { const a = S.accounts.find(x => String(x.id) === id); t += a && a.currency === 'KRW' ? (held.value || 0) / getFX() : (held.value || 0); } return t; }
+      function getFundUSD(f, acctIds) { let t = 0; for (const [id, held] of Object.entries(f.accounts)) { if (acctIds && !acctIds.includes(id)) continue; const a = S.accounts.find(x => String(x.id) === id); t += a && a.currency === 'KRW' ? (held.value || 0) / getFX() : (held.value || 0); } return t; }
       function getFundAcctValue(f, acctId) { return f.accounts[String(acctId)]?.value || 0; }
       function nwTotal() {
         const state = getFilteredState();
@@ -3943,15 +3943,16 @@
       }
       function renderPortfolio() {
         renderPortAcctToggles();
-        const funds = getFunds('all'); const tot = funds.reduce((s, f) => s + getFundUSD(f), 0);
+        const togIds = getToggledAcctIds();
+        const funds = getFunds('all'); const tot = funds.reduce((s, f) => s + getFundUSD(f, togIds), 0);
         document.getElementById('port-total').innerHTML = MT(fmt(tot), 'portfolio');
         // Only include funds with a target for drift table (hands-off = targetPct 0)
         const rebalFunds = funds.filter(f => f.targetPct > 0);
         const tgtSum = rebalFunds.reduce((s, f) => s + f.targetPct, 0) || 100;
-        const rebalTot = rebalFunds.reduce((s, f) => s + getFundUSD(f), 0);
+        const rebalTot = rebalFunds.reduce((s, f) => s + getFundUSD(f, togIds), 0);
         // Build drift table — one row per ticker
         let driftRows = rebalFunds.map(f => {
-          const cur = (getFundUSD(f) / rebalTot) * 100;
+          const cur = (getFundUSD(f, togIds) / rebalTot) * 100;
           const tgt = f.targetPct * (100 / tgtSum);
           const d = cur - tgt;
           return `<tr>
@@ -3966,7 +3967,7 @@
         const colors = getThemeColors();
         const chartData = funds.map((f, i) => ({
           label: f.ticker,
-          value: getFundUSD(f),
+          value: getFundUSD(f, togIds),
           color: colors[i % colors.length]
         })).filter(x => x.value > 0);
         const totalAlloc = chartData.reduce((s, x) => s + x.value, 0);
@@ -4009,9 +4010,10 @@
         }
         document.getElementById('fund-tbl').innerHTML = `<thead><tr><th>Ticker</th><th>Name</th><th>Accounts</th><th>Value</th><th>Day</th><th>Current %</th><th>Target %</th><th>Exp. return</th><th></th></tr></thead><tbody>${funds.map(f => {
           const dayChg = f.lastChange != null ? `<span style="font-size:11px;font-weight:600;color:${f.lastChange >= 0 ? 'var(--fm)' : 'var(--rose)'}">${f.lastChange >= 0 ? '+' : ''}${f.lastChange.toFixed(2)}%</span>` : '<span style="color:var(--ink4);font-size:11px">—</span>';
-          const totalShares = Object.values(f.accounts).reduce((s, h) => s + (h.shares || 0), 0);
+          const filteredAccts = Object.entries(f.accounts).filter(([id]) => togIds.includes(id));
+          const totalShares = filteredAccts.reduce((s, [, h]) => s + (h.shares || 0), 0);
           const sharesHint = totalShares > 0 ? `<span style="font-size:10px;color:var(--ink3)"> · ${totalShares.toFixed(3).replace(/\.?0+$/, '')} sh</span>` : '';
-          const acctChips = Object.entries(f.accounts).map(([id, held]) => {
+          const acctChips = filteredAccts.map(([id, held]) => {
             const a = S.accounts.find(x => String(x.id) === id);
             const name = a?.name || id;
             const valFmt = a?.currency === 'KRW' ? '₩' + Math.round(held.value || 0).toLocaleString() : '$' + Math.round(held.value || 0).toLocaleString();
@@ -4020,7 +4022,8 @@
             return `<span class="tag" style="font-size:10px;background:${ac};color:${fg}">${name}: ${valFmt}</span>`;
           }).join(' ');
           const isHandsOff = !f.targetPct || f.targetPct === 0;
-          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td class="mo">${MT(fmt(getFundUSD(f)), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((getFundUSD(f) / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
+          const fVal = getFundUSD(f, togIds);
+          return `<tr${isHandsOff ? ' style="opacity:.75"' : ''}><td style="font-weight:600">${f.ticker}${sharesHint}</td><td style="color:var(--ink2)">${f.name}</td><td>${acctChips}</td><td class="mo">${MT(fmt(fVal), 'portfolio')}</td><td>${dayChg}</td><td class="mo">${pct((fVal / tot) * 100)}</td><td class="mo">${isHandsOff ? '<span style="color:var(--ink4)">—</span>' : pct(f.targetPct)}</td><td class="mo">${f.retPct.toFixed(1)}%</td><td style="text-align:right"><button class="btn bsm bgh" onclick="openFundModal('${f.id}')">Edit</button><button class="btn bsm bgh" style="color:var(--red)" onclick="delFund('${f.id}')">✕</button></td></tr>`;
         }).join('')}</tbody>`;
         // Re-render price chips if we have cached quotes
         if (window._lastQuotes) renderPriceChips(window._lastQuotes);
@@ -4177,7 +4180,7 @@
         let handsOffNote = '';
         if (handsOffFunds.length > 0) {
           handsOffNote = `<div style="padding:8px 10px;background:var(--sky-l);border-radius:var(--rs);font-size:11.5px;color:var(--sky);margin-bottom:12px">
-            <strong>Hands-off:</strong> ${handsOffFunds.map(f => f.ticker).join(', ')} — ${handsOffFunds.length === 1 ? 'this fund has' : 'these funds have'} no target set and ${handsOffFunds.length === 1 ? 'is' : 'are'} excluded from rebalance math. ${MT(fmt(handsOffFunds.reduce((s, f) => s + getFundUSD(f), 0)), 'rebalance')} total value held passively.
+            <strong>Hands-off:</strong> ${handsOffFunds.map(f => f.ticker).join(', ')} — ${handsOffFunds.length === 1 ? 'this fund has' : 'these funds have'} no target set and ${handsOffFunds.length === 1 ? 'is' : 'are'} excluded from rebalance math. ${MT(fmt(handsOffFunds.reduce((s, f) => s + getFundUSD(f, toggledIds), 0)), 'rebalance')} total value held passively.
           </div>`;
         }
 
@@ -4188,10 +4191,10 @@
           return;
         }
 
-        const tot = funds.reduce((s, f) => s + getFundUSD(f), 0);
+        const tot = funds.reduce((s, f) => s + getFundUSD(f, toggledIds), 0);
         // Normalize targets so they sum to 100%
         const tgtSum = funds.reduce((s, f) => s + f.targetPct, 0) || 100;
-        const nFunds = funds.map(f => ({ ...f, _val: getFundUSD(f), normTgt: (f.targetPct / tgtSum) * 100 }));
+        const nFunds = funds.map(f => ({ ...f, _val: getFundUSD(f, toggledIds), normTgt: (f.targetPct / tgtSum) * 100 }));
 
         // ── Row renderer ──────────────────────────────────────────────
         const rowHtml = (f, allocUSD, tag, tagCls, driftBefore, driftAfter) => {
