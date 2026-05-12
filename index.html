@@ -206,6 +206,10 @@
       <div class="sb-nav" id="sb-nav"></div>
 
       <div class="sb-foot">
+        <div class="sb-fx-info" id="sb-fx-info" style="display:none">
+          <span id="sb-fx-rate" style="font-family:var(--mono);font-size:10.5px;color:var(--ink3)"></span>
+          <span id="sb-fx-updated" style="font-size:10px;color:var(--ink4);margin-left:4px"></span>
+        </div>
         <div class="sb-cur">
           <span class="sb-cur-label">Currency</span>
           <div class="stabs" id="cur-tabs">
@@ -217,25 +221,24 @@
             <button class="stab" onclick="setKrwFmt('full',this)">Full &#8361;</button>
           </div>
         </div>
-        <div class="sb-fx-info" id="sb-fx-info" style="display:none">
-          <span id="sb-fx-rate" style="font-family:var(--mono);font-size:10.5px;color:var(--ink3)"></span>
-          <span id="sb-fx-updated" style="font-size:10px;color:var(--ink4);margin-left:4px"></span>
-        </div>
-        <div style="display:flex;gap:4px;align-items:center">
-          <button onclick="showTab('settings')" title="Settings" style="width:28px;height:28px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <div class="sb-foot-actions">
+          <button class="sb-foot-btn" onclick="showTab('settings')">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4"/>
             </svg>
+            Settings
           </button>
-          <button id="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" style="width:28px;height:28px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
-            <svg id="dark-toggle-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <button class="sb-foot-btn" id="dark-toggle" onclick="toggleDarkMode()">
+            <svg id="dark-toggle-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
             </svg>
+            <span id="dark-toggle-label">Dark mode</span>
           </button>
-          <button onclick="signOut()" title="Sign out" style="width:28px;height:28px;border-radius:var(--rs);border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <button class="sb-foot-btn" onclick="signOut()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="M10 12l4-4-4-4"/><line x1="14" y1="8" x2="6" y2="8"/>
             </svg>
+            Sign out
           </button>
         </div>
       </div>
@@ -253,7 +256,7 @@
       <div class="mob-tray-handle"></div>
       <div id="mob-tray-cur"
         style="padding:10px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button id="mob-dark-toggle" onclick="toggleDarkMode()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <button id="mob-dark-toggle" onclick="toggleDarkMode()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg id="mob-dark-toggle-icon" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M13.5 8.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z"/>
           </svg>
@@ -1362,8 +1365,8 @@
             </div>
             <div class="card">
               <div class="sec">Data Management</div>
-              <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn" onclick="exportData()">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn" style="width:100%;justify-content:flex-start;border:1px solid var(--border)" onclick="exportData()">
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"
                     stroke-linecap="round">
                     <path d="M2 10v2h10v-2" />
@@ -1372,7 +1375,7 @@
                   </svg>
                   Export data (JSON)
                 </button>
-                <button class="btn" onclick="document.getElementById('imp').click()">
+                <button class="btn" style="width:100%;justify-content:flex-start;border:1px solid var(--border)" onclick="document.getElementById('imp').click()">
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"
                     stroke-linecap="round">
                     <path d="M2 10v2h10v-2" />
@@ -1382,9 +1385,7 @@
                   Import data (JSON)
                 </button>
                 <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
-                <button class="btn" style="color:var(--rose)" onclick="if(confirm('Reset all data?'))resetData()">Reset
-                  to
-                  defaults</button>
+                <button class="btn" style="width:100%;justify-content:flex-start;color:var(--rose);border:1px solid var(--border)" onclick="if(confirm('Reset all data?'))resetData()">Reset to defaults</button>
               </div>
             </div>
             <div class="card" style="margin-top:14px">
@@ -5223,6 +5224,8 @@
         const svg = dark ? SUN_SVG : MOON_SVG;
         const el = document.getElementById('dark-toggle-icon');
         if (el) el.innerHTML = svg;
+        const lbl = document.getElementById('dark-toggle-label');
+        if (lbl) lbl.textContent = dark ? 'Light mode' : 'Dark mode';
         const mob = document.getElementById('mob-dark-toggle-icon');
         if (mob) mob.innerHTML = svg;
       }
@@ -7689,14 +7692,14 @@
           const isFirst = idx === 0;
           const isLast = idx === visible.length - 1;
 
-          return `<div class="fb" style="padding:6px 10px;background:var(--page);border-radius:var(--rs);border:1px solid var(--line-s)">
+          return `<div class="fb" style="padding:6px 10px;background:var(--surface);border-radius:var(--rs);border:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500">
             <span class="tab-icon" style="color:var(--ink3);display:flex;width:14px;height:14px">${ICONS[t.icon] || ICONS.grid}</span>
             ${t.name}
           </div>
           <div style="display:flex;gap:4px">
-            <button class="bgh btn bsm" style="padding:4px 6px;margin:0" onclick="moveTabUp('${t.id}')" ${isFirst ? 'disabled' : ''}>▲</button>
-            <button class="bgh btn bsm" style="padding:4px 6px;margin:0" onclick="moveTabDown('${t.id}')" ${isLast ? 'disabled' : ''}>▼</button>
+            <button class="btn bsm" style="padding:4px 6px;margin:0;background:transparent;border:1px solid var(--border)" onclick="moveTabUp('${t.id}')" ${isFirst ? 'disabled' : ''}>&#9650;</button>
+            <button class="btn bsm" style="padding:4px 6px;margin:0;background:transparent;border:1px solid var(--border)" onclick="moveTabDown('${t.id}')" ${isLast ? 'disabled' : ''}>&#9660;</button>
           </div>
         </div>`;
         }).join('');
