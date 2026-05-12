@@ -4209,18 +4209,20 @@
                 Target: <strong style="color:var(--ink2)">${f.normTgt.toFixed(1)}%</strong> of portfolio
               </div>
             </div>
-            <div style="font-size:10px;margin-bottom:6px">
-              <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
-              <span style="color:var(--ink4)"> → </span>
-              <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : driftAfter === 0 ? 'var(--fm)' : 'var(--ink3)'}" title="Drift after this action">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="flex:1;height:5px;background:var(--s3);border-radius:3px">
-                <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;margin-bottom:6px">
+              <div>
+                <span style="${driftColor};font-weight:600" title="How far current allocation is from target">Drift now: ${driftBefore >= 0 ? '+' : ''}${driftBefore.toFixed(1)}%</span>
+                <span style="color:var(--ink4)"> → </span>
+                <span style="color:${Math.abs(driftAfter) < Math.abs(driftBefore) ? 'var(--fm)' : driftAfter === 0 ? 'var(--fm)' : 'var(--ink3)'}" title="Drift after this action">${driftAfter >= 0 ? '+' : ''}${driftAfter.toFixed(1)}% after</span>
               </div>
-              <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-family:var(--mono);font-size:12px;font-weight:600;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</span>
+                <span class="tag ${tagCls}" style="min-width:36px;text-align:center;flex-shrink:0">${tag}</span>
+              </div>
             </div>
-            <div style="font-family:var(--mono);font-size:13px;font-weight:600;margin-top:4px;${allocUSD >= 0 ? 'color:var(--fm)' : 'color:var(--rose)'}">${MT((allocUSD >= 0 ? '+' : '') + fmtUSD(allocUSD, 0), 'rebalance')}</div>
+            <div style="height:5px;background:var(--s3);border-radius:3px">
+              <div style="height:100%;border-radius:3px;width:${barW}%;background:${barCol}"></div>
+            </div>
           </div>`;
         };
 
