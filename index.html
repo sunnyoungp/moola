@@ -307,6 +307,8 @@
           </div>
         </div>
         <div style="height:24px"></div>
+        <!-- NW hero card commented out — replaced by metric row below -->
+        <!--
         <div class="nw-hero">
           <div class="nw-hero-left">
             <div class="nw-hero-label">Total net worth</div>
@@ -324,6 +326,7 @@
             </button>
           </div>
         </div>
+        -->
         <div id="ov-widgets"></div>
       </div>
 
@@ -2965,8 +2968,10 @@
       function renderOverview() {
         const state = getFilteredState();
         syncPrivacyUI();
-        document.getElementById('ov-total').innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
-        document.getElementById('ov-gain').innerHTML = '';
+        const _ovTotal = document.getElementById('ov-total');
+        if (_ovTotal) _ovTotal.innerHTML = isNWHidden() ? '<span class="hval">Hidden</span>' : fmt(nwTotal());
+        const _ovGain = document.getElementById('ov-gain');
+        if (_ovGain) _ovGain.innerHTML = '';
         const snaps = S.snapshots || [];
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) {
