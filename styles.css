@@ -3276,12 +3276,14 @@ body.sb-collapsed .priv-section {
     font-size: 16px; /* prevents iOS zoom on focus */
   }
 
-  /* ── Page header: clean stacking ── */
+  /* ── Page header: title left, actions right, wrap when needed ── */
   .page-hdr {
     padding: 20px 16px 0;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .page-title {
@@ -3295,9 +3297,8 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
-  /* Page actions: total on own row, buttons below left-aligned */
+  /* Page actions: sit right of title, wrap below if space is tight */
   .page-actions {
-    width: 100%;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
