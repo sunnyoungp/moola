@@ -3198,7 +3198,7 @@ body.sb-collapsed .priv-section {
 
   .page-hdr {
     padding: 16px 0 0;
-    gap: 12px;
+    gap: 10px;
   }
 
   .tc {
@@ -3276,13 +3276,12 @@ body.sb-collapsed .priv-section {
     font-size: 16px; /* prevents iOS zoom on focus */
   }
 
-  /* ── Page header: 2-col grid — title left, actions right ── */
+  /* ── Page header: column stack, aligned with content ── */
   .page-hdr {
     padding: 16px 0 0;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: start;
-    gap: 6px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .page-title {
@@ -3296,44 +3295,23 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
-  /* Actions: right column, stack vertically to stay compact */
+  /* Actions: horizontal row, wraps if needed */
   .page-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding-top: 0;
   }
 
   .page-actions .btn {
     min-width: 0;
   }
 
-  /* Pages with a .bnum total:
-     row 1 (beside title) = hide + total
-     row 2 (full width below) = action buttons left-aligned */
-  .page-actions:has(.bnum) {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .page-actions .vis-toggle { order: 0; }
-
+  /* Total value: big and prominent, pushes buttons to next line */
   .page-actions .bnum {
-    order: 1;
     font-size: 24px !important;
-    margin-right: 0 !important;
-  }
-
-  .page-actions:has(.bnum) .btn { order: 3; }
-
-  /* Line break between hide+total row and button row */
-  .page-actions:has(.bnum)::after {
-    content: '';
-    flex-basis: 100%;
-    height: 2px;
-    order: 2;
+    margin-right: auto !important;
   }
 
   /* ── Spacing: 16px page padding (Stripe/Plaid standard) ── */
