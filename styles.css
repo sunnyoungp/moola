@@ -3197,7 +3197,7 @@ body.sb-collapsed .priv-section {
   }
 
   .page-hdr {
-    padding: 4px 0 0;
+    padding: 16px 0 0;
     gap: 12px;
   }
 
@@ -3278,7 +3278,7 @@ body.sb-collapsed .priv-section {
 
   /* ── Page header: title left, actions right, wrap when needed ── */
   .page-hdr {
-    padding: 4px 0 0;
+    padding: 16px 0 0;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -3303,16 +3303,15 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
-  /* Page actions: sit right of title, wrap below if space is tight */
+  /* Page actions: wrap naturally, allow shrinking */
   .page-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
-    flex-shrink: 0;
   }
 
-  /* Pages with a total: value sits inline, buttons wrap below */
+  /* Pages with a total: value sits inline */
   .page-actions .bnum {
     font-size: 22px !important;
     margin-right: 0 !important;
@@ -3320,6 +3319,9 @@ body.sb-collapsed .priv-section {
 
   .page-actions .btn {
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Spacing: 16px page padding (Stripe/Plaid standard) ── */
@@ -3522,7 +3524,8 @@ body.sb-collapsed .priv-section {
 
   /* ── Rebalance: mode tabs ── */
   #rebal-mode-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   #rebal-mode-tabs .atab {
