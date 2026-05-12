@@ -565,19 +565,19 @@
         <div class="g4 mb-3">
           <div class="csm">
             <div class="lbl">Nominal future value</div>
-            <div class="mnum mt-1" id="p-nom">&#8212;</div>
+            <div class="nw-csm-val" id="p-nom">&#8212;</div>
           </div>
           <div class="csm">
             <div class="lbl">Inflation-adjusted</div>
-            <div class="mnum mt-1" id="p-real">&#8212;</div>
+            <div class="nw-csm-val" id="p-real">&#8212;</div>
           </div>
           <div class="csm">
             <div class="lbl">Total contributed</div>
-            <div class="mnum mt-1" id="p-contrib">&#8212;</div>
+            <div class="nw-csm-val" id="p-contrib">&#8212;</div>
           </div>
           <div class="csm">
             <div class="lbl">Nominal market gains</div>
-            <div class="mnum pos mt-1" id="p-gains">&#8212;</div>
+            <div class="nw-csm-val pos" id="p-gains">&#8212;</div>
             <div style="font-size:12px;color:var(--ink3);margin-top:2px" id="p-gains-real"></div>
           </div>
         </div>
@@ -9768,10 +9768,10 @@
           const spendable = Math.round(rothBal + k401 * (1 - ftGlobals.k401TaxRate / 100) + taxable * (1 - ftGlobals.capGainsRate / 100));
           spendableHtml = '<div style="font-size:10.5px;color:var(--teal);margin-top:3px">~' + ftFmt(spendable) + ' spendable after est. taxes</div>';
         }
-        el.innerHTML = '<div class="csm"><div class="lbl">Net worth at 35</div><div class="mnum mt-1 ' + ((r35?.nw ?? 0) > 0 ? 'pos' : 'neg') + '">' + MT(ftFmt(r35?.nw ?? 0), 'future') + '</div></div>'
-          + '<div class="csm"><div class="lbl">Net worth at 55</div><div class="mnum mt-1 pos">' + MT(ftFmt(r55?.nw ?? 0), 'future') + '</div></div>'
-          + '<div class="csm"><div class="lbl">Net worth at ' + ftGlobals.retireAge + '</div><div class="mnum mt-1 pos">' + MT(ftFmt(rRet?.nw ?? 0), 'future') + '</div>' + spendableHtml + '</div>'
-          + '<div class="csm"><div class="lbl">Net worth at 65</div><div class="mnum mt-1 pos">' + MT(ftFmt(r65?.nw ?? 0), 'future') + '</div></div>';
+        el.innerHTML = '<div class="csm"><div class="lbl">Net worth at 35</div><div class="nw-csm-val ' + ((r35?.nw ?? 0) > 0 ? 'pos' : 'neg') + '">' + MT(ftFmt(r35?.nw ?? 0), 'future') + '</div></div>'
+          + '<div class="csm"><div class="lbl">Net worth at 55</div><div class="nw-csm-val pos">' + MT(ftFmt(r55?.nw ?? 0), 'future') + '</div></div>'
+          + '<div class="csm"><div class="lbl">Net worth at ' + ftGlobals.retireAge + '</div><div class="nw-csm-val pos">' + MT(ftFmt(rRet?.nw ?? 0), 'future') + '</div>' + spendableHtml + '</div>'
+          + '<div class="csm"><div class="lbl">Net worth at 65</div><div class="nw-csm-val pos">' + MT(ftFmt(r65?.nw ?? 0), 'future') + '</div></div>';
       }
 
       // ── House readiness moved inside property card (Phase 3) ───────
