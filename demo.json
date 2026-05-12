@@ -1,0 +1,446 @@
+{
+  "tabs": [
+    { "id": "overview", "name": "Overview", "icon": "grid", "archived": false },
+    { "id": "accounts", "name": "Assets", "icon": "briefcase", "archived": false },
+    { "id": "portfolio", "name": "Portfolio", "icon": "chart", "archived": false },
+    { "id": "rebalance", "name": "Rebalance", "icon": "scale", "archived": false },
+    { "id": "projections", "name": "Projections", "icon": "lineChart", "archived": false },
+    { "id": "goals", "name": "Goals", "icon": "target", "archived": false },
+    { "id": "life", "name": "Life", "icon": "layout", "archived": false },
+    { "id": "future", "name": "Life plan", "icon": "future", "archived": false },
+    { "id": "gains", "name": "Gains", "icon": "activity", "archived": false },
+    { "id": "rank", "name": "Rank", "icon": "sparkles", "archived": false },
+    { "id": "settings", "name": "Settings", "icon": "settings", "archived": false }
+  ],
+  "accounts": [
+    { "id": 1, "name": "Chase Checking", "type": "checking", "balance": 4820, "currency": "USD" },
+    { "id": 2, "name": "Marcus HYSA", "type": "savings", "balance": 28500, "currency": "USD" },
+    { "id": 3, "name": "Emergency Fund", "type": "emergency", "balance": 15000, "currency": "USD" },
+    { "id": 4, "name": "Fidelity Brokerage", "type": "brokerage-taxable", "balance": 0, "currency": "USD" },
+    { "id": 5, "name": "Roth IRA", "type": "brokerage-roth", "balance": 0, "currency": "USD" },
+    { "id": 6, "name": "401(k)", "type": "pension", "balance": 0, "currency": "USD" },
+    { "id": 7, "name": "카카오뱅크", "type": "checking", "balance": 3200000, "currency": "KRW" },
+    { "id": 8, "name": "토스 저축", "type": "savings", "balance": 8500000, "currency": "KRW" },
+    { "id": 9, "name": "청약저축", "type": "subscription", "balance": 12600000, "currency": "KRW" },
+    { "id": 10, "name": "삼성증권 ISA", "type": "other-inv", "balance": 0, "currency": "KRW" }
+  ],
+  "funds": [
+    {
+      "id": 1,
+      "ticker": "VTI",
+      "name": "Vanguard Total Stock Market",
+      "targetPct": 30,
+      "retPct": 10,
+      "accounts": {
+        "4": { "shares": 85, "value": 24140 },
+        "5": { "shares": 42, "value": 11928 }
+      },
+      "lastPrice": 284.00,
+      "lastChange": 0.45
+    },
+    {
+      "id": 2,
+      "ticker": "VXUS",
+      "name": "Vanguard Total International",
+      "targetPct": 15,
+      "retPct": 8,
+      "accounts": {
+        "4": { "shares": 110, "value": 6710 },
+        "5": { "shares": 55, "value": 3355 }
+      },
+      "lastPrice": 61.00,
+      "lastChange": -0.18
+    },
+    {
+      "id": 3,
+      "ticker": "BND",
+      "name": "Vanguard Total Bond Market",
+      "targetPct": 10,
+      "retPct": 4,
+      "accounts": {
+        "5": { "shares": 40, "value": 2880 }
+      },
+      "lastPrice": 72.00,
+      "lastChange": 0.05
+    },
+    {
+      "id": 4,
+      "ticker": "VOO",
+      "name": "Vanguard S&P 500",
+      "targetPct": 25,
+      "retPct": 10.5,
+      "accounts": {
+        "6": { "shares": 62, "value": 34162 }
+      },
+      "lastPrice": 551.00,
+      "lastChange": 0.62
+    },
+    {
+      "id": 5,
+      "ticker": "SCHD",
+      "name": "Schwab US Dividend Equity",
+      "targetPct": 10,
+      "retPct": 9,
+      "accounts": {
+        "4": { "shares": 120, "value": 10200 }
+      },
+      "lastPrice": 85.00,
+      "lastChange": 0.22
+    },
+    {
+      "id": 6,
+      "ticker": "TIGER S&P500",
+      "name": "미래에셋 TIGER S&P500",
+      "targetPct": 10,
+      "retPct": 10,
+      "accounts": {
+        "10": { "shares": 150, "value": 12750000 }
+      },
+      "lastPrice": 85000,
+      "lastChange": 0.38
+    }
+  ],
+  "goals": [
+    { "id": 1, "name": "Emergency Fund", "cat": "Safety Net", "amount": 20000, "year": 2026, "type": "savings", "notes": "6 months of expenses", "hidden": false },
+    { "id": 2, "name": "House Down Payment", "cat": "Housing", "amount": 150000, "year": 2029, "type": "savings", "notes": "20% down on $750k home", "hidden": false },
+    { "id": 3, "name": "Wedding Fund", "cat": "Life", "amount": 35000, "year": 2027, "type": "savings", "notes": "", "hidden": false },
+    { "id": 4, "name": "New Car", "cat": "Lifestyle", "amount": 45000, "year": 2028, "type": "savings", "notes": "EV purchase", "hidden": false },
+    { "id": 5, "name": "Korea Trip", "cat": "Travel", "amount": 5000, "year": 2026, "type": "savings", "notes": "Annual family visit", "hidden": false },
+    { "id": 6, "name": "Retire by 55", "cat": "Retirement", "amount": 3000000, "year": 2051, "type": "retirement", "notes": "FIRE target", "hidden": false }
+  ],
+  "snapshots": [
+    { "date": "2024-01-15", "nw": 68200, "contributed": 0, "note": "Starting point" },
+    { "date": "2024-02-15", "nw": 71400, "contributed": 3200, "note": "" },
+    { "date": "2024-03-15", "nw": 76800, "contributed": 3200, "note": "" },
+    { "date": "2024-04-15", "nw": 74500, "contributed": 3200, "note": "Market dip" },
+    { "date": "2024-05-15", "nw": 79200, "contributed": 3200, "note": "" },
+    { "date": "2024-06-15", "nw": 83600, "contributed": 3200, "note": "" },
+    { "date": "2024-07-15", "nw": 88100, "contributed": 3200, "note": "Bonus deposited" },
+    { "date": "2024-08-15", "nw": 86900, "contributed": 3200, "note": "" },
+    { "date": "2024-09-15", "nw": 91500, "contributed": 3200, "note": "" },
+    { "date": "2024-10-15", "nw": 95800, "contributed": 3200, "note": "" },
+    { "date": "2024-11-15", "nw": 100200, "contributed": 3200, "note": "Crossed $100k!" },
+    { "date": "2024-12-15", "nw": 104600, "contributed": 3200, "note": "" },
+    { "date": "2025-01-15", "nw": 108400, "contributed": 3500, "note": "New year raise" },
+    { "date": "2025-02-15", "nw": 112800, "contributed": 3500, "note": "" },
+    { "date": "2025-03-15", "nw": 109500, "contributed": 3500, "note": "Correction" },
+    { "date": "2025-04-15", "nw": 115200, "contributed": 3500, "note": "" },
+    { "date": "2025-05-15", "nw": 121000, "contributed": 3500, "note": "" },
+    { "date": "2025-06-15", "nw": 126400, "contributed": 3500, "note": "" },
+    { "date": "2025-07-15", "nw": 130800, "contributed": 3500, "note": "" },
+    { "date": "2025-08-15", "nw": 128200, "contributed": 3500, "note": "" },
+    { "date": "2025-09-15", "nw": 134600, "contributed": 3500, "note": "" },
+    { "date": "2025-10-15", "nw": 139500, "contributed": 3500, "note": "" },
+    { "date": "2025-11-15", "nw": 144200, "contributed": 3500, "note": "" },
+    { "date": "2025-12-15", "nw": 149800, "contributed": 3500, "note": "" },
+    { "date": "2026-01-15", "nw": 153600, "contributed": 4000, "note": "Another raise" },
+    { "date": "2026-02-15", "nw": 158200, "contributed": 4000, "note": "" },
+    { "date": "2026-03-15", "nw": 155800, "contributed": 4000, "note": "Tariff scare" },
+    { "date": "2026-04-15", "nw": 162400, "contributed": 4000, "note": "" },
+    { "date": "2026-05-12", "nw": 168145, "contributed": 4000, "note": "" }
+  ],
+  "stressEvents": [
+    { "name": "Market Crash (-30%)", "impactPct": -30 },
+    { "name": "Job Loss (6 mo)", "impactAmt": -25000 },
+    { "name": "Medical Emergency", "impactAmt": -15000 }
+  ],
+  "settings": {
+    "inflation": 3,
+    "fx": 1380,
+    "usfr": 5.3,
+    "annualContrib": 48000,
+    "contribGrowth": 3,
+    "horizon": 25,
+    "currency": "USD",
+    "krwFmt": "short",
+    "privacy": { "global": false, "dashboard": false, "nw": false },
+    "rank": { "country": "US", "age": 30, "debt": 0 }
+  },
+  "widgetVis": { "metrics": true, "history": true, "breakdown": true, "goals": true },
+  "editAcctId": null,
+  "editFundId": null,
+  "editGoalId": null,
+  "ssCols": ["Age", "Year", "NW", "Income KR", "Income US", "Spouse", "Expenses", "Housing", "Kids", "Note"],
+  "ssMeta": {
+    "2": { "fmt": "usd", "dec": 0 },
+    "3": { "fmt": "krw", "dec": 0 },
+    "4": { "fmt": "usd", "dec": 0 },
+    "5": { "fmt": "usd", "dec": 0 },
+    "6": { "fmt": "usd", "dec": 0 },
+    "7": { "fmt": "usd", "dec": 0 }
+  },
+  "ssData": [
+    [30, 2026, 168000, 0, 95000, 0, 36000, 1800, 0, "Current"],
+    [31, 2027, 215000, 0, 100000, 45000, 42000, 1800, 0, "Partner income"],
+    [32, 2028, 270000, 0, 105000, 48000, 45000, 1850, 0, ""],
+    [33, 2029, 330000, 0, 110000, 51000, 48000, 2800, 0, "Buy house"],
+    [34, 2030, 390000, 0, 115000, 54000, 50000, 2800, 5000, "First kid"],
+    [35, 2031, 460000, 0, 120000, 57000, 52000, 2800, 5000, ""],
+    [36, 2032, 540000, 0, 125000, 60000, 54000, 2800, 8000, ""],
+    [37, 2033, 630000, 0, 130000, 63000, 56000, 2800, 8000, ""],
+    [38, 2034, 730000, 0, 135000, 66000, 58000, 2800, 10000, "Second kid"],
+    [39, 2035, 840000, 0, 140000, 70000, 60000, 2800, 12000, ""],
+    [40, 2036, 960000, 0, 145000, 74000, 62000, 2800, 14000, ""],
+    [45, 2041, 1650000, 0, 170000, 90000, 72000, 2800, 18000, ""],
+    [50, 2046, 2500000, 0, 195000, 105000, 78000, 2800, 12000, "Kids college"],
+    [55, 2051, 3200000, 0, 220000, 120000, 65000, 0, 0, "FIRE target"]
+  ],
+  "portView": "all",
+  "rMode": "contribution",
+  "scenario": "base",
+  "chartGroupingMode": "bucket",
+  "tableGroupingMode": "category",
+  "buckets": [
+    { "id": "cash", "name": "Cash", "order": 0 },
+    { "id": "restricted", "name": "Restricted", "order": 1 },
+    { "id": "investments", "name": "Investments", "order": 2 },
+    { "id": "retirement", "name": "Retirement", "order": 3 }
+  ],
+  "accountCategories": [
+    { "id": "investments", "name": "Investments & Pension" },
+    { "id": "cash", "name": "Cash & Savings" }
+  ],
+  "accountTypes": [
+    { "id": "checking", "name": "Checking", "categoryId": "cash", "bucketId": "cash", "isInvestment": false },
+    { "id": "savings", "name": "Savings / HYSA", "categoryId": "cash", "bucketId": "cash", "isInvestment": false },
+    { "id": "subscription", "name": "청약계좌", "categoryId": "cash", "bucketId": "restricted", "isInvestment": false },
+    { "id": "other-cash", "name": "Other (Cash)", "categoryId": "cash", "bucketId": "cash", "isInvestment": false },
+    { "id": "emergency", "name": "Emergency Fund", "categoryId": "cash", "bucketId": "cash", "isInvestment": false },
+    { "id": "brokerage-taxable", "name": "Brokerage (Taxable)", "categoryId": "investments", "bucketId": "investments", "isInvestment": true },
+    { "id": "brokerage-roth", "name": "Roth IRA", "categoryId": "investments", "bucketId": "retirement", "isInvestment": true },
+    { "id": "pension", "name": "Pension / 연금", "categoryId": "investments", "bucketId": "retirement", "isInvestment": true },
+    { "id": "other-inv", "name": "Other (Investment)", "categoryId": "investments", "bucketId": "investments", "isInvestment": true }
+  ],
+  "portAcctToggles": {
+    "4": true,
+    "5": true,
+    "6": true,
+    "10": true
+  },
+  "ovGoalsView": "bars",
+  "gainSnapshots": [
+    { "date": "2024-01-15", "accounts": { "4": 18500, "5": 8200, "6": 12000, "10": 5800000 } },
+    { "date": "2024-04-15", "accounts": { "4": 20100, "5": 9100, "6": 14500, "10": 6200000 } },
+    { "date": "2024-07-15", "accounts": { "4": 23800, "5": 10800, "6": 17200, "10": 7100000 } },
+    { "date": "2024-10-15", "accounts": { "4": 26200, "5": 11500, "6": 19800, "10": 7800000 } },
+    { "date": "2025-01-15", "accounts": { "4": 28500, "5": 12200, "6": 22400, "10": 8500000 } },
+    { "date": "2025-04-15", "accounts": { "4": 30100, "5": 13800, "6": 24600, "10": 9200000 } },
+    { "date": "2025-07-15", "accounts": { "4": 33200, "5": 14900, "6": 27000, "10": 10100000 } },
+    { "date": "2025-10-15", "accounts": { "4": 35800, "5": 15800, "6": 29500, "10": 10800000 } },
+    { "date": "2026-01-15", "accounts": { "4": 37500, "5": 16500, "6": 31200, "10": 11500000 } },
+    { "date": "2026-05-12", "accounts": { "4": 41050, "5": 18163, "6": 34162, "10": 12750000 } }
+  ],
+  "gainContribs": [
+    { "id": 1, "date": "2024-02-01", "amount": 1500, "account": 4, "currency": "USD", "note": "Monthly DCA" },
+    { "id": 2, "date": "2024-02-01", "amount": 583, "account": 5, "currency": "USD", "note": "Roth monthly" },
+    { "id": 3, "date": "2024-02-01", "amount": 1917, "account": 6, "currency": "USD", "note": "401k + match" },
+    { "id": 4, "date": "2024-03-01", "amount": 1500, "account": 4, "currency": "USD", "note": "" },
+    { "id": 5, "date": "2024-03-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 6, "date": "2024-03-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 7, "date": "2024-06-01", "amount": 1500, "account": 4, "currency": "USD", "note": "" },
+    { "id": 8, "date": "2024-06-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 9, "date": "2024-06-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 10, "date": "2024-09-01", "amount": 1500, "account": 4, "currency": "USD", "note": "" },
+    { "id": 11, "date": "2024-09-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 12, "date": "2024-09-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 13, "date": "2024-12-01", "amount": 1500, "account": 4, "currency": "USD", "note": "" },
+    { "id": 14, "date": "2024-12-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 15, "date": "2024-12-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 16, "date": "2025-03-01", "amount": 1700, "account": 4, "currency": "USD", "note": "Increased DCA" },
+    { "id": 17, "date": "2025-03-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 18, "date": "2025-03-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 19, "date": "2025-06-01", "amount": 1700, "account": 4, "currency": "USD", "note": "" },
+    { "id": 20, "date": "2025-06-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 21, "date": "2025-06-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 22, "date": "2025-09-01", "amount": 1700, "account": 4, "currency": "USD", "note": "" },
+    { "id": 23, "date": "2025-09-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 24, "date": "2025-09-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 25, "date": "2025-12-01", "amount": 1700, "account": 4, "currency": "USD", "note": "" },
+    { "id": 26, "date": "2025-12-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 27, "date": "2025-12-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" },
+    { "id": 28, "date": "2025-01-15", "amount": 500000, "account": 10, "currency": "KRW", "note": "ISA quarterly" },
+    { "id": 29, "date": "2025-04-15", "amount": 500000, "account": 10, "currency": "KRW", "note": "" },
+    { "id": 30, "date": "2025-07-15", "amount": 500000, "account": 10, "currency": "KRW", "note": "" },
+    { "id": 31, "date": "2025-10-15", "amount": 500000, "account": 10, "currency": "KRW", "note": "" },
+    { "id": 32, "date": "2026-01-15", "amount": 500000, "account": 10, "currency": "KRW", "note": "" },
+    { "id": 33, "date": "2026-03-01", "amount": 2000, "account": 4, "currency": "USD", "note": "Raised again" },
+    { "id": 34, "date": "2026-03-01", "amount": 583, "account": 5, "currency": "USD", "note": "" },
+    { "id": 35, "date": "2026-03-01", "amount": 1917, "account": 6, "currency": "USD", "note": "" }
+  ],
+  "gainsAcctToggles": {},
+  "ftGlobals": {
+    "f401k": 23500,
+    "roc": 7,
+    "taxMode": "auto",
+    "taxFlat": 35,
+    "discMode": "goal",
+    "savingsRate": 30,
+    "retireAge": 55,
+    "retireNW": 3000000,
+    "projectionStartingAge": 30,
+    "expInflation": 2.5,
+    "maxAge": 90,
+    "ssEnabled": true,
+    "ssBenefit": 2800,
+    "ssClaimAge": 67,
+    "rothBalanceOv": null,
+    "k401TaxRate": 25,
+    "capGainsRate": 15,
+    "retireTaxEnabled": true,
+    "numFormat": "compact",
+    "retireSpendMode": "4pct",
+    "inheritanceTarget": 500000,
+    "defaultGainPct": 40,
+    "state": "CA"
+  },
+  "ftIncomeStreams": [
+    {
+      "id": "is0",
+      "name": "Software Engineer",
+      "startAge": 30,
+      "endAge": null,
+      "ongoing": true,
+      "annual": 150000,
+      "growth": 5,
+      "eligible401k": true,
+      "incomeType": "salary",
+      "takeHomeOverride": null,
+      "expanded": false
+    },
+    {
+      "id": "is1",
+      "name": "Partner Income",
+      "startAge": 31,
+      "endAge": null,
+      "ongoing": true,
+      "annual": 85000,
+      "growth": 4,
+      "eligible401k": false,
+      "incomeType": "salary",
+      "takeHomeOverride": null,
+      "expanded": false
+    },
+    {
+      "id": "is2",
+      "name": "Side Project Revenue",
+      "startAge": 30,
+      "endAge": 35,
+      "ongoing": false,
+      "annual": 12000,
+      "growth": 10,
+      "eligible401k": false,
+      "incomeType": "other",
+      "takeHomeOverride": null,
+      "expanded": false
+    }
+  ],
+  "ftProperties": [
+    {
+      "id": "pr0",
+      "name": "First Home",
+      "purchaseAge": 33,
+      "price": 750000,
+      "downPct": 20,
+      "mrate": 5.5,
+      "termYrs": 30,
+      "propType": "primary",
+      "appreciation": 3.5,
+      "rentalMonthly": 0,
+      "rentalGrowth": 0,
+      "extraPayments": [],
+      "extrasExpanded": false,
+      "expanded": false
+    }
+  ],
+  "ftLifeEvents": [
+    {
+      "id": "ev100",
+      "type": "partner",
+      "name": "Partner",
+      "age": 31,
+      "startAge": 31,
+      "expanded": false
+    },
+    {
+      "id": "ev101",
+      "type": "child",
+      "age": 34,
+      "monthlyCost": 1500,
+      "expanded": false
+    },
+    {
+      "id": "ev102",
+      "type": "child",
+      "age": 38,
+      "monthlyCost": 1500,
+      "expanded": false
+    },
+    {
+      "id": "ev103",
+      "type": "oneTime",
+      "name": "Wedding",
+      "age": 31,
+      "amount": 35000,
+      "expanded": false
+    },
+    {
+      "id": "ev104",
+      "type": "healthcare",
+      "name": "Family Plan",
+      "startAge": 55,
+      "endAge": 65,
+      "monthlyCost": 1800,
+      "expanded": false
+    }
+  ],
+  "ftExpPhases": [
+    {
+      "id": "ph0",
+      "name": "Solo in SF",
+      "startAge": 30,
+      "endAge": 31,
+      "monthlyLiving": 3000,
+      "monthlyRent": 2400,
+      "renting": true,
+      "location": "San Francisco, CA",
+      "monthlyBills": 350,
+      "billsEnabled": true
+    },
+    {
+      "id": "ph1",
+      "name": "With partner",
+      "startAge": 31,
+      "endAge": 33,
+      "monthlyLiving": 4200,
+      "monthlyRent": 2800,
+      "renting": true,
+      "location": "San Francisco, CA",
+      "monthlyBills": 450,
+      "billsEnabled": true
+    },
+    {
+      "id": "ph2",
+      "name": "Homeowner",
+      "startAge": 33,
+      "endAge": 55,
+      "monthlyLiving": 4800,
+      "monthlyRent": 0,
+      "renting": false,
+      "location": "Bay Area, CA",
+      "monthlyBills": 600,
+      "billsEnabled": true
+    },
+    {
+      "id": "ph3",
+      "name": "Retirement",
+      "startAge": 55,
+      "endAge": 90,
+      "monthlyLiving": 5500,
+      "monthlyRent": 0,
+      "renting": false,
+      "location": "Bay Area, CA",
+      "monthlyBills": 500,
+      "billsEnabled": true
+    }
+  ]
+}
