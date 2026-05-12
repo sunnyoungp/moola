@@ -1033,6 +1033,17 @@ textarea {
   color: #fff;
 }
 
+.dark .nw-csm-hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--f) 60%, #000) 0%, color-mix(in srgb, var(--f) 30%, var(--surface)) 60%, var(--surface) 100%);
+  border-color: color-mix(in srgb, var(--f) 40%, transparent);
+}
+.dark .nw-csm-hero .lbl {
+  color: var(--fm);
+}
+.dark .nw-csm-hero .nw-csm-val {
+  color: rgba(255, 255, 255, .92);
+}
+
 .sec {
   font-size: 11px;
   font-weight: 600;
