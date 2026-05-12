@@ -1003,7 +1003,7 @@ textarea {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--rl);
-  padding: 24px 22px;
+  padding: var(--sp-xl);
   box-shadow: var(--sh1);
   min-width: 0;
   transition: border-color .15s ease;
@@ -1019,15 +1019,18 @@ textarea {
   letter-spacing: -1px;
   color: var(--ink);
   line-height: 1.1;
-  margin-top: 6px;
+  margin-top: 10px;
 }
 
 .nw-csm-hero {
-  background: linear-gradient(135deg, var(--fll) 0%, color-mix(in srgb, var(--fll) 40%, var(--surface)) 60%, var(--surface) 100%);
+  background: linear-gradient(135deg, var(--fl) 0%, color-mix(in srgb, var(--fl) 50%, var(--surface)) 50%, var(--surface) 100%);
   border-color: color-mix(in srgb, var(--fl) 30%, transparent);
 }
 .nw-csm-hero .lbl {
   color: var(--f);
+}
+.nw-csm-hero .nw-csm-val {
+  color: var(--ink);
 }
 
 .sec {
@@ -3305,7 +3308,7 @@ body.sb-collapsed .priv-section {
   }
 
   .csm {
-    padding: 14px 16px;
+    padding: 16px;
     border-radius: 12px;
   }
 
