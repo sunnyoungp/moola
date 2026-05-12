@@ -3209,6 +3209,14 @@ body.sb-collapsed .priv-section {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  #ov-widgets .g4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  #ov-widgets .g4 .nw-csm-hero {
+    grid-column: 1 / -1;
+  }
+
   .nw-hero {
     padding: 22px 24px;
   }
@@ -3354,6 +3362,18 @@ body.sb-collapsed .priv-section {
   .g4 {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+  }
+
+  #ov-widgets .g4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  #ov-widgets .g4 .nw-csm-hero {
+    grid-column: 1 / -1;
+  }
+
+  #ov-widgets .g4 .csm:not(.nw-csm-hero) .nw-csm-val {
+    font-size: 20px;
   }
 
   /* ── NW hero: prominent balance, Hide top-right ── */
