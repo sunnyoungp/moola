@@ -4254,9 +4254,7 @@
           document.getElementById('rebal-mode-desc').textContent = monthly > 0
             ? `Investing ${fmtUSD(monthly, 0)} — no selling. Most underweight funds get priority. You choose which account to execute in.`
             : 'Enter how much you\'re contributing above.';
-          noteHtml = monthly > 0
-            ? `Funds furthest below their target get the most. "Drift after" shows what the allocation will look like once the trade settles. Execute buys in whichever account you prefer.`
-            : '';
+          noteHtml = '';
 
         } else if (rMode === 'combined') {
           const newTot = tot + monthly;
@@ -4276,7 +4274,7 @@
           document.getElementById('r-net-cash').innerHTML = MT(fmtUSD(netCash, 0), 'rebalance');
           document.getElementById('rebal-mode-desc').textContent =
             `Contribute ${fmtUSD(monthly, 0)} + strategic sells to hit exact targets.`;
-          noteHtml = `Sell proceeds (${fmtUSD(sellTotal, 0)}) fund the buys. Net cash (${fmtUSD(netCash, 0)}) = what you actually transfer. "Drift after" = 0 for all funds.`;
+          noteHtml = '';
 
         } else {
           let buyTotal = 0, sellTotal = 0;
@@ -4294,23 +4292,16 @@
           document.getElementById('r-net-cash').innerHTML = '$0';
           document.getElementById('rebal-mode-desc').textContent =
             'Sell overweight positions and buy underweight — no new money.';
-          noteHtml = 'Buy total ≈ Sell total (they net to zero — no cash needed).';
+          noteHtml = '';
         }
 
         bodyEl.innerHTML = html;
 
         // Context bar
         const ctxEl = document.getElementById('rebal-acct-ctx');
-        if (ctxEl) {
-          const normalizeNote = tgtSum !== 100
-            ? ` · targets normalized from ${tgtSum.toFixed(0)}% to 100%`
-            : '';
-          ctxEl.textContent = `${nFunds.length} fund(s) with targets · ${MT(fmt(tot), 'rebalance')} total${normalizeNote}`;
-        }
+        if (ctxEl) ctxEl.textContent = '';
 
-        noteEl.innerHTML = noteHtml
-          ? `<span style="color:var(--gold);font-weight:600">ℹ︎</span> ${noteHtml}`
-          : '';
+        noteEl.innerHTML = '';
       }
       // ══════════════════════════════════════════════════════════════
       // PROJECTIONS
