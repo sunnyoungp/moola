@@ -1023,14 +1023,14 @@ textarea {
 }
 
 .nw-csm-hero {
-  background: linear-gradient(135deg, var(--fl) 0%, color-mix(in srgb, var(--fl) 50%, var(--surface)) 50%, var(--surface) 100%);
-  border-color: color-mix(in srgb, var(--fl) 30%, transparent);
+  background: linear-gradient(135deg, var(--f) 0%, var(--fm) 50%, var(--fl) 100%);
+  border-color: var(--f);
 }
 .nw-csm-hero .lbl {
-  color: var(--f);
+  color: rgba(255, 255, 255, .7);
 }
 .nw-csm-hero .nw-csm-val {
-  color: var(--ink);
+  color: #fff;
 }
 
 .sec {
