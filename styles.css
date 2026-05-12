@@ -3210,11 +3210,18 @@ body.sb-collapsed .priv-section {
   }
 
   #ov-widgets .g4 {
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   #ov-widgets .g4 .nw-csm-hero {
-    grid-column: 1 / -1;
+    flex: 0 0 100%;
+  }
+
+  #ov-widgets .g4 .csm:not(.nw-csm-hero) {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .nw-hero {
@@ -3365,15 +3372,28 @@ body.sb-collapsed .priv-section {
   }
 
   #ov-widgets .g4 {
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   #ov-widgets .g4 .nw-csm-hero {
-    grid-column: 1 / -1;
+    flex: 0 0 100%;
+  }
+
+  #ov-widgets .g4 .csm:not(.nw-csm-hero) {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  #ov-widgets .g4 .csm:not(.nw-csm-hero) .lbl {
+    font-size: 10px;
   }
 
   #ov-widgets .g4 .csm:not(.nw-csm-hero) .nw-csm-val {
-    font-size: 20px;
+    font-size: 18px;
+    margin-top: 6px;
   }
 
   /* ── NW hero: prominent balance, Hide top-right ── */
