@@ -3276,20 +3276,13 @@ body.sb-collapsed .priv-section {
     font-size: 16px; /* prevents iOS zoom on focus */
   }
 
-  /* ── Page header: title left, actions right, wrap when needed ── */
+  /* ── Page header: 2-col grid — title left, actions right ── */
   .page-hdr {
     padding: 16px 0 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 6px 8px;
-  }
-
-  /* Title block shrinks so actions can sit beside it */
-  .page-hdr > div:first-child {
-    flex: 1 1 0;
-    min-width: 120px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 6px 10px;
   }
 
   .page-title {
@@ -3303,25 +3296,29 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
-  /* Page actions: wrap naturally, allow shrinking */
+  /* Actions: right column, wrap internally */
   .page-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
+    justify-content: flex-end;
+    max-width: 100%;
   }
 
-  /* Pages with a total: value sits inline */
+  /* When there's a .bnum total, span actions across full width
+     so total + buttons get their own row below title */
+  .page-actions:has(.bnum) {
+    grid-column: 1 / -1;
+  }
+
   .page-actions .bnum {
-    font-size: 22px !important;
-    margin-right: 0 !important;
+    font-size: 24px !important;
+    margin-right: auto !important;
   }
 
   .page-actions .btn {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   /* ── Spacing: 16px page padding (Stripe/Plaid standard) ── */
