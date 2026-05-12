@@ -3283,7 +3283,13 @@ body.sb-collapsed .priv-section {
     flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
+    gap: 6px 8px;
+  }
+
+  /* Title block shrinks so actions can sit beside it */
+  .page-hdr > div:first-child {
+    flex: 1 1 0;
+    min-width: 120px;
   }
 
   .page-title {
@@ -3293,7 +3299,7 @@ body.sb-collapsed .priv-section {
   }
 
   .page-sub {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--ink3);
   }
 
@@ -3301,16 +3307,23 @@ body.sb-collapsed .priv-section {
   .page-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
+    flex-shrink: 0;
   }
 
+  /* Pages with a big total number: total takes full row above buttons */
   .page-actions .bnum {
     width: 100%;
     order: -1;
     font-size: 26px !important;
     margin-right: 0 !important;
     margin-bottom: 2px;
+  }
+
+  /* When actions have a .bnum, force actions to full width so total + buttons stack */
+  .page-actions:has(.bnum) {
+    flex-basis: 100%;
   }
 
   .page-actions .btn {
