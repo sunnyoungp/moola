@@ -2974,9 +2974,9 @@
           const _liquid = totByBucket('cash') + totByBucket('investments');
           const _nonliquid = totByBucket('restricted') + totByBucket('retirement') + totRealEstateEquity();
           h += `<div class="g3 mb-2">
-            <div class="csm"><div class="lbl">Total Net Worth</div><div class="mnum">${MD(fmt(_nw))}</div></div>
-            <div class="csm"><div class="lbl">Liquid</div><div class="mnum">${MD(fmt(_liquid))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _liquid / _nw : 0) * 100)} of NW</div></div>
-            <div class="csm"><div class="lbl">Non-liquid</div><div class="mnum">${MD(fmt(_nonliquid))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _nonliquid / _nw : 0) * 100)} of NW</div></div>
+            <div class="csm nw-csm-hero"><div class="lbl">Total Net Worth</div><div class="nw-csm-val">${MD(fmt(_nw))}</div></div>
+            <div class="csm"><div class="lbl">Liquid NW</div><div class="nw-csm-val">${MD(fmt(_liquid))}</div></div>
+            <div class="csm"><div class="lbl">Non-liquid NW</div><div class="nw-csm-val">${MD(fmt(_nonliquid))}</div></div>
           </div>`;
         }
         if (vis.history || vis.breakdown) {

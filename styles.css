@@ -1013,6 +1013,23 @@ textarea {
   border-color: var(--border-strong);
 }
 
+.nw-csm-val {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.nw-csm-hero {
+  background: linear-gradient(135deg, var(--fll) 0%, color-mix(in srgb, var(--fll) 40%, var(--surface)) 60%, var(--surface) 100%);
+  border-color: color-mix(in srgb, var(--fl) 30%, transparent);
+}
+.nw-csm-hero .lbl {
+  color: var(--f);
+}
+
 .sec {
   font-size: 11px;
   font-weight: 600;
