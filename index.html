@@ -3180,7 +3180,7 @@
       }
 
       function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--fm)' : 'var(--border-strong)'};background:${v ? 'var(--fll)' : 'var(--surface)'};color:${v ? 'var(--f)' : 'var(--ink3)'};font-size:11px;font-weight:500;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
-      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(S); }
+      function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(S); renderOverview(); }
 
       // ══════════════════════════════════════════════════════════════
       // ACCOUNTS
