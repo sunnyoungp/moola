@@ -3296,51 +3296,43 @@ body.sb-collapsed .priv-section {
     color: var(--ink3);
   }
 
-  /* Actions: right column, wrap internally */
+  /* Actions: right column, stack vertically to stay compact */
   .page-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    justify-content: flex-end;
-    max-width: 100%;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 
   .page-actions .btn {
     min-width: 0;
   }
 
-  /* Pages with a .bnum total: span full width,
-     row 1 = hide + total (right-aligned), row 2 = action buttons (left-aligned) */
+  /* Pages with a .bnum total:
+     row 1 (beside title) = hide + total
+     row 2 (full width below) = action buttons left-aligned */
   .page-actions:has(.bnum) {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
   }
 
-  .page-actions .vis-toggle {
-    order: 0;
-  }
+  .page-actions .vis-toggle { order: 0; }
 
   .page-actions .bnum {
     order: 1;
     font-size: 24px !important;
-    margin-right: auto !important;
-  }
-
-  /* Force .btn items in bnum-pages to a new line */
-  .page-actions:has(.bnum) .btn {
-    order: 3;
-  }
-
-  /* Invisible spacer to force line break before .btn group */
-  .page-actions:has(.bnum) .bnum {
     margin-right: 0 !important;
   }
 
+  .page-actions:has(.bnum) .btn { order: 3; }
+
+  /* Line break between hide+total row and button row */
   .page-actions:has(.bnum)::after {
     content: '';
     flex-basis: 100%;
-    height: 4px;
+    height: 2px;
     order: 2;
   }
 
