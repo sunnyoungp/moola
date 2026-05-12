@@ -3306,19 +3306,42 @@ body.sb-collapsed .priv-section {
     max-width: 100%;
   }
 
-  /* When there's a .bnum total, span actions across full width
-     so total + buttons get their own row below title */
+  .page-actions .btn {
+    min-width: 0;
+  }
+
+  /* Pages with a .bnum total: span full width,
+     row 1 = hide + total (right-aligned), row 2 = action buttons (left-aligned) */
   .page-actions:has(.bnum) {
     grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .page-actions .vis-toggle {
+    order: 0;
   }
 
   .page-actions .bnum {
+    order: 1;
     font-size: 24px !important;
     margin-right: auto !important;
   }
 
-  .page-actions .btn {
-    min-width: 0;
+  /* Force .btn items in bnum-pages to a new line */
+  .page-actions:has(.bnum) .btn {
+    order: 3;
+  }
+
+  /* Invisible spacer to force line break before .btn group */
+  .page-actions:has(.bnum) .bnum {
+    margin-right: 0 !important;
+  }
+
+  .page-actions:has(.bnum)::after {
+    content: '';
+    flex-basis: 100%;
+    height: 4px;
+    order: 2;
   }
 
   /* ── Spacing: 16px page padding (Stripe/Plaid standard) ── */
