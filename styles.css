@@ -1002,7 +1002,7 @@ textarea {
 .csm {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r);
+  border-radius: var(--rl);
   padding: 16px 18px;
   box-shadow: var(--sh1);
   min-width: 0;
@@ -2216,7 +2216,7 @@ hr {
 .nw-hero {
   background: linear-gradient(135deg, var(--th-hero-bg, #1C1B19) 0%, color-mix(in srgb, var(--th-hero-bg, #1C1B19) 60%, var(--th-primary)) 55%, color-mix(in srgb, var(--th-hero-bg, #1C1B19) 70%, #2A1830) 100%);
   border: none;
-  border-radius: var(--rxl);
+  border-radius: var(--rl);
   padding: 30px 36px;
   margin-bottom: 20px;
   box-shadow: 0 4px 24px rgba(28, 27, 25, .14), 0 1px 4px rgba(28, 27, 25, .08);

@@ -2970,16 +2970,13 @@
         const snaps = S.snapshots || [];
         const vis = S.widgetVis; let h = '';
         if (vis.metrics) {
-          const _nw = nwTotal(); const _cash = totByBucket('cash') + totByBucket('restricted'); const _inv = totByBucket('investments'); const _ret = totByBucket('retirement'); const _re = totRealEstateEquity();
-          h += `<div class="g4 mb-2">
-            <div class="csm"><div class="lbl">Cash &amp; Savings</div><div class="mnum">${MD(fmt(_cash))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _cash / _nw : 0) * 100)} of NW</div></div>
-            <div class="csm"><div class="lbl">Investments</div><div class="mnum">${MD(fmt(_inv))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _inv / _nw : 0) * 100)} of NW</div></div>
-            <div class="csm"><div class="lbl">Retirement</div><div class="mnum">${MD(fmt(_ret))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _ret / _nw : 0) * 100)} of NW</div></div>
-            <div class="csm"><div class="lbl">Real Estate</div><div class="mnum">${MD(fmt(_re))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _re / _nw : 0) * 100)} of NW</div></div>
-          </div>
-          <div class="g2 mb-2">
-            <div class="csm"><div class="lbl">Portfolio</div><div class="mnum">${MD(fmt(totPort()))}</div><div class="mut" style="font-size:10px;margin-top:2px">${state.funds.length} funds</div></div>
-            <div class="csm"><div class="lbl">Snapshots</div><div class="mnum">${snaps.length}</div><div class="mut" style="font-size:10px;margin-top:2px">${snaps.length ? 'since ' + new Date(snaps[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recorded on each visit'}</div></div>
+          const _nw = nwTotal();
+          const _liquid = totByBucket('cash') + totByBucket('investments');
+          const _nonliquid = totByBucket('restricted') + totByBucket('retirement') + totRealEstateEquity();
+          h += `<div class="g3 mb-2">
+            <div class="csm"><div class="lbl">Total Net Worth</div><div class="mnum">${MD(fmt(_nw))}</div></div>
+            <div class="csm"><div class="lbl">Liquid</div><div class="mnum">${MD(fmt(_liquid))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _liquid / _nw : 0) * 100)} of NW</div></div>
+            <div class="csm"><div class="lbl">Non-liquid</div><div class="mnum">${MD(fmt(_nonliquid))}</div><div class="mut" style="font-size:10px;margin-top:2px">${pct((_nw > 0 ? _nonliquid / _nw : 0) * 100)} of NW</div></div>
           </div>`;
         }
         if (vis.history || vis.breakdown) {
