@@ -520,7 +520,7 @@
               <label style="font-size:12px;color:var(--ink2);white-space:nowrap;font-weight:600"
                 id="r-contrib-label">Amount to invest ($)</label>
               <input type="number" class="inp inpm inpsm" style="width:140px;max-width:50%" id="r-contrib" value="0"
-                oninput="calcRebal()">
+                oninput="localStorage.setItem('rebal-contrib',this.value);calcRebal()">
             </div>
             <div style="font-size:12px;color:var(--ink2)" id="rebal-mode-desc"></div>
           </div>
@@ -4165,7 +4165,12 @@
         const acctTabsEl = document.getElementById('rebal-acct-tabs');
         if (acctTabsEl) acctTabsEl.style.display = 'none';
 
-        const monthly = parseFloat(document.getElementById('r-contrib')?.value) || 0;
+        // Restore persisted contribution amount
+        const contribEl = document.getElementById('r-contrib');
+        const saved = localStorage.getItem('rebal-contrib');
+        if (saved != null && contribEl && contribEl.value === '0') contribEl.value = saved;
+
+        const monthly = parseFloat(contribEl?.value) || 0;
 
         // All funds with holdings in toggled accounts — ticker level
         const toggledIds = getToggledAcctIds();
