@@ -6072,6 +6072,7 @@
           const firstValue = firstSnap ? snapValueForAccts(firstSnap, acctIds) : 0;
           const totalContribs = contribsInRange(firstSnap?.date || '0000-00-00', todayStr(), acctIds);
           const totalGained = currentValue - firstValue - totalContribs;
+          console.log('[Gains Debug]', { currentValue, firstValue, totalContribs, totalGained, firstSnapDate: firstSnap?.date, acctIds });
           const costBasis = firstValue + totalContribs;
           const totalRetPct = costBasis > 0 ? (totalGained / costBasis) * 100 : 0;
 
