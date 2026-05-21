@@ -5761,8 +5761,8 @@
             const cumContribs = chartSnaps.map(s => {
               return filteredContribs.filter(c => c.date <= s.date).reduce((sum, c) => sum + contribToUSD(c), 0);
             });
-            // Gains = value - cumulative contributions at each point
-            const gainsData = values.map((v, i) => v - cumContribs[i]);
+            // Gains = (value - firstValue) - (cumContribs - firstContribs) at each point
+            const gainsData = values.map((v, i) => (v - values[0]) - (cumContribs[i] - cumContribs[0]));
             const labels = chartSnaps.map(s => {
               const d = new Date(s.date + 'T12:00:00');
               return gainsPeriod === '1D' || gainsPeriod === '1M'
@@ -6068,9 +6068,12 @@
           allTimeEl.innerHTML = '';
         }
         if (allTimeEl && isAllTime) {
-          const totalContribs = contribs.filter(c => acctIds.includes(String(c.account))).reduce((s, c) => s + contribToUSD(c), 0);
-          const totalGained = currentValue - totalContribs;
-          const totalRetPct = totalContribs > 0 ? (totalGained / totalContribs) * 100 : 0;
+          const firstSnap = nearestSnap(earliestSnapDate() || todayStr(), acctIds);
+          const firstValue = firstSnap ? snapValueForAccts(firstSnap, acctIds) : 0;
+          const totalContribs = contribsInRange(firstSnap?.date || '0000-00-00', todayStr(), acctIds);
+          const totalGained = currentValue - firstValue - totalContribs;
+          const costBasis = firstValue + totalContribs;
+          const totalRetPct = costBasis > 0 ? (totalGained / costBasis) * 100 : 0;
 
           // Build per-account breakdowns
           const tipStyle = 'display:none;position:absolute;left:0;top:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh3);padding:10px 14px;z-index:100;white-space:nowrap';
@@ -6082,7 +6085,7 @@
 
           const valueTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); return a ? mkRow(a.name, fmt(getAcctUSD(a), 2)) : ''; }).join('');
           const contribTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const sum = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); return mkRow(a.name, fmt(sum, 2)); }).join('');
-          const gainedTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const acctContrib = contribs.filter(c => String(c.account) === id).reduce((s, c) => s + contribToUSD(c), 0); const acctGain = getAcctUSD(a) - acctContrib; return mkRow(a.name, `<span style="color:${acctGain >= 0 ? 'var(--fm)' : 'var(--rose)'}">${acctGain >= 0 ? '+' : ''}${fmt(Math.abs(acctGain), 2)}</span>`); }).join('');
+          const gainedTip = acctIds.map(id => { const a = S.accounts.find(x => String(x.id) === id); if (!a) return ''; const acctFirstVal = firstSnap?.accounts?.[id] || 0; const acctContrib = contribsInRange(firstSnap?.date || '0000-00-00', todayStr(), [id]); const acctGain = getAcctUSD(a) - acctFirstVal - acctContrib; return mkRow(a.name, `<span style="color:${acctGain >= 0 ? 'var(--fm)' : 'var(--rose)'}">${acctGain >= 0 ? '+' : ''}${fmt(Math.abs(acctGain), 2)}</span>`); }).join('');
 
           const gainHeadline = isAllTime ? `<div style="font-size:26px;font-family:var(--mono);margin-bottom:16px">${fmtG(totalGained, totalRetPct)}</div>` : '';
           allTimeEl.innerHTML = `<div class="card mb-2">
