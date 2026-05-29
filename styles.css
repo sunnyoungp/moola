@@ -186,7 +186,16 @@ body {
   display: flex;
   flex: 1;
   min-height: 100vh;
-  width: 100%
+  width: 100%;
+  overflow-x: hidden;
+}
+
+#demo-banner {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  flex-shrink: 0;
 }
 
 button {
@@ -432,6 +441,7 @@ textarea {
   flex: 1;
   min-width: 0;
   /* critical: prevent flex child from overflowing */
+  overflow-x: hidden;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -477,7 +487,9 @@ textarea {
 .tc {
   display: none;
   padding: 28px 44px 56px;
-  flex: 1
+  flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .tc.on {
