@@ -2313,28 +2313,27 @@
 
       function mkDemo() {
         const d = mkDef();
+        // Hide Life and Rank tabs in demo
+        d.tabs.forEach(t => { if (t.id === 'life' || t.id === 'rank') t.archived = true; });
         // --- Accounts ---
         d.accounts = [
           { id: 1, name: 'Chase Checking', type: 'checking', balance: 4820, currency: 'USD' },
           { id: 2, name: 'Marcus HYSA', type: 'savings', balance: 15200, currency: 'USD' },
           { id: 3, name: 'Emergency Fund', type: 'emergency', balance: 12000, currency: 'USD' },
-          { id: 4, name: 'Fidelity Brokerage', type: 'brokerage-taxable', balance: 0, currency: 'USD' },
-          { id: 5, name: 'Roth IRA', type: 'brokerage-roth', balance: 0, currency: 'USD' },
+          { id: 4, name: 'Fidelity Brokerage', type: 'brokerage-taxable', balance: 45703, currency: 'USD' },
+          { id: 5, name: 'Roth IRA', type: 'brokerage-roth', balance: 23336, currency: 'USD' },
           { id: 6, name: '국민은행 입출금', type: 'checking', balance: 3200000, currency: 'KRW' },
           { id: 7, name: '카카오뱅크 적금', type: 'savings', balance: 8500000, currency: 'KRW' },
           { id: 8, name: '청약저축', type: 'subscription', balance: 5000000, currency: 'KRW' }
         ];
-        // --- Funds (portfolio) ---
+        // --- Funds (portfolio) — accounts map: { acctId: { shares, value } } ---
         d.funds = [
-          { id: 1, ticker: 'VOO', name: 'Vanguard S&P 500', targetPct: 40, retPct: 10, accounts: [4, 5], lastPrice: 535.20, lastChange: 1.2 },
-          { id: 2, ticker: 'VTI', name: 'Vanguard Total Stock', targetPct: 20, retPct: 9.5, accounts: [4], lastPrice: 287.50, lastChange: 0.8 },
-          { id: 3, ticker: 'VXUS', name: 'Vanguard Intl Stock', targetPct: 15, retPct: 7, accounts: [4], lastPrice: 60.30, lastChange: -0.4 },
-          { id: 4, ticker: 'BND', name: 'Vanguard Total Bond', targetPct: 10, retPct: 4, accounts: [5], lastPrice: 72.80, lastChange: 0.1 },
-          { id: 5, ticker: 'SCHD', name: 'Schwab US Dividend', targetPct: 15, retPct: 8, accounts: [4], lastPrice: 82.40, lastChange: 0.5 }
+          { id: 1, ticker: 'VOO', name: 'Vanguard S&P 500', targetPct: 40, retPct: 10, accounts: { '4': { shares: 25, value: 13380 }, '5': { shares: 30, value: 16056 } }, lastPrice: 535.20, lastChange: 1.2 },
+          { id: 2, ticker: 'VTI', name: 'Vanguard Total Stock', targetPct: 20, retPct: 9.5, accounts: { '4': { shares: 50, value: 14375 } }, lastPrice: 287.50, lastChange: 0.8 },
+          { id: 3, ticker: 'VXUS', name: 'Vanguard Intl Stock', targetPct: 15, retPct: 7, accounts: { '4': { shares: 120, value: 7236 } }, lastPrice: 60.30, lastChange: -0.4 },
+          { id: 4, ticker: 'BND', name: 'Vanguard Total Bond', targetPct: 10, retPct: 4, accounts: { '5': { shares: 100, value: 7280 } }, lastPrice: 72.80, lastChange: 0.1 },
+          { id: 5, ticker: 'SCHD', name: 'Schwab US Dividend', targetPct: 15, retPct: 8, accounts: { '4': { shares: 130, value: 10712 } }, lastPrice: 82.40, lastChange: 0.5 }
         ];
-        // Set investment account balances from fund holdings
-        d.accounts[3].balance = 45600;  // Fidelity
-        d.accounts[4].balance = 28900;  // Roth
         d.portAcctToggles = { 4: true, 5: true };
         // --- Goals ---
         d.goals = [
@@ -2351,17 +2350,17 @@
           ['2025-07-01', 80500, 4000], ['2025-08-01', 85300, 4000], ['2025-09-01', 88000, 4500],
           ['2025-10-01', 91200, 4500], ['2025-11-01', 89500, 4500], ['2025-12-01', 94800, 4500],
           ['2026-01-01', 98200, 5000], ['2026-02-01', 101500, 5000], ['2026-03-01', 99800, 5000],
-          ['2026-04-01', 105200, 5000], ['2026-05-01', 110400, 5500], ['2026-05-30', 114520, 0]
+          ['2026-04-01', 105200, 5000], ['2026-05-01', 110400, 5500], ['2026-05-30', 113250, 0]
         ];
         d.snapshots = snapBase.map(([date, nw, contributed]) => ({ date, nw, contributed, note: '' }));
         // --- Gain snapshots ---
         d.gainSnapshots = [
-          { date: '2025-01-01', accounts: { 4: 38000, 5: 20000 } },
-          { date: '2025-04-01', accounts: { 4: 39500, 5: 21200 } },
-          { date: '2025-07-01', accounts: { 4: 41200, 5: 23100 } },
-          { date: '2025-10-01', accounts: { 4: 43800, 5: 25500 } },
-          { date: '2026-01-01', accounts: { 4: 44100, 5: 26800 } },
-          { date: '2026-05-30', accounts: { 4: 45600, 5: 28900 } }
+          { date: '2025-01-01', accounts: { 4: 34200, 5: 17500 } },
+          { date: '2025-04-01', accounts: { 4: 36800, 5: 18900 } },
+          { date: '2025-07-01', accounts: { 4: 39100, 5: 20200 } },
+          { date: '2025-10-01', accounts: { 4: 41500, 5: 21400 } },
+          { date: '2026-01-01', accounts: { 4: 43200, 5: 22100 } },
+          { date: '2026-05-30', accounts: { 4: 45703, 5: 23336 } }
         ];
         d.gainContribs = [
           { id: 1, date: '2025-01-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
