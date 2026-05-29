@@ -24,6 +24,17 @@
     );
   </script>
   <script>
+    // Demo mode
+    let isDemoMode = false;
+
+    function startDemo() {
+      isDemoMode = true;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'flex';
+      document.getElementById('demo-banner').style.display = 'block';
+      initApp();
+    }
+
     // Auth helpers
     async function signInWithEmailPassword() {
       const email = document.getElementById('login-email').value;
@@ -76,6 +87,13 @@
     }
 
     async function signOut() {
+      if (isDemoMode) {
+        isDemoMode = false;
+        appInitialized = false;
+        S = null;
+        window.location.replace(window.location.origin + window.location.pathname);
+        return;
+      }
       await db.auth.signOut();
       window.location.replace(window.location.origin + window.location.pathname);
     }
@@ -151,6 +169,17 @@
         </svg>
         Continue with Google
       </button>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+        <button onclick="startDemo()"
+          style="width:100%;padding:11px 20px;border-radius:var(--rs);background:transparent;color:var(--ink3);font-size:13px;font-weight:500;border:1px dashed var(--border-strong);cursor:pointer;letter-spacing:-.1px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s ease;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          Try demo with sample data
+        </button>
+        <p style="font-size:11px;color:var(--ink4);margin-top:8px;line-height:1.4;">No account needed. Data stays in your browser only.</p>
+      </div>
     </div>
   </div>
   <div id="app-screen" style="display:none;">
@@ -277,6 +306,12 @@
 
     <!-- ═══ MAIN ══════════════════════════════════════════════════ -->
     <div id="main">
+      <div id="demo-banner" style="display:none;background:linear-gradient(135deg,#2E3550,#3A2E50);color:#fff;padding:10px 20px;font-size:13px;font-weight:500;text-align:center;letter-spacing:-.1px;">
+        You're viewing demo data.
+        <button onclick="signOut()" style="margin-left:12px;padding:4px 14px;border-radius:6px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:12px;font-weight:500;cursor:pointer;">
+          Sign in to save your own
+        </button>
+      </div>
 
       <!-- OVERVIEW -->
       <div id="tab-overview" class="tc on">
@@ -2061,6 +2096,7 @@
       let _saveTimer = null;
 
       async function ps(dataToSave) {
+        if (isDemoMode) return; // demo mode: no persistence
         clearTimeout(_saveTimer);
         _saveTimer = setTimeout(async () => {
           // 1. Get the current user FRESH from Supabase
@@ -2086,6 +2122,7 @@
       }
 
       async function ls() {
+        if (isDemoMode) return null; // demo mode: skip Supabase
         // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
         try {
           const { data: { user } } = await db.auth.getUser();
@@ -2099,6 +2136,7 @@
       }
 
       async function resetData() {
+        if (isDemoMode) { location.reload(); return; }
         localStorage.removeItem('moola_v4');
         const { data: { user } } = await db.auth.getUser();
         if (user) await db.from('user_data').delete().eq('user_id', user.id);
@@ -2175,7 +2213,7 @@
       async function initApp() {
         if (appInitialized) return;
         appInitialized = true;
-        S = await ls() || mkDef();
+        S = isDemoMode ? mkDemo() : (await ls() || mkDef());
 
         if (!S.tabs) S.tabs = mkDef().tabs;
         // Inject any new tabs added to mkDef that are missing from saved data
@@ -2271,6 +2309,87 @@
 
       function mkSS() {
         return [];
+      }
+
+      function mkDemo() {
+        const d = mkDef();
+        // --- Accounts ---
+        d.accounts = [
+          { id: 1, name: 'Chase Checking', type: 'checking', balance: 4820, currency: 'USD' },
+          { id: 2, name: 'Marcus HYSA', type: 'savings', balance: 15200, currency: 'USD' },
+          { id: 3, name: 'Emergency Fund', type: 'emergency', balance: 12000, currency: 'USD' },
+          { id: 4, name: 'Fidelity Brokerage', type: 'brokerage-taxable', balance: 0, currency: 'USD' },
+          { id: 5, name: 'Roth IRA', type: 'brokerage-roth', balance: 0, currency: 'USD' },
+          { id: 6, name: '국민은행 입출금', type: 'checking', balance: 3200000, currency: 'KRW' },
+          { id: 7, name: '카카오뱅크 적금', type: 'savings', balance: 8500000, currency: 'KRW' },
+          { id: 8, name: '청약저축', type: 'subscription', balance: 5000000, currency: 'KRW' }
+        ];
+        // --- Funds (portfolio) ---
+        d.funds = [
+          { id: 1, ticker: 'VOO', name: 'Vanguard S&P 500', targetPct: 40, retPct: 10, accounts: [4, 5], lastPrice: 535.20, lastChange: 1.2 },
+          { id: 2, ticker: 'VTI', name: 'Vanguard Total Stock', targetPct: 20, retPct: 9.5, accounts: [4], lastPrice: 287.50, lastChange: 0.8 },
+          { id: 3, ticker: 'VXUS', name: 'Vanguard Intl Stock', targetPct: 15, retPct: 7, accounts: [4], lastPrice: 60.30, lastChange: -0.4 },
+          { id: 4, ticker: 'BND', name: 'Vanguard Total Bond', targetPct: 10, retPct: 4, accounts: [5], lastPrice: 72.80, lastChange: 0.1 },
+          { id: 5, ticker: 'SCHD', name: 'Schwab US Dividend', targetPct: 15, retPct: 8, accounts: [4], lastPrice: 82.40, lastChange: 0.5 }
+        ];
+        // Set investment account balances from fund holdings
+        d.accounts[3].balance = 45600;  // Fidelity
+        d.accounts[4].balance = 28900;  // Roth
+        d.portAcctToggles = { 4: true, 5: true };
+        // --- Goals ---
+        d.goals = [
+          { id: 1, name: 'Emergency Fund', cat: 'safety', amount: 15000, year: 2026, type: 'save', notes: '3-6 months expenses', hidden: false },
+          { id: 2, name: 'Down Payment', cat: 'home', amount: 80000, year: 2028, type: 'save', notes: 'Condo in Seoul or Bay Area', hidden: false },
+          { id: 3, name: 'Wedding', cat: 'life', amount: 30000, year: 2027, type: 'save', notes: '', hidden: false },
+          { id: 4, name: 'Coast FIRE', cat: 'retire', amount: 250000, year: 2030, type: 'invest', notes: 'Investment portfolio target', hidden: false },
+          { id: 5, name: 'New Car', cat: 'life', amount: 35000, year: 2029, type: 'save', notes: 'EV', hidden: false }
+        ];
+        // --- Net worth snapshots (monthly, ~18 months of history) ---
+        const snapBase = [
+          ['2025-01-01', 72000, 3500], ['2025-02-01', 74200, 3500], ['2025-03-01', 71800, 3500],
+          ['2025-04-01', 76500, 3500], ['2025-05-01', 79200, 4000], ['2025-06-01', 82100, 4000],
+          ['2025-07-01', 80500, 4000], ['2025-08-01', 85300, 4000], ['2025-09-01', 88000, 4500],
+          ['2025-10-01', 91200, 4500], ['2025-11-01', 89500, 4500], ['2025-12-01', 94800, 4500],
+          ['2026-01-01', 98200, 5000], ['2026-02-01', 101500, 5000], ['2026-03-01', 99800, 5000],
+          ['2026-04-01', 105200, 5000], ['2026-05-01', 110400, 5500], ['2026-05-30', 114520, 0]
+        ];
+        d.snapshots = snapBase.map(([date, nw, contributed]) => ({ date, nw, contributed, note: '' }));
+        // --- Gain snapshots ---
+        d.gainSnapshots = [
+          { date: '2025-01-01', accounts: { 4: 38000, 5: 20000 } },
+          { date: '2025-04-01', accounts: { 4: 39500, 5: 21200 } },
+          { date: '2025-07-01', accounts: { 4: 41200, 5: 23100 } },
+          { date: '2025-10-01', accounts: { 4: 43800, 5: 25500 } },
+          { date: '2026-01-01', accounts: { 4: 44100, 5: 26800 } },
+          { date: '2026-05-30', accounts: { 4: 45600, 5: 28900 } }
+        ];
+        d.gainContribs = [
+          { id: 1, date: '2025-01-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 2, date: '2025-02-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 3, date: '2025-03-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 4, date: '2025-04-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 5, date: '2025-05-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 6, date: '2025-06-15', amount: 500, note: 'Monthly DCA', account: 4, currency: 'USD' },
+          { id: 7, date: '2025-01-15', amount: 500, note: 'Roth contribution', account: 5, currency: 'USD' },
+          { id: 8, date: '2025-04-15', amount: 500, note: 'Roth contribution', account: 5, currency: 'USD' },
+          { id: 9, date: '2025-07-15', amount: 1000, note: 'Roth contribution', account: 5, currency: 'USD' },
+          { id: 10, date: '2025-10-15', amount: 1000, note: 'Roth contribution', account: 5, currency: 'USD' },
+          { id: 11, date: '2026-01-15', amount: 1000, note: 'Roth contribution', account: 5, currency: 'USD' }
+        ];
+        d.gainsAcctToggles = { 4: true, 5: true };
+        // --- Settings ---
+        d.settings.inflation = 3;
+        d.settings.fx = 1370;
+        d.settings.usfr = 5.2;
+        d.settings.annualContrib = 40000;
+        d.settings.contribGrowth = 3;
+        d.settings.horizon = 25;
+        // --- Stress events ---
+        d.stressEvents = [
+          { name: 'Market crash -30%', amount: 22000, year: 2027 },
+          { name: 'Job loss (6 months)', amount: 18000, year: 2028 }
+        ];
+        return d;
       }
 
       // ── Data migration: run on every load ────────────────────────
