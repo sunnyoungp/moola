@@ -2395,6 +2395,92 @@
           { name: 'Market crash -30%', amount: 22000, year: 2027 },
           { name: 'Job loss (6 months)', amount: 18000, year: 2028 }
         ];
+
+        // ── Life Plan: two scenarios ─────────────────────────────────
+        const baseGlobals = {
+          f401k: 23000, roc: 7, taxMode: 'auto', taxFlat: 30,
+          discMode: 'rate', savingsRate: 20, retireAge: 62, retireNW: 2500000,
+          projectionStartingAge: 25, expInflation: 2.5, maxAge: 100,
+          ssEnabled: true, ssBenefit: 2200, ssClaimAge: 67,
+          rothBalanceOv: null, k401TaxRate: 25, capGainsRate: 15,
+          retireTaxEnabled: false, numFormat: 'compact',
+          retireSpendMode: '4pct', inheritanceTarget: 0, defaultGainPct: 40
+        };
+
+        // ── Base Case: stable career, buy a home at 32, partner at 30, one kid at 33 ──
+        const baseScenario = {
+          globals: { ...baseGlobals },
+          incomeStreams: [
+            { id: 'is0', name: 'Software Engineer', startAge: 25, endAge: null, ongoing: true, annual: 95000, growth: 5, eligible401k: true, incomeType: 'salary', takeHomeOverride: null, expanded: false }
+          ],
+          properties: [
+            { id: 'pr0', name: 'Starter condo', purchaseAge: 32, price: 450000, downPct: 20, mrate: 5.8, termYrs: 30, propType: 'primary', appreciation: 3, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: false }
+          ],
+          lifeEvents: [
+            { id: 'ev1', type: 'partner', age: 30, income: 85000, incomeGrowth: 4, expanded: false },
+            { id: 'ev2', type: 'child', age: 33, expanded: false, stages: [
+              { name: 'Daycare', childAgeStart: 0, childAgeEnd: 5, annual: 24000 },
+              { name: 'School', childAgeStart: 5, childAgeEnd: 18, annual: 8000 },
+              { name: 'College', childAgeStart: 18, childAgeEnd: 22, annual: 35000 }
+            ]},
+            { id: 'ev3', type: 'oneTime', age: 28, amount: 15000, label: 'Annual bonus', oneTimeType: 'bonus', expanded: false },
+            { id: 'ev4', type: 'healthcare', startAge: 62, endAge: 65, monthlyCost: 800, label: 'Pre-Medicare gap', expanded: false }
+          ],
+          expPhases: [
+            { id: 'ph0', name: 'Solo in the city', startAge: 25, endAge: 30, monthlyLiving: 2200, monthlyRent: 1800, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph1', name: 'Living together', startAge: 30, endAge: 32, monthlyLiving: 2800, monthlyRent: 2200, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph2', name: 'Homeowners', startAge: 32, endAge: 50, monthlyLiving: 3200, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph3', name: 'Empty nest', startAge: 50, endAge: 62, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph4', name: 'Retirement', startAge: 62, endAge: 999, monthlyLiving: 4000, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false }
+          ],
+          overrides: {},
+          historyStartAge: null
+        };
+
+        // ── Spontaneous: freelancing, travel, relocations, diverse life ──
+        const spontGlobals = { ...baseGlobals, retireAge: 58, retireNW: 2000000 };
+        const spontScenario = {
+          globals: spontGlobals,
+          incomeStreams: [
+            { id: 'is0', name: 'UX Design (full-time)', startAge: 25, endAge: 28, ongoing: false, annual: 85000, growth: 4, eligible401k: true, incomeType: 'salary', takeHomeOverride: null, expanded: false },
+            { id: 'is1', name: 'Freelance design', startAge: 28, endAge: 34, ongoing: false, annual: 110000, growth: 6, eligible401k: false, incomeType: 'self-employment', takeHomeOverride: null, expanded: false },
+            { id: 'is2', name: 'Design studio (co-founder)', startAge: 34, endAge: null, ongoing: true, annual: 150000, growth: 5, eligible401k: true, incomeType: 'salary', takeHomeOverride: null, expanded: false }
+          ],
+          properties: [
+            { id: 'pr0', name: 'Lisbon apartment', purchaseAge: 36, price: 380000, downPct: 25, mrate: 4.5, termYrs: 30, propType: 'primary', appreciation: 4, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: false }
+          ],
+          lifeEvents: [
+            { id: 'ev1', type: 'partner', age: 31, income: 70000, incomeGrowth: 5, expanded: false },
+            { id: 'ev2', type: 'child', age: 35, expanded: false, stages: [
+              { name: 'Daycare', childAgeStart: 0, childAgeEnd: 4, annual: 18000 },
+              { name: 'International school', childAgeStart: 4, childAgeEnd: 18, annual: 15000 },
+              { name: 'University', childAgeStart: 18, childAgeEnd: 22, annual: 25000 }
+            ]},
+            { id: 'ev3', type: 'oneTime', age: 27, amount: -12000, label: 'Southeast Asia sabbatical', oneTimeType: 'other', expanded: false },
+            { id: 'ev4', type: 'oneTime', age: 30, amount: -8000, label: 'Japan for 3 months', oneTimeType: 'other', expanded: false },
+            { id: 'ev5', type: 'oneTime', age: 40, amount: 50000, label: 'Inheritance', oneTimeType: 'inheritance', expanded: false },
+            { id: 'ev6', type: 'healthcare', startAge: 28, endAge: 34, monthlyCost: 450, label: 'Freelance self-insured', expanded: false },
+            { id: 'ev7', type: 'oneTime', age: 45, amount: -20000, label: 'Family sabbatical year', oneTimeType: 'other', expanded: false }
+          ],
+          expPhases: [
+            { id: 'ph0', name: 'City grind', startAge: 25, endAge: 28, monthlyLiving: 2400, monthlyRent: 1900, renting: true, location: 'San Francisco', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph1', name: 'Nomad era', startAge: 28, endAge: 31, monthlyLiving: 2000, monthlyRent: 1200, renting: true, location: 'Various', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph2', name: 'Settling down', startAge: 31, endAge: 36, monthlyLiving: 2800, monthlyRent: 1600, renting: true, location: 'Lisbon', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph3', name: 'Studio + family', startAge: 36, endAge: 45, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Lisbon', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph4', name: 'Sabbatical year', startAge: 45, endAge: 46, monthlyLiving: 4500, monthlyRent: 1500, renting: true, location: 'World tour', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph5', name: 'Back to it', startAge: 46, endAge: 58, monthlyLiving: 3800, monthlyRent: 0, renting: false, location: 'Lisbon', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph6', name: 'Slow retirement', startAge: 58, endAge: 999, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Lisbon / Seoul', monthlyBills: 0, billsEnabled: false }
+          ],
+          overrides: {},
+          historyStartAge: null
+        };
+
+        d.future_scenarios = [
+          { id: 'sc0', name: 'Base case', data: baseScenario },
+          { id: 'sc1', name: 'Spontaneous', data: spontScenario }
+        ];
+        d.future_active_scenario = 'sc0';
+
         return d;
       }
 
