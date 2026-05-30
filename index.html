@@ -10787,7 +10787,6 @@
       function ftClearNwOv(which) { if (which === 'today') ftNwTodayOv = null; else ftNwEoyOv = null; ftRecalc(); }
 
       function ftRecalc() {
-        if (!document.getElementById('ft-metrics')) return;
         ftRows = ftCalcRows();
         ftRenderLifePlan();
         ftSaveScenario();
