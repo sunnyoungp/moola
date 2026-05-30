@@ -790,7 +790,7 @@
         <!-- Scenario pills -->
         <div class="ft-sc-bar" id="ft-scenario-bar"></div>
 
-        <!-- Section 1: Metric cards -->
+        <!-- COMMENTED OUT: Projections, Savings Tracker, Net Worth Projection
         <div class="ft-section" id="fts-metrics">
           <div class="ft-sec-hdr" onclick="ftToggleSection('metrics')">
             <span class="ft-sec-label">Projections</span>
@@ -800,7 +800,6 @@
           </div>
         </div>
 
-        <!-- Section 2: Savings tracker -->
         <div class="ft-section" id="fts-savings">
           <div class="ft-sec-hdr" onclick="ftToggleSection('savings')">
             <span class="ft-sec-label">Savings Tracker</span>
@@ -810,7 +809,6 @@
           </div>
         </div>
 
-        <!-- Section 3: Chart -->
         <div class="ft-section" id="fts-graph">
           <div class="ft-sec-hdr" onclick="ftToggleSection('graph')">
             <span class="ft-sec-label">Net Worth Projection</span>
@@ -830,6 +828,7 @@
             </div>
           </div>
         </div>
+        END COMMENTED OUT -->
 
         <!-- Section 4: Life timeline -->
         <div class="ft-section" id="fts-timeline">
@@ -2428,9 +2427,9 @@
           ],
           expPhases: [
             { id: 'ph0', name: 'Solo in the city', startAge: 25, endAge: 30, monthlyLiving: 2200, monthlyRent: 1800, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
-            { id: 'ph1', name: 'Living together', startAge: 30, endAge: 32, monthlyLiving: 2800, monthlyRent: 2200, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
-            { id: 'ph2', name: 'Homeowners', startAge: 32, endAge: 50, monthlyLiving: 3200, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
-            { id: 'ph3', name: 'Empty nest', startAge: 50, endAge: 62, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph1', name: 'Living together', startAge: 31, endAge: 34, monthlyLiving: 2800, monthlyRent: 2200, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph2', name: 'Homeowners', startAge: 35, endAge: 52, monthlyLiving: 3200, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph3', name: 'Empty nest', startAge: 53, endAge: 62, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
             { id: 'ph4', name: 'Retirement', startAge: 62, endAge: 999, monthlyLiving: 4000, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false }
           ],
           overrides: {},
