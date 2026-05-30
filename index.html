@@ -846,7 +846,7 @@
         <div class="ft-section" id="fts-table">
           <div class="ft-sec-hdr" onclick="ftToggleSection('table')">
             <span class="ft-sec-label">Projection Table</span>
-            <div style="display:flex;align-items:center;gap:12px;margin-left:auto" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto" onclick="event.stopPropagation()">
               <div id="ft-buy-ctrl" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink2)">
                 <span style="white-space:nowrap">Buy at age</span>
                 <input type="range" id="ft-buy-sl" min="25" max="70" step="1" style="width:80px"
@@ -854,6 +854,8 @@
                 <span id="ft-buy-out"
                   style="font-size:12px;font-weight:600;color:var(--ink);min-width:20px;font-family:var(--mono)">—</span>
               </div>
+              <button class="btn bsm" onclick="ftAppendRow()">+ add row (life plan)</button>
+              <button class="btn bsm" onclick="ftAddHistoryYear()">+ add year (history)</button>
               <button class="ft-mgr-btn" onclick="ftOpenColumnManager()" title="Manage columns">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                   stroke-linejoin="round">
@@ -864,8 +866,6 @@
           </div>
           <div class="ft-sec-body" id="ftb-table">
             <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
-              <button class="btn bsm" onclick="ftAppendRow()">+ add row (life plan)</button>
-              <button class="ft-ev-add-btn" onclick="ftAddHistoryYear()">+ add year (history)</button>
               <button class="btn bsm" id="ft-reset-ov-btn" onclick="ftResetAllOverrides()"
                 style="display:none;background:var(--rose-l);color:var(--rose);border-color:var(--rose)"
                 title="Clear all cell overrides (income, net worth)">↺ reset overrides</button>
