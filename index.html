@@ -10094,9 +10094,9 @@
       function fcHeader(emoji, title, value, color, age) {
         var ageBadge = age !== undefined ? '<span class="fc-age">Age ' + age + '</span>' : '';
         return '<div class="fc-header"><div>'
-          + '<div class="fc-title"><span>' + emoji + '</span> ' + title + ageBadge + '</div>'
+          + '<div class="fc-title"><span>' + emoji + '</span> ' + title + '</div>'
           + '<div class="fc-deficit" style="color:' + (color || FC.ink) + '">' + value + '</div>'
-          + '</div></div>';
+          + '</div>' + ageBadge + '</div>';
       }
 
       function fcSection(text) {
@@ -10358,6 +10358,8 @@
                       + fcSection('Top Category Drains')
                       + fcList(blameHtml)
                       + efDiagNote
+                      + fcActionBox('How to Fix',
+                          'Reduce ' + actionSubject + ' by ' + deficitFmt + '/mo or increase income by ' + deficitFmt + '/mo to close the gap.')
                     );
                     return '<td style="color:' + FC.red + ';font-family:' + FC.mono + '"><span class="forensic-trigger" onmouseenter="ftHandleHover(this)" onmouseleave="ftHandleLeave(this)" tabindex="0">\u26A0 ' + cardHtml + '</span> ' + ftFmt(r.freeSpend) + '/mo</td>';
                   }

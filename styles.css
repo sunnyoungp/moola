@@ -721,12 +721,13 @@ textarea {
 }
 
 .fc-age {
-  margin-left: auto;
+  flex-shrink: 0;
   font-size: 10px;
   font-weight: 400;
   color: var(--ink4);
   letter-spacing: 0;
   text-transform: none;
+  padding-top: 1px;
 }
 
 .fc-deficit {
