@@ -906,7 +906,7 @@ textarea {
 
 /* Result pill — subtotal row inside forensic cards */
 .fc-usable {
-  background: var(--s2, #EBF3FD);
+  background: var(--page, #F0EFEB);
   border-radius: 6px;
   padding: 10px 12px;
   margin-top: 8px;
