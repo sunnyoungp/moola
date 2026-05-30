@@ -1910,10 +1910,16 @@
       function ftHandleLeave(el) {
         if (window.innerWidth <= 768) return; // mobile uses portal dismiss
         fcTimeout = setTimeout(() => {
-          const card = el.querySelector('.forensic-card');
+          // Find the card — it may be portalled to body
+          const card = el.querySelector('.forensic-card')
+            || document.body.querySelector('.forensic-card[style*="display: block"]');
           if (card) {
             card.style.display = 'none';
             card.classList.remove('fc-flip-up');
+            if (card._fcOrigParent) {
+              card._fcOrigParent.appendChild(card);
+              card._fcOrigParent = null;
+            }
           }
         }, 150);
       }
@@ -1975,8 +1981,14 @@
 
       function ftHandleHover(el) {
         clearTimeout(fcTimeout);
+        // Dismiss any other open cards (return portalled cards first)
         document.querySelectorAll('.forensic-card').forEach(c => {
-          if (c.parentElement !== el) {
+          if (c._fcOrigParent && c.parentElement === document.body) {
+            c.style.display = 'none';
+            c.classList.remove('fc-flip-up');
+            c._fcOrigParent.appendChild(c);
+            c._fcOrigParent = null;
+          } else if (c.parentElement !== el) {
             c.style.display = 'none';
             c.classList.remove('fc-flip-up');
           }
@@ -1986,10 +1998,13 @@
         if (!card) return;
 
         if (window.innerWidth <= 768) {
-          // On mobile, use portal instead of inline card
           fcShowPortal(el);
           return;
         }
+
+        // Move card to body so it escapes overflow/transform containers
+        card._fcOrigParent = el;
+        document.body.appendChild(card);
 
         card.style.visibility = 'hidden';
         card.style.display = 'block';
@@ -2004,17 +2019,14 @@
         let left = rect.left;
         card.classList.remove('fc-flip-up');
 
-        // Check space
         const spaceAbove = rect.top;
         const spaceBelow = window.innerHeight - rect.bottom;
 
-        // If not enough space below AND more space above, flip up
         if (spaceBelow < cardH + margin && spaceAbove > cardH + margin) {
           top = rect.top - cardH - 8;
           card.classList.add('fc-flip-up');
         }
 
-        // Final safety pin to viewport
         if (top < margin) top = margin;
         if (top + cardH > window.innerHeight - margin) top = window.innerHeight - cardH - margin;
         if (left < margin) left = margin;
@@ -2413,7 +2425,7 @@
             { id: 'is0', name: 'Software Engineer', startAge: 25, endAge: null, ongoing: true, annual: 95000, growth: 5, eligible401k: true, incomeType: 'salary', takeHomeOverride: null, expanded: false }
           ],
           properties: [
-            { id: 'pr0', name: 'Starter condo', purchaseAge: 32, price: 450000, downPct: 20, mrate: 5.8, termYrs: 30, propType: 'primary', appreciation: 3, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: false }
+            { id: 'pr0', name: 'Starter condo', purchaseAge: 35, price: 450000, downPct: 20, mrate: 5.8, termYrs: 30, propType: 'primary', appreciation: 3, rentalMonthly: 0, rentalGrowth: 3, extraPayments: [], extrasExpanded: false, expanded: false }
           ],
           lifeEvents: [
             { id: 'ev1', type: 'partner', age: 30, income: 85000, incomeGrowth: 4, expanded: false },
@@ -2429,7 +2441,7 @@
             { id: 'ph0', name: 'Solo in the city', startAge: 25, endAge: 30, monthlyLiving: 2200, monthlyRent: 1800, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
             { id: 'ph1', name: 'Living together', startAge: 31, endAge: 34, monthlyLiving: 2800, monthlyRent: 2200, renting: true, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
             { id: 'ph2', name: 'Homeowners', startAge: 35, endAge: 52, monthlyLiving: 3200, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
-            { id: 'ph3', name: 'Empty nest', startAge: 53, endAge: 62, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
+            { id: 'ph3', name: 'Empty nest', startAge: 53, endAge: 61, monthlyLiving: 3500, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false },
             { id: 'ph4', name: 'Retirement', startAge: 62, endAge: 999, monthlyLiving: 4000, monthlyRent: 0, renting: false, location: 'Austin, TX', monthlyBills: 0, billsEnabled: false }
           ],
           overrides: {},
