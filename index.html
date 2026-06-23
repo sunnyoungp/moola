@@ -109,21 +109,8 @@
       return user;
     }
 
-    // Bootstrap immediately from the cached session (no server round-trip)
-    db.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-screen').style.display = 'flex';
-        document.getElementById('demo-banner').style.display = 'none';
-        initApp(session.user);
-      } else {
-        startDemo();
-      }
-    });
-
-    // Also listen for subsequent auth changes (sign in, sign out, token refresh)
+    // Check auth state on page load
     db.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') return; // already handled above
       if (session?.user) {
         // If transitioning from demo to real login, reset app state
         if (isDemoMode) { isDemoMode = false; appInitialized = false; S = null; }
