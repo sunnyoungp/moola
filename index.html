@@ -2275,12 +2275,12 @@
         updateSyncTimeDisplay();
         setInterval(updateSyncTimeDisplay, 60000);
 
-        // Sync prices on load, then take auto-snapshots with fresh data
-        if (S.funds.length > 0) {
-          await syncPrices();
-        }
+        // Take auto-snapshots immediately, then sync prices in the background
         nwAutoSnapshot();
         gainsAutoSnapshot();
+        if (S.funds.length > 0) {
+          syncPrices(); // not awaited — runs in background, doesn't delay init
+        }
       }
       function mkDef() {
         return {
@@ -7819,7 +7819,7 @@
         if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
 
         // ── Retry remaining with Finnhub + fallbacks ─────────────
-        const maxRounds = 6;
+        const maxRounds = 3;
         for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
           await new Promise(r => setTimeout(r, Math.min(2000 + attempt * 1000, 8000)));
 
