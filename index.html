@@ -117,9 +117,9 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex';
         document.getElementById('demo-banner').style.display = 'none';
-        initApp(session.user);
+        initApp(); // loads their data from Supabase
       } else {
-        startDemo();
+        startDemo(); // auto-enter demo for visitors
       }
     });
   </script>
@@ -369,7 +369,7 @@
           </div>
         </div>
         -->
-        <div id="ov-widgets"><div id="ov-loading" style="display:flex;align-items:center;gap:8px;padding:40px 0;color:var(--ink4);font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="animation:spinIcon .8s linear infinite;flex-shrink:0"><path d="M8 2a6 6 0 1 0 6 6"/></svg>Loading…</div></div>
+        <div id="ov-widgets"></div>
       </div>
 
       <!-- ACCOUNTS -->
@@ -2140,15 +2140,13 @@
         }, 800);
       }
 
-      async function ls(knownUser) {
+      async function ls() {
         if (isDemoMode) return null; // demo mode: skip Supabase
+        // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
         try {
-          const user = knownUser || (await db.auth.getUser()).data.user;
+          const { data: { user } } = await db.auth.getUser();
           if (user) {
-            // Race the fetch against a 8s timeout so a hung connection doesn't stall the app
-            const fetchPromise = db.from('user_data').select('data').eq('user_id', user.id).single();
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('ls() timeout')), 8000));
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+            const { data, error } = await db.from('user_data').select('data').eq('user_id', user.id).single();
             if (error) console.error('[moola] ls() fetch error:', error);
             if (data?.data) return data.data;
           }
@@ -2232,14 +2230,14 @@
       let S = null;
       let _loadedFromCloud = false; // true only when ls() returned real data
       let appInitialized = false;
-      async function initApp(knownUser) {
+      async function initApp() {
         if (appInitialized) return;
         appInitialized = true;
         if (isDemoMode) {
           S = mkDemo();
           _loadedFromCloud = false;
         } else {
-          const cloudData = await ls(knownUser);
+          const cloudData = await ls();
           if (cloudData) {
             S = cloudData;
             _loadedFromCloud = true;
@@ -2277,12 +2275,12 @@
         updateSyncTimeDisplay();
         setInterval(updateSyncTimeDisplay, 60000);
 
-        // Take auto-snapshots immediately, then sync prices in the background
+        // Sync prices on load, then take auto-snapshots with fresh data
+        if (S.funds.length > 0) {
+          await syncPrices();
+        }
         nwAutoSnapshot();
         gainsAutoSnapshot();
-        if (S.funds.length > 0) {
-          syncPrices(); // not awaited — runs in background, doesn't delay init
-        }
       }
       function mkDef() {
         return {
@@ -7821,7 +7819,7 @@
         if (onProgress) onProgress(Object.keys(out).length, tickers.length, remaining, 1);
 
         // ── Retry remaining with Finnhub + fallbacks ─────────────
-        const maxRounds = 3;
+        const maxRounds = 6;
         for (let attempt = 0; attempt < maxRounds && remaining.length > 0; attempt++) {
           await new Promise(r => setTimeout(r, Math.min(2000 + attempt * 1000, 8000)));
 
