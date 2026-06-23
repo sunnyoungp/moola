@@ -109,17 +109,28 @@
       return user;
     }
 
-    // Check auth state on page load
+    // Initial auth check — fires immediately, doesn't wait for token refresh cycle
+    db.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'flex';
+        document.getElementById('demo-banner').style.display = 'none';
+        initApp();
+      } else {
+        startDemo();
+      }
+    });
+
+    // Handle subsequent auth events: sign in, sign out, token refresh
     db.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        // If transitioning from demo to real login, reset app state
+      if (event === 'SIGNED_IN') {
         if (isDemoMode) { isDemoMode = false; appInitialized = false; S = null; }
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex';
         document.getElementById('demo-banner').style.display = 'none';
-        initApp(); // loads their data from Supabase
-      } else {
-        startDemo(); // auto-enter demo for visitors
+        initApp();
+      } else if (event === 'SIGNED_OUT') {
+        window.location.reload();
       }
     });
   </script>
