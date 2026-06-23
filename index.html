@@ -109,17 +109,30 @@
       return user;
     }
 
-    // Check auth state on page load
+    // Bootstrap immediately from the cached session (no server round-trip)
+    db.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'flex';
+        document.getElementById('demo-banner').style.display = 'none';
+        initApp(session.user);
+      } else {
+        startDemo();
+      }
+    });
+
+    // Also listen for subsequent auth changes (sign in, sign out, token refresh)
     db.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') return; // already handled above
       if (session?.user) {
         // If transitioning from demo to real login, reset app state
         if (isDemoMode) { isDemoMode = false; appInitialized = false; S = null; }
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex';
         document.getElementById('demo-banner').style.display = 'none';
-        initApp(session.user); // loads their data from Supabase
+        initApp(session.user);
       } else {
-        startDemo(); // auto-enter demo for visitors
+        startDemo();
       }
     });
   </script>
@@ -2142,12 +2155,13 @@
 
       async function ls(knownUser) {
         if (isDemoMode) return null; // demo mode: skip Supabase
-        // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
         try {
-          // Use the already-known user from onAuthStateChange to skip a redundant server round-trip
           const user = knownUser || (await db.auth.getUser()).data.user;
           if (user) {
-            const { data, error } = await db.from('user_data').select('data').eq('user_id', user.id).single();
+            // Race the fetch against a 8s timeout so a hung connection doesn't stall the app
+            const fetchPromise = db.from('user_data').select('data').eq('user_id', user.id).single();
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('ls() timeout')), 8000));
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
             if (error) console.error('[moola] ls() fetch error:', error);
             if (data?.data) return data.data;
           }
