@@ -117,7 +117,7 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex';
         document.getElementById('demo-banner').style.display = 'none';
-        initApp(); // loads their data from Supabase
+        initApp(session.user); // loads their data from Supabase
       } else {
         startDemo(); // auto-enter demo for visitors
       }
@@ -369,7 +369,7 @@
           </div>
         </div>
         -->
-        <div id="ov-widgets"></div>
+        <div id="ov-widgets"><div id="ov-loading" style="display:flex;align-items:center;gap:8px;padding:40px 0;color:var(--ink4);font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="animation:spinIcon .8s linear infinite;flex-shrink:0"><path d="M8 2a6 6 0 1 0 6 6"/></svg>Loading…</div></div>
       </div>
 
       <!-- ACCOUNTS -->
@@ -2140,11 +2140,12 @@
         }, 800);
       }
 
-      async function ls() {
+      async function ls(knownUser) {
         if (isDemoMode) return null; // demo mode: skip Supabase
         // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
         try {
-          const { data: { user } } = await db.auth.getUser();
+          // Use the already-known user from onAuthStateChange to skip a redundant server round-trip
+          const user = knownUser || (await db.auth.getUser()).data.user;
           if (user) {
             const { data, error } = await db.from('user_data').select('data').eq('user_id', user.id).single();
             if (error) console.error('[moola] ls() fetch error:', error);
@@ -2230,14 +2231,14 @@
       let S = null;
       let _loadedFromCloud = false; // true only when ls() returned real data
       let appInitialized = false;
-      async function initApp() {
+      async function initApp(knownUser) {
         if (appInitialized) return;
         appInitialized = true;
         if (isDemoMode) {
           S = mkDemo();
           _loadedFromCloud = false;
         } else {
-          const cloudData = await ls();
+          const cloudData = await ls(knownUser);
           if (cloudData) {
             S = cloudData;
             _loadedFromCloud = true;
