@@ -2250,7 +2250,7 @@
         } else {
           const cloudData = await ls();
           if (cloudData) {
-            S = cloudData;
+            S = { ...mkDef(), ...cloudData }; // fill any missing top-level fields with defaults
             _loadedFromCloud = true;
           } else {
             S = mkDef();
