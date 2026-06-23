@@ -2115,6 +2115,7 @@
 
       async function ps(dataToSave) {
         if (isDemoMode) return; // demo mode: no persistence
+        if (!_loadedFromCloud) return; // never overwrite cloud data with a fallback empty state
         clearTimeout(_saveTimer);
         _saveTimer = setTimeout(async () => {
           // 1. Get the current user FRESH from Supabase
@@ -2227,11 +2228,24 @@
 
       // Load data async on startup
       let S = null;
+      let _loadedFromCloud = false; // true only when ls() returned real data
       let appInitialized = false;
       async function initApp() {
         if (appInitialized) return;
         appInitialized = true;
-        S = isDemoMode ? mkDemo() : (await ls() || mkDef());
+        if (isDemoMode) {
+          S = mkDemo();
+          _loadedFromCloud = false;
+        } else {
+          const cloudData = await ls();
+          if (cloudData) {
+            S = cloudData;
+            _loadedFromCloud = true;
+          } else {
+            S = mkDef();
+            _loadedFromCloud = false;
+          }
+        }
 
         if (!S.tabs) S.tabs = mkDef().tabs;
         // Inject any new tabs added to mkDef that are missing from saved data
@@ -3133,7 +3147,7 @@
 
       // ── NW auto-snapshot: silently record total NW on each app load ──
       function nwAutoSnapshot() {
-        if (!S) return;
+        if (!S || !_loadedFromCloud) return; // never save if we fell back to empty defaults
         if (!S.snapshots) S.snapshots = [];
         const today = todayStr();
         const nw = nwTotal();
@@ -5665,7 +5679,7 @@
       // ── Per-account snapshot: records each investment account's value ──
       // Snapshot shape: { date: 'YYYY-MM-DD', accounts: { acctId: valueUSD, ... } }
       function gainsAutoSnapshot() {
-        if (!S) return;
+        if (!S || !_loadedFromCloud) return; // never save if we fell back to empty defaults
         if (!S.gainSnapshots) S.gainSnapshots = [];
         const today = todayStr();
         const snap = buildSnapshotForDate(today);
