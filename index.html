@@ -2138,28 +2138,39 @@
             return;
           }
 
-          // 3. Ensure you are sending the authenticated user's ID
+          // 3. Save previous data as one-version backup, then upsert new data
           const { error: upsertError } = await db
             .from('user_data')
             .upsert({
-              user_id: user.id, // Explicitly use the authenticated user ID
+              user_id: user.id,
               data: dataToSave,
+              previous_data: (await db.from('user_data').select('data').eq('user_id', user.id).single()).data?.data || null,
               updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' }); // Only conflicts on this specific user
+            }, { onConflict: 'user_id' });
 
-          if (upsertError) console.error("Save failed:", upsertError);
+          if (upsertError) {
+            console.error("Save failed:", upsertError);
+          } else {
+            // Mirror to localStorage as a local safety net (user-scoped key)
+            try { localStorage.setItem('moola_bak_' + user.id, JSON.stringify(dataToSave)); } catch (_) {}
+          }
         }, 800);
       }
 
       async function ls() {
         if (isDemoMode) return null; // demo mode: skip Supabase
-        // Load from Supabase only — no localStorage fallback to prevent cross-user data leakage
         try {
           const { data: { user } } = await db.auth.getUser();
           if (user) {
             const { data, error } = await db.from('user_data').select('data').eq('user_id', user.id).single();
             if (error) console.error('[moola] ls() fetch error:', error);
             if (data?.data) return data.data;
+            // Supabase returned nothing — fall back to local shadow copy before using empty defaults
+            const local = localStorage.getItem('moola_bak_' + user.id);
+            if (local) {
+              console.warn('[moola] Supabase returned no data — restoring from local backup');
+              return JSON.parse(local);
+            }
           }
         } catch (e) { console.error('[moola] ls() exception:', e); }
         return null;
@@ -2167,9 +2178,11 @@
 
       async function resetData() {
         if (isDemoMode) { location.reload(); return; }
-        localStorage.removeItem('moola_v4');
         const { data: { user } } = await db.auth.getUser();
-        if (user) await db.from('user_data').delete().eq('user_id', user.id);
+        if (user) {
+          localStorage.removeItem('moola_bak_' + user.id);
+          await db.from('user_data').delete().eq('user_id', user.id);
+        }
         location.reload();
       }
 
