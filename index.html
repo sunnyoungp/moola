@@ -11128,108 +11128,94 @@
       // Tracks which inputs are actively mid-expression
       const _calcActive = new WeakSet();
 
+      // ── Shared commit logic (blur / Enter) ───────────────────────
+      function _calcCommitEl(el) {
+        const raw = el.value.replace(/,/g, '').trim();
+        if (!_calcActive.has(el)) return false;
+        const result = calcEval(raw);
+        if (result === null) { _calcSetErr(el, 'Invalid expression'); return false; }
+
+        _calcActive.delete(el);
+        _calcClearErr(el);
+        el.value = String(result);
+        if (el.dataset.calcWasNumber) { el.type = 'number'; delete el.dataset.calcWasNumber; }
+
+        // Fire synthetic events so live handlers update with the numeric result
+        const inputEvt = new Event('input', { bubbles: true });
+        inputEvt._calcSynthetic = true;
+        el.dispatchEvent(inputEvt);
+        const changeEvt = new Event('change', { bubbles: true });
+        changeEvt._calcSynthetic = true;
+        el.dispatchEvent(changeEvt);
+        return true;
+      }
+
       function _setupCalcDelegation() {
-        // focusin: change type=number → text so operators can be typed
+        // focusin: type switch + wrap el.oninput to suppress it during expression entry.
+        // Wrapping el.oninput (the compiled inline handler property) is reliable across
+        // all browsers — unlike capture-phase stopImmediatePropagation which doesn't
+        // consistently block inline attribute handlers.
         document.addEventListener('focusin', function(e) {
           const el = e.target;
           if (!el.dataset || !el.dataset.calcInput) return;
+
+          // number → text so operators can actually be typed
           if (el.type === 'number') {
             el.type = 'text';
             el.inputMode = 'decimal';
             el.dataset.calcWasNumber = '1';
           }
+
+          // Only wrap once per element instance
+          if (el._calcWrapped) return;
+          el._calcWrapped = true;
+
+          if (el.oninput) {
+            // Replace the inline handler with a wrapper that skips mid-expression
+            const origOninput = el.oninput;
+            el.oninput = function(evt) {
+              // Synthetic commit event — pass straight through to original handler
+              if (evt && evt._calcSynthetic) return origOninput.call(this, evt);
+              const v = this.value.replace(/,/g, '');
+              if (isMathExpr(v)) {
+                _calcActive.add(this);
+                _calcClearErr(this);
+                return; // suppress live handler while expression is in progress
+              }
+              _calcActive.delete(this);
+              _calcClearErr(this);
+              return origOninput.call(this, evt); // plain number — run normally
+            };
+          } else {
+            // No live oninput — add a minimal tracker so _calcActive stays in sync
+            el.addEventListener('input', function(evt) {
+              if (evt && evt._calcSynthetic) return;
+              const v = el.value.replace(/,/g, '');
+              if (isMathExpr(v)) { _calcActive.add(el); _calcClearErr(el); }
+              else { _calcActive.delete(el); _calcClearErr(el); }
+            });
+          }
         }, false);
 
-        // input (capture): suppress live oninput while typing an expression
-        document.addEventListener('input', function(e) {
-          const el = e.target;
-          if (!el.dataset || !el.dataset.calcInput) return;
-          if (e._calcSynthetic) return; // our own synthetic event — let it through
-
-          const raw = el.value.replace(/,/g, '').trim();
-          if (isMathExpr(raw)) {
-            e.stopImmediatePropagation(); // block inline oninput handlers
-            _calcActive.add(el);
-            _calcClearErr(el);
-          } else {
-            _calcActive.delete(el);
-            _calcClearErr(el);
-            // plain number — let inline handlers run normally (no stopPropagation)
-          }
-        }, true); // capture phase
-
-        // blur (capture): evaluate and commit expression, then let normal blur proceed
+        // blur (capture): evaluate on focus-leave
         document.addEventListener('blur', function(e) {
           const el = e.target;
           if (!el.dataset || !el.dataset.calcInput) return;
           if (!_calcActive.has(el)) {
-            // Not mid-expression — restore number type if needed
-            if (el.dataset.calcWasNumber) {
-              el.type = 'number';
-              delete el.dataset.calcWasNumber;
-            }
+            if (el.dataset.calcWasNumber) { el.type = 'number'; delete el.dataset.calcWasNumber; }
             return;
           }
+          _calcCommitEl(el);
+        }, true);
 
-          const raw = el.value.replace(/,/g, '').trim();
-          const result = calcEval(raw);
-          if (result === null) {
-            _calcSetErr(el, 'Invalid expression');
-            // Keep as text so the expression stays visible for correction
-            return;
-          }
-
-          _calcActive.delete(el);
-          _calcClearErr(el);
-          el.value = String(result);
-
-          if (el.dataset.calcWasNumber) {
-            el.type = 'number';
-            delete el.dataset.calcWasNumber;
-          }
-
-          // Dispatch synthetic input + change so live handlers pick up the result
-          const inputEvt = new Event('input', { bubbles: true });
-          inputEvt._calcSynthetic = true;
-          el.dispatchEvent(inputEvt);
-          const changeEvt = new Event('change', { bubbles: true });
-          changeEvt._calcSynthetic = true;
-          el.dispatchEvent(changeEvt);
-        }, true); // capture phase
-
-        // keydown: Enter while mid-expression → evaluate immediately
+        // Enter: evaluate immediately without waiting for blur
         document.addEventListener('keydown', function(e) {
           if (e.key !== 'Enter') return;
           const el = e.target;
           if (!el.dataset || !el.dataset.calcInput) return;
           if (!_calcActive.has(el)) return;
-
-          const raw = el.value.replace(/,/g, '').trim();
-          const result = calcEval(raw);
-          if (result === null) {
-            _calcSetErr(el, 'Invalid expression');
-            e.preventDefault();
-            return;
-          }
-
-          _calcActive.delete(el);
-          _calcClearErr(el);
-          el.value = String(result);
-
-          if (el.dataset.calcWasNumber) {
-            el.type = 'number';
-            delete el.dataset.calcWasNumber;
-          }
-
-          const inputEvt = new Event('input', { bubbles: true });
-          inputEvt._calcSynthetic = true;
-          el.dispatchEvent(inputEvt);
-          const changeEvt = new Event('change', { bubbles: true });
-          changeEvt._calcSynthetic = true;
-          el.dispatchEvent(changeEvt);
-
-          // Blur so blur-dependent handlers also run
-          el.blur();
+          e.preventDefault();
+          if (_calcCommitEl(el)) el.blur();
         }, false);
       }
 
@@ -11338,41 +11324,32 @@
 
       function _kpCommit() {
         if (!_kpTarget) { _kpHide(); return; }
-        const raw = _kpTarget.value.replace(/,/g, '').trim();
+        const el = _kpTarget;
+        const raw = el.value.replace(/,/g, '').trim();
+        const exprDisplay = document.getElementById('calc-kp-overlay')?.querySelector('#calc-kp-expr');
+
         if (isMathExpr(raw)) {
           const result = calcEval(raw);
           if (result === null) {
-            _calcSetErr(_kpTarget, 'Invalid expression');
-            document.getElementById('calc-kp-overlay')
-              .querySelector('#calc-kp-expr').textContent = _kpTarget.value;
+            _calcSetErr(el, 'Invalid expression');
+            if (exprDisplay) exprDisplay.textContent = el.value;
             return;
           }
-          _calcActive.delete(_kpTarget);
-          _calcClearErr(_kpTarget);
-          _kpTarget.value = String(result);
-          document.getElementById('calc-kp-overlay')
-            .querySelector('#calc-kp-expr').textContent = String(result);
-
-          if (_kpTarget.dataset.calcWasNumber) {
-            _kpTarget.type = 'number';
-            delete _kpTarget.dataset.calcWasNumber;
-          }
+          _calcActive.delete(el);
+          _calcClearErr(el);
+          el.value = String(result);
+          if (exprDisplay) exprDisplay.textContent = String(result);
+          if (el.dataset.calcWasNumber) { el.type = 'number'; delete el.dataset.calcWasNumber; }
 
           const inputEvt = new Event('input', { bubbles: true });
           inputEvt._calcSynthetic = true;
-          _kpTarget.dispatchEvent(inputEvt);
+          el.dispatchEvent(inputEvt);
           const changeEvt = new Event('change', { bubbles: true });
           changeEvt._calcSynthetic = true;
-          _kpTarget.dispatchEvent(changeEvt);
-
-          // Also run formatBalInput for balance text inputs
-          if (_kpTarget.oninput === null && typeof formatBalInput === 'function'
-              && (_kpTarget.id === 'a-bal' || _kpTarget.classList.contains('f-acct-value'))) {
-            formatBalInput(_kpTarget);
-          }
+          el.dispatchEvent(changeEvt);
         }
         _kpHide();
-        _kpTarget && _kpTarget.blur();
+        el.blur();
       }
 
       function _setupMobileKeypad() {
