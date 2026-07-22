@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
   <title>Moola</title>
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -11276,15 +11276,21 @@
             return;
           }
 
-          // Append character to the target input
+          // Build the expression in the target input
           let cur = _kpTarget.value;
-          // Prevent double-dot in current segment
+          let newVal;
           if (key === '.') {
-            // Find the last number segment after the last operator
+            // Prevent double-dot within the current number segment
             const lastSeg = cur.split(/[+\-*/]/).pop();
             if (lastSeg.includes('.')) return;
+            newVal = (cur || '0') + '.';
+          } else if (/^\d/.test(key) && (cur === '' || cur === '0')) {
+            // Replace a bare zero rather than prefix it
+            newVal = key;
+          } else {
+            newVal = cur + key;
           }
-          _kpTarget.value = cur + key;
+          _kpTarget.value = newVal;
           _calcActive.add(_kpTarget);
           _calcClearErr(_kpTarget);
           overlay.querySelector('#calc-kp-expr').textContent = _kpTarget.value || '0';
@@ -11300,6 +11306,9 @@
         // the keyboard but it will be behind our overlay.
         el.dataset.kpOrigInputmode = el.inputMode;
         el.inputMode = 'none';
+
+        // Strip comma-formatting so the keypad works on a clean numeric string
+        el.value = el.value.replace(/,/g, '');
 
         // Unit label: try to detect currency from nearby $ / ₩ symbol span
         const sym = el.parentElement?.querySelector('span')?.textContent?.trim() || '';
@@ -11352,34 +11361,53 @@
         el.blur();
       }
 
+      // Returns true for any input that should use the mobile calculator keypad.
+      // Covers: explicitly marked (data-calc-input), inputs with inputmode set,
+      // and monospace text inputs (balance / monetary fields that use handleBalInput).
+      function _isNumericInput(el) {
+        if (!el || el.tagName !== 'INPUT') return false;
+        if (el.dataset.calcSkip) return false;
+        if (el.type === 'range' || el.type === 'checkbox' || el.type === 'radio'
+            || el.type === 'date' || el.type === 'email' || el.type === 'password'
+            || el.type === 'search') return false;
+        if (el.dataset.calcInput) return true;
+        if (el.type === 'number') return true;
+        if (el.inputMode === 'decimal' || el.inputMode === 'numeric') return true;
+        // Monospace text inputs are monetary/numeric (a-bal, gc-amount, f-acct-value, etc.)
+        if (el.type === 'text' && (
+          el.classList.contains('inpm') ||
+          el.classList.contains('f-acct-value') ||
+          el.classList.contains('ft-gl-inp') ||
+          el.classList.contains('ft-cell-input') ||
+          el.classList.contains('ft-ed-inp')
+        )) return true;
+        return false;
+      }
+
       function _setupMobileKeypad() {
         if (!window.matchMedia('(pointer: coarse)').matches) return;
         _buildCalcKeypad();
 
-        // Show keypad when a calc input is focused on touch
+        // Show our keypad for every numeric input — replaces the system keyboard
         document.addEventListener('focusin', function(e) {
           const el = e.target;
-          if (!el.dataset || !el.dataset.calcInput) return;
-          // On mobile, always show our keypad instead of the system keyboard
-          // Small delay to let focusin finish
+          if (!_isNumericInput(el)) return;
           setTimeout(() => _kpShow(el), 50);
         }, false);
 
-        // Hide when focus leaves a calc input
+        // Hide when focus leaves a numeric input
         document.addEventListener('focusout', function(e) {
           const el = e.target;
-          if (!el.dataset || !el.dataset.calcInput) return;
-          // Small delay to check if focus moved to a keypad button
+          if (!_isNumericInput(el)) return;
           setTimeout(() => {
             const overlay = document.getElementById('calc-kp-overlay');
             if (!overlay) return;
-            const focused = document.activeElement;
-            if (overlay.contains(focused)) return; // focus moved into keypad — keep open
+            if (overlay.contains(document.activeElement)) return; // focus in keypad — keep open
             _kpHide();
           }, 100);
         }, false);
 
-        // Tapping outside keypad area closes it
+        // Tapping outside the keypad commits and closes it
         document.addEventListener('touchstart', function(e) {
           const overlay = document.getElementById('calc-kp-overlay');
           if (!overlay || !overlay.classList.contains('kp-open')) return;
