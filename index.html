@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <title>Moola</title>
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -11256,8 +11256,13 @@
           </div>`;
         document.body.appendChild(overlay);
 
-        // Clear button
-        overlay.querySelector('#calc-kp-clear').addEventListener('click', function() {
+        // Prevent the overlay from stealing focus from the input.
+        // Without this, every button tap causes the input to blur → focusout → keypad hides.
+        overlay.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+
+        // Clear button — use touchend because touchstart.preventDefault() cancels synthetic clicks
+        overlay.querySelector('#calc-kp-clear').addEventListener('touchend', function(e) {
+          e.preventDefault();
           if (!_kpTarget) return;
           _kpTarget.value = '';
           _calcActive.delete(_kpTarget);
@@ -11265,8 +11270,9 @@
           overlay.querySelector('#calc-kp-expr').textContent = '0';
         });
 
-        // Key buttons
-        overlay.addEventListener('click', function(e) {
+        // Key buttons — use touchend for same reason
+        overlay.addEventListener('touchend', function(e) {
+          e.preventDefault();
           const btn = e.target.closest('[data-kp]');
           if (!btn || !_kpTarget) return;
           const key = btn.dataset.kp;
