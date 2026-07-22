@@ -573,7 +573,7 @@
             <div class="flex gsm" id="contrib-input-row" style="align-items:center">
               <label style="font-size:12px;color:var(--ink2);white-space:nowrap;font-weight:600"
                 id="r-contrib-label">Amount to invest ($)</label>
-              <input type="number" class="inp inpm inpsm" style="width:140px;max-width:50%" id="r-contrib" value="0"
+              <input type="text" inputmode="decimal" class="inp inpm inpsm" style="width:140px;max-width:50%" id="r-contrib" value="0" data-calc-input="1"
                 oninput="localStorage.setItem('rebal-contrib',this.value);calcRebal()">
             </div>
             <div style="font-size:12px;color:var(--ink2)" id="rebal-mode-desc"></div>
@@ -651,7 +651,7 @@
                   min="1000" max="1700" step="10" value="1370" id="sl-fx" oninput="updateProj()"></div>
               <div class="fr" style="flex-direction:row;align-items:center;gap:8px"><label
                   style="white-space:nowrap;font-size:12px;font-weight:600;color:var(--ink2)">USFR yield</label><input
-                  type="number" class="inp inpm inpsm" id="usfr-inp" value="5.2" step="0.1" style="width:78px"
+                  type="text" inputmode="decimal" class="inp inpm inpsm" id="usfr-inp" value="5.2" style="width:78px" data-calc-input="1"
                   oninput="updateProj()"><span class="mut" style="font-size:11px">% quarterly</span></div>
             </div>
             <div class="card">
@@ -1395,8 +1395,8 @@
           <div>
             <div class="card mb-2">
               <div class="sec">Currency</div>
-              <div class="fr"><label>KRW / USD exchange rate (&#8361; per $1)</label><input type="number"
-                  class="inp inpm" id="fx-set" value="1370" step="1" style="width:150px;max-width:100%" onchange="updFX(this.value)">
+              <div class="fr"><label>KRW / USD exchange rate (&#8361; per $1)</label><input type="text" inputmode="decimal"
+                  class="inp inpm" id="fx-set" value="1370" style="width:150px;max-width:100%" data-calc-input="1" onchange="updFX(this.value)">
               </div>
             </div>
             <div class="card mb-2">
@@ -1538,7 +1538,7 @@
           <div style="position:relative">
             <span
               style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span>
-            <input class="inp inpm" style="padding-left:24px" id="sn-nw" type="number" step="0.01" placeholder="0.00">
+            <input class="inp inpm" style="padding-left:24px" id="sn-nw" type="text" inputmode="decimal" placeholder="0.00" data-calc-input="1">
           </div>
           <button class="btn bsm" style="margin-top:6px;align-self:flex-start" id="sn-use-today-btn"
             onclick="snapUseTodayNW()">Use current NW</button>
@@ -1549,8 +1549,8 @@
           <div style="position:relative">
             <span
               style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:13px">$</span>
-            <input class="inp inpm" style="padding-left:24px" id="sn-contrib" type="number" step="0.01"
-              placeholder="0.00">
+            <input class="inp inpm" style="padding-left:24px" id="sn-contrib" type="text" inputmode="decimal"
+              placeholder="0.00" data-calc-input="1">
           </div>
         </div>
         <div class="fr">
@@ -1625,10 +1625,10 @@
         <div class="fr" id="f-tgt-row">
           <label>Target allocation % <span style="font-size:10px;color:var(--ink3);font-weight:400">— leave 0 for
               hands-off (e.g. foreign stocks you're not actively rebalancing)</span></label>
-          <input class="inp inpm" id="f-tgt" type="number" step="0.1" placeholder="0">
+          <input class="inp inpm" id="f-tgt" type="text" inputmode="decimal" placeholder="0" data-calc-input="1">
         </div>
-        <div class="fr"><label>Expected return (%)</label><input class="inp inpm" id="f-ret" type="number" step="0.1"
-            placeholder="10.0"></div>
+        <div class="fr"><label>Expected return (%)</label><input class="inp inpm" id="f-ret" type="text" inputmode="decimal"
+            placeholder="10.0" data-calc-input="1"></div>
         <div class="modal-footer"><button class="btn" onclick="closeModal('m-fund')">Cancel</button><button
             class="btn bp" onclick="saveFund()">Save</button></div>
       </div>
@@ -1683,8 +1683,8 @@
             <option value="kids">Having kids</option>
             <option value="custom">Custom</option>
           </select></div>
-        <div class="fr"><label>Target amount ($)</label><input class="inp inpm" id="g-amt" type="number"></div>
-        <div class="fr"><label>Target year</label><input class="inp inpm" id="g-yr" type="number" placeholder="2030">
+        <div class="fr"><label>Target amount ($)</label><input class="inp inpm" id="g-amt" type="text" inputmode="decimal" data-calc-input="1"></div>
+        <div class="fr"><label>Target year</label><input class="inp inpm" id="g-yr" type="text" inputmode="numeric" placeholder="2030" data-calc-input="1">
         </div>
         <div class="fr"><label>Type</label><select class="inp" id="g-type">
             <option value="savings">Savings target</option>
@@ -3787,10 +3787,22 @@
 
       function handleBalInput(el) {
         let v = el.value.replace(/,/g, '');
+        // Allow math expressions through without clamping
+        if (isMathExpr(v)) { el.dataset.prev = el.value; _calcClearErr(el); return; }
         if (!/^-?\d*\.?\d*$/.test(v)) el.value = el.dataset.prev || '';
-        else el.dataset.prev = el.value;
+        else { el.dataset.prev = el.value; _calcClearErr(el); }
       }
       function formatBalInput(el) {
+        // Evaluate any math expression before formatting
+        const raw = el.value.replace(/,/g, '').trim();
+        if (isMathExpr(raw)) {
+          const result = calcEval(raw);
+          if (result === null) { _calcSetErr(el, 'Invalid expression'); return; }
+          _calcClearErr(el);
+          el.value = String(result);
+        } else {
+          _calcClearErr(el);
+        }
         let v = parseFloat(el.value.replace(/,/g, ''));
         if (!isNaN(v)) {
           let isKRW = false;
@@ -4323,7 +4335,7 @@
           }
           html += `<div class="f-acct-row" data-acct-id="${a.id}" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
             <span style="font-size:12px;font-weight:500;color:var(--ink2);min-width:100px;flex-shrink:0">${a.name}</span>
-            <input class="inp inpm f-acct-shares" type="number" step="0.001" placeholder="shares" value="${sharesVal}" style="width:90px;flex-shrink:0" oninput="updateFundAcctRowHint(this)">
+            <input class="inp inpm f-acct-shares" type="text" inputmode="decimal" placeholder="shares" value="${sharesVal}" style="width:90px;flex-shrink:0" data-calc-input="1" oninput="updateFundAcctRowHint(this)">
             <input class="inp inpm f-acct-value" type="text" placeholder="${sym}0" value="${held.value && !sharesVal ? held.value.toLocaleString('en-US', { maximumFractionDigits: isKRW ? 0 : 2 }) : ''}" style="width:90px;flex-shrink:0;${sharesVal ? 'opacity:.5' : ''}" oninput="handleBalInput(this)" onblur="formatBalInput(this)">
             <span class="f-acct-hint">${valHint}</span>
           </div>`;
@@ -9875,6 +9887,7 @@
           case 'expenses': el.innerHTML = ftBuildExpensesTab(); break;
           default: el.innerHTML = ftBuildGlobalTab();
         }
+        initCalcForContainer(el);
       }
 
       // ── Alias: ftRenderPanel now re-renders the open settings panel tab ─
@@ -10724,16 +10737,16 @@
         const cur = ftRows.find(r => r.age === age);
         if (!cur) return;
         const curVal = cur[field] || 0;
-        td.innerHTML = '<input class="ft-cell-input" type="number" value="' + curVal + '" style="width:100px">';
+        td.innerHTML = '<input class="ft-cell-input" type="text" inputmode="decimal" value="' + curVal + '" style="width:100px" data-calc-input="1">';
         const inp = td.querySelector('input');
         inp.focus(); inp.select();
         const commit = () => {
-          const raw = inp.value.trim();
+          const raw = inp.value.replace(/,/g, '').trim();
           if (raw === '') {
             ftClearOverride(age, field);
           } else {
-            const v = parseFloat(raw);
-            if (!isNaN(v) && v !== curVal) {
+            const v = isMathExpr(raw) ? calcEval(raw) : parseFloat(raw);
+            if (v !== null && !isNaN(v) && v !== curVal) {
               if (!ftOvMap[age]) ftOvMap[age] = {};
               ftOvMap[age][field] = Math.round(v);
               ftRecalc();
@@ -10817,7 +10830,7 @@
         const ctrl = document.getElementById('ft-nw-ov-ctrl');
         if (!ctrl) return;
         const cur = which === 'today' ? ftGetTodayNW() : ftGetEoyNW();
-        ctrl.innerHTML = '<input class="ft-gl-inp" type="number" id="ft-nw-ov-inp" value="' + cur + '" style="width:110px">'
+        ctrl.innerHTML = '<input class="ft-gl-inp" type="text" inputmode="decimal" id="ft-nw-ov-inp" value="' + cur + '" style="width:110px" data-calc-input="1">'
           + ' <button class="btn bsm" onclick="ftCommitNwOv(\'' + which + '\')" style="font-size:10px;padding:2px 8px">done</button>'
           + ' <button class="btn bsm" onclick="ftRenderPanel()" style="font-size:10px;padding:2px 6px">cancel</button>';
         const inp = document.getElementById('ft-nw-ov-inp');
@@ -10830,8 +10843,9 @@
       function ftCommitNwOv(which) {
         const inp = document.getElementById('ft-nw-ov-inp');
         if (!inp) return;
-        const v = parseFloat(inp.value);
-        if (!isNaN(v)) { if (which === 'today') ftNwTodayOv = v; else ftNwEoyOv = v; ftRecalc(); }
+        const raw = inp.value.replace(/,/g, '').trim();
+        const v = isMathExpr(raw) ? calcEval(raw) : parseFloat(raw);
+        if (v !== null && !isNaN(v)) { if (which === 'today') ftNwTodayOv = v; else ftNwEoyOv = v; ftRecalc(); }
         ftRenderPanel();
       }
 
@@ -11005,6 +11019,402 @@
           document.getElementById('mob-all')?.classList.remove('on');
         }
       }
+
+      // ══════════════════════════════════════════════════════════════
+      // CALCULATOR INPUT SYSTEM
+      // Shared across all numeric inputs in Moola.
+      // Inputs are opted in via data-calc-input="1" attribute, or via
+      // initCalcForContainer() which marks type="number" inputs within
+      // a container (used for dynamically rendered Life Plan panels).
+      // ══════════════════════════════════════════════════════════════
+
+      // ── Safe expression evaluator — no eval(), +−×÷ only ─────────
+      function calcEval(raw) {
+        const s = String(raw).replace(/,/g, '').trim();
+        if (!s) return null;
+        if (/[^0-9.\+\-\*\/]/.test(s)) return null;
+
+        // Tokenize into numbers and operators
+        const tokens = [];
+        let buf = '';
+        for (let i = 0; i < s.length; i++) {
+          const c = s[i];
+          if ('+-*/'.includes(c)) {
+            // Treat as unary (part of number) if buf is empty and no pending num yet
+            const prevTok = tokens[tokens.length - 1];
+            if (c === '-' && buf === '' && (!prevTok || prevTok.t === 'op')) {
+              buf += c;
+            } else if (buf !== '') {
+              tokens.push({ t: 'num', v: parseFloat(buf) });
+              buf = '';
+              tokens.push({ t: 'op', v: c });
+            } else {
+              return null; // operator with no left-hand operand
+            }
+          } else {
+            buf += c;
+          }
+        }
+        if (buf !== '') tokens.push({ t: 'num', v: parseFloat(buf) });
+
+        // Validate: no NaN numbers, must end with a number
+        for (const tok of tokens) {
+          if (tok.t === 'num' && isNaN(tok.v)) return null;
+        }
+        if (!tokens.length || tokens[tokens.length - 1].t !== 'num') return null;
+
+        // First pass: evaluate * and /
+        const arr = [...tokens];
+        for (let i = 1; i < arr.length; i++) {
+          if (arr[i].t === 'op' && (arr[i].v === '*' || arr[i].v === '/')) {
+            const a = arr[i - 1].v, b = arr[i + 1]?.v;
+            if (b === undefined) return null;
+            const r = arr[i].v === '*' ? a * b : a / b;
+            arr.splice(i - 1, 3, { t: 'num', v: r });
+            i--;
+          }
+        }
+
+        // Second pass: evaluate + and -
+        if (arr[0].t !== 'num') return null;
+        let result = arr[0].v;
+        for (let i = 1; i < arr.length; i += 2) {
+          const op = arr[i]?.v, val = arr[i + 1]?.v;
+          if (op === undefined || val === undefined || isNaN(val)) return null;
+          result = op === '+' ? result + val : result - val;
+        }
+
+        return isFinite(result) ? result : null;
+      }
+
+      // Returns true if string looks like a math expression (not just a plain number)
+      function isMathExpr(s) {
+        const clean = String(s).replace(/,/g, '').trim();
+        return /[+*/]/.test(clean) || /\d-/.test(clean);
+      }
+
+      // ── Error state helpers ───────────────────────────────────────
+      function _calcSetErr(el, msg) {
+        el.classList.add('inp-calc-err');
+        let tip = el._calcTip;
+        if (!tip) {
+          tip = document.createElement('span');
+          tip.className = 'calc-err-tip';
+          if (el.parentNode) el.parentNode.insertBefore(tip, el.nextSibling);
+          el._calcTip = tip;
+        }
+        tip.textContent = msg;
+      }
+
+      function _calcClearErr(el) {
+        el.classList.remove('inp-calc-err');
+        if (el._calcTip) { el._calcTip.remove(); el._calcTip = null; }
+      }
+
+      // ── Mark inputs in a container as calc-enabled ────────────────
+      // Called after dynamic panel renders (Life Plan settings panel).
+      // Marks type="number" inputs with data-calc-input.
+      // Text inputs that are already data-calc-input="1" keep their mark.
+      // Skips obvious non-numeric text fields (name, label, note, text).
+      function initCalcForContainer(root) {
+        if (!root) return;
+        root.querySelectorAll('input[type="number"]').forEach(el => {
+          if (el.readOnly || el.disabled || el.dataset.calcSkip) return;
+          el.dataset.calcInput = '1';
+        });
+      }
+
+      // ── Global delegation via capture-phase listeners ─────────────
+      // Tracks which inputs are actively mid-expression
+      const _calcActive = new WeakSet();
+
+      function _setupCalcDelegation() {
+        // focusin: change type=number → text so operators can be typed
+        document.addEventListener('focusin', function(e) {
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          if (el.type === 'number') {
+            el.type = 'text';
+            el.inputMode = 'decimal';
+            el.dataset.calcWasNumber = '1';
+          }
+        }, false);
+
+        // input (capture): suppress live oninput while typing an expression
+        document.addEventListener('input', function(e) {
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          if (e._calcSynthetic) return; // our own synthetic event — let it through
+
+          const raw = el.value.replace(/,/g, '').trim();
+          if (isMathExpr(raw)) {
+            e.stopImmediatePropagation(); // block inline oninput handlers
+            _calcActive.add(el);
+            _calcClearErr(el);
+          } else {
+            _calcActive.delete(el);
+            _calcClearErr(el);
+            // plain number — let inline handlers run normally (no stopPropagation)
+          }
+        }, true); // capture phase
+
+        // blur (capture): evaluate and commit expression, then let normal blur proceed
+        document.addEventListener('blur', function(e) {
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          if (!_calcActive.has(el)) {
+            // Not mid-expression — restore number type if needed
+            if (el.dataset.calcWasNumber) {
+              el.type = 'number';
+              delete el.dataset.calcWasNumber;
+            }
+            return;
+          }
+
+          const raw = el.value.replace(/,/g, '').trim();
+          const result = calcEval(raw);
+          if (result === null) {
+            _calcSetErr(el, 'Invalid expression');
+            // Keep as text so the expression stays visible for correction
+            return;
+          }
+
+          _calcActive.delete(el);
+          _calcClearErr(el);
+          el.value = String(result);
+
+          if (el.dataset.calcWasNumber) {
+            el.type = 'number';
+            delete el.dataset.calcWasNumber;
+          }
+
+          // Dispatch synthetic input + change so live handlers pick up the result
+          const inputEvt = new Event('input', { bubbles: true });
+          inputEvt._calcSynthetic = true;
+          el.dispatchEvent(inputEvt);
+          const changeEvt = new Event('change', { bubbles: true });
+          changeEvt._calcSynthetic = true;
+          el.dispatchEvent(changeEvt);
+        }, true); // capture phase
+
+        // keydown: Enter while mid-expression → evaluate immediately
+        document.addEventListener('keydown', function(e) {
+          if (e.key !== 'Enter') return;
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          if (!_calcActive.has(el)) return;
+
+          const raw = el.value.replace(/,/g, '').trim();
+          const result = calcEval(raw);
+          if (result === null) {
+            _calcSetErr(el, 'Invalid expression');
+            e.preventDefault();
+            return;
+          }
+
+          _calcActive.delete(el);
+          _calcClearErr(el);
+          el.value = String(result);
+
+          if (el.dataset.calcWasNumber) {
+            el.type = 'number';
+            delete el.dataset.calcWasNumber;
+          }
+
+          const inputEvt = new Event('input', { bubbles: true });
+          inputEvt._calcSynthetic = true;
+          el.dispatchEvent(inputEvt);
+          const changeEvt = new Event('change', { bubbles: true });
+          changeEvt._calcSynthetic = true;
+          el.dispatchEvent(changeEvt);
+
+          // Blur so blur-dependent handlers also run
+          el.blur();
+        }, false);
+      }
+
+      // ── Mobile calculator keypad ───────────────────────────────────
+      // Shown when a calc-enabled input is focused on a touch device
+      // and the user enters a math operator.
+      let _kpTarget = null; // the input currently linked to the keypad
+
+      function _buildCalcKeypad() {
+        if (document.getElementById('calc-kp-overlay')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'calc-kp-overlay';
+        overlay.className = 'calc-kp-overlay';
+        overlay.innerHTML = `
+          <div class="calc-kp-display">
+            <span class="calc-kp-expr" id="calc-kp-expr">0</span>
+            <span class="calc-kp-unit" id="calc-kp-unit"></span>
+            <button class="calc-kp-clear" id="calc-kp-clear" aria-label="Clear">✕</button>
+          </div>
+          <div class="calc-kp-grid">
+            <button class="calc-kp-btn" data-kp="7">7</button>
+            <button class="calc-kp-btn" data-kp="8">8</button>
+            <button class="calc-kp-btn" data-kp="9">9</button>
+            <button class="calc-kp-btn kp-op" data-kp="-">−</button>
+            <button class="calc-kp-btn" data-kp="4">4</button>
+            <button class="calc-kp-btn" data-kp="5">5</button>
+            <button class="calc-kp-btn" data-kp="6">6</button>
+            <button class="calc-kp-btn kp-op" data-kp="/">÷</button>
+            <button class="calc-kp-btn" data-kp="1">1</button>
+            <button class="calc-kp-btn" data-kp="2">2</button>
+            <button class="calc-kp-btn" data-kp="3">3</button>
+            <button class="calc-kp-btn kp-op" data-kp="*">×</button>
+            <button class="calc-kp-btn" data-kp="0">0</button>
+            <button class="calc-kp-btn" data-kp="00">00</button>
+            <button class="calc-kp-btn" data-kp=".">.</button>
+            <button class="calc-kp-btn kp-eq" data-kp="=">=</button>
+          </div>`;
+        document.body.appendChild(overlay);
+
+        // Clear button
+        overlay.querySelector('#calc-kp-clear').addEventListener('click', function() {
+          if (!_kpTarget) return;
+          _kpTarget.value = '';
+          _calcActive.delete(_kpTarget);
+          _calcClearErr(_kpTarget);
+          overlay.querySelector('#calc-kp-expr').textContent = '0';
+        });
+
+        // Key buttons
+        overlay.addEventListener('click', function(e) {
+          const btn = e.target.closest('[data-kp]');
+          if (!btn || !_kpTarget) return;
+          const key = btn.dataset.kp;
+
+          if (key === '=') {
+            _kpCommit();
+            return;
+          }
+
+          // Append character to the target input
+          let cur = _kpTarget.value;
+          // Prevent double-dot in current segment
+          if (key === '.') {
+            // Find the last number segment after the last operator
+            const lastSeg = cur.split(/[+\-*/]/).pop();
+            if (lastSeg.includes('.')) return;
+          }
+          _kpTarget.value = cur + key;
+          _calcActive.add(_kpTarget);
+          _calcClearErr(_kpTarget);
+          overlay.querySelector('#calc-kp-expr').textContent = _kpTarget.value || '0';
+        });
+      }
+
+      function _kpShow(el) {
+        const overlay = document.getElementById('calc-kp-overlay');
+        if (!overlay) return;
+        _kpTarget = el;
+
+        // Suppress native OS keyboard — works on Android/Chrome; iOS may still show
+        // the keyboard but it will be behind our overlay.
+        el.dataset.kpOrigInputmode = el.inputMode;
+        el.inputMode = 'none';
+
+        // Unit label: try to detect currency from nearby $ / ₩ symbol span
+        const sym = el.parentElement?.querySelector('span')?.textContent?.trim() || '';
+        const unitMap = { '$': 'USD', '₩': '원' };
+        overlay.querySelector('#calc-kp-unit').textContent = unitMap[sym] || '';
+        overlay.querySelector('#calc-kp-expr').textContent = el.value || '0';
+        overlay.classList.add('kp-open');
+      }
+
+      function _kpHide() {
+        const overlay = document.getElementById('calc-kp-overlay');
+        if (overlay) overlay.classList.remove('kp-open');
+        if (_kpTarget) {
+          // Restore original inputmode
+          if (_kpTarget.dataset.kpOrigInputmode !== undefined) {
+            _kpTarget.inputMode = _kpTarget.dataset.kpOrigInputmode;
+            delete _kpTarget.dataset.kpOrigInputmode;
+          }
+        }
+        _kpTarget = null;
+      }
+
+      function _kpCommit() {
+        if (!_kpTarget) { _kpHide(); return; }
+        const raw = _kpTarget.value.replace(/,/g, '').trim();
+        if (isMathExpr(raw)) {
+          const result = calcEval(raw);
+          if (result === null) {
+            _calcSetErr(_kpTarget, 'Invalid expression');
+            document.getElementById('calc-kp-overlay')
+              .querySelector('#calc-kp-expr').textContent = _kpTarget.value;
+            return;
+          }
+          _calcActive.delete(_kpTarget);
+          _calcClearErr(_kpTarget);
+          _kpTarget.value = String(result);
+          document.getElementById('calc-kp-overlay')
+            .querySelector('#calc-kp-expr').textContent = String(result);
+
+          if (_kpTarget.dataset.calcWasNumber) {
+            _kpTarget.type = 'number';
+            delete _kpTarget.dataset.calcWasNumber;
+          }
+
+          const inputEvt = new Event('input', { bubbles: true });
+          inputEvt._calcSynthetic = true;
+          _kpTarget.dispatchEvent(inputEvt);
+          const changeEvt = new Event('change', { bubbles: true });
+          changeEvt._calcSynthetic = true;
+          _kpTarget.dispatchEvent(changeEvt);
+
+          // Also run formatBalInput for balance text inputs
+          if (_kpTarget.oninput === null && typeof formatBalInput === 'function'
+              && (_kpTarget.id === 'a-bal' || _kpTarget.classList.contains('f-acct-value'))) {
+            formatBalInput(_kpTarget);
+          }
+        }
+        _kpHide();
+        _kpTarget && _kpTarget.blur();
+      }
+
+      function _setupMobileKeypad() {
+        if (!window.matchMedia('(pointer: coarse)').matches) return;
+        _buildCalcKeypad();
+
+        // Show keypad when a calc input is focused on touch
+        document.addEventListener('focusin', function(e) {
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          // On mobile, always show our keypad instead of the system keyboard
+          // Small delay to let focusin finish
+          setTimeout(() => _kpShow(el), 50);
+        }, false);
+
+        // Hide when focus leaves a calc input
+        document.addEventListener('focusout', function(e) {
+          const el = e.target;
+          if (!el.dataset || !el.dataset.calcInput) return;
+          // Small delay to check if focus moved to a keypad button
+          setTimeout(() => {
+            const overlay = document.getElementById('calc-kp-overlay');
+            if (!overlay) return;
+            const focused = document.activeElement;
+            if (overlay.contains(focused)) return; // focus moved into keypad — keep open
+            _kpHide();
+          }, 100);
+        }, false);
+
+        // Tapping outside keypad area closes it
+        document.addEventListener('touchstart', function(e) {
+          const overlay = document.getElementById('calc-kp-overlay');
+          if (!overlay || !overlay.classList.contains('kp-open')) return;
+          if (!overlay.contains(e.target) && _kpTarget && !_kpTarget.contains(e.target)) {
+            _kpCommit();
+          }
+        }, { passive: true });
+      }
+
+      // ── Bootstrap ─────────────────────────────────────────────────
+      _setupCalcDelegation();
+      _setupMobileKeypad();
     </script>
   </div>
 </body>
