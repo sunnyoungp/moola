@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260428b">
+  <link rel="stylesheet" href="styles.css?v=20261017a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const { createClient } = supabase;
@@ -382,6 +382,40 @@
         </div>
         -->
         <div id="ov-widgets"></div>
+      </div>
+
+      <!-- TRANSACTIONS -->
+      <div id="tab-transactions" class="tc">
+        <div class="page-hdr tx-page-hdr">
+          <div>
+            <div class="page-title">Transactions</div>
+            <div class="page-sub">Review spending, income, and what counts toward your plan</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn" id="tx-refresh-btn" onclick="refreshTransactions()" aria-label="Refresh transactions">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5V1.8l-1.8 1.8A6 6 0 1 0 14 8"/><path d="M13.5 1.8h-2.7"/></svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <div class="tx-toolbar" aria-label="Transaction filters">
+          <label class="tx-search-wrap">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+            <input id="tx-search" type="search" placeholder="Search merchant, amount, or category" oninput="setTransactionFilter('search',this.value)">
+          </label>
+          <select id="tx-account-filter" class="tx-filter" onchange="setTransactionFilter('account',this.value)" aria-label="Filter by account"></select>
+          <select id="tx-category-filter" class="tx-filter" onchange="setTransactionFilter('category',this.value)" aria-label="Filter by category"></select>
+          <select id="tx-date-filter" class="tx-filter" onchange="setTransactionFilter('dateRange',this.value)" aria-label="Filter by date range">
+            <option value="all">All dates</option>
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="month">This month</option>
+          </select>
+        </div>
+        <div id="tx-summary" class="tx-summary"></div>
+        <div id="tx-list" class="tx-list"></div>
+        <div id="tx-detail-backdrop" class="tx-detail-backdrop" onclick="closeTransactionDetail()"></div>
+        <aside id="tx-detail" class="tx-detail" aria-hidden="true" aria-label="Transaction detail"></aside>
       </div>
 
       <!-- ACCOUNTS -->
@@ -2311,6 +2345,7 @@
         return {
           tabs: [
             { id: 'overview', name: 'Overview', icon: 'grid', archived: false },
+            { id: 'transactions', name: 'Transactions', icon: 'dollar', archived: false },
             { id: 'accounts', name: 'Assets', icon: 'briefcase', archived: false },
             { id: 'portfolio', name: 'Portfolio', icon: 'chart', archived: false },
             { id: 'rebalance', name: 'Rebalance', icon: 'scale', archived: false },
@@ -2323,6 +2358,8 @@
             { id: 'settings', name: 'Settings', icon: 'settings', archived: false }
           ],
           accounts: [],
+          transactions: [],
+          transactionBudgets: { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 },
           funds: [],
           goals: [],
           snapshots: [],
@@ -2382,6 +2419,24 @@
           { id: 6, name: '국민은행 입출금', type: 'checking', balance: 3200000, currency: 'KRW' },
           { id: 7, name: '카카오뱅크 적금', type: 'savings', balance: 8500000, currency: 'KRW' },
           { id: 8, name: '청약저축', type: 'subscription', balance: 5000000, currency: 'KRW' }
+        ];
+        const txDate = daysAgo => {
+          const date = new Date();
+          date.setHours(12, 0, 0, 0);
+          date.setDate(date.getDate() - daysAgo);
+          return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        };
+        d.transactions = [
+          { id: 'tx-1001', merchant: 'Whole Foods Market', amount: 118.75, date: txDate(0), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1002', merchant: 'Acme Studio Payroll', amount: 4280.00, date: txDate(0), account: 'Chase Checking', category: 'Income', direction: 'income', notes: 'October payroll', myShare: null, ignored: false, isRecurring: true, recurringId: 'payroll-acme' },
+          { id: 'tx-1003', merchant: 'Blue Bottle Coffee', amount: 7.85, date: txDate(0), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1004', merchant: 'Uber', amount: 24.16, date: txDate(1), account: 'Chase Checking', category: 'Transport', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1005', merchant: 'Netflix', amount: 22.99, date: txDate(1), account: 'Chase Checking', category: 'Entertainment', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'netflix-monthly' },
+          { id: 'tx-1006', merchant: 'The Progress', amount: 286.40, date: txDate(2), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: 'Birthday dinner', myShare: 64, ignored: false, isRecurring: false },
+          { id: 'tx-1007', merchant: 'Amazon', amount: 43.29, date: txDate(3), account: 'Chase Checking', category: 'Shopping', direction: 'expense', notes: '', myShare: null, ignored: true, isRecurring: false },
+          { id: 'tx-1008', merchant: 'PG&E', amount: 91.62, date: txDate(5), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'pge-monthly' },
+          { id: 'tx-1009', merchant: 'Trader Joe’s', amount: 76.18, date: txDate(8), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1010', merchant: 'Interest payment', amount: 51.42, date: txDate(12), account: 'Marcus HYSA', category: 'Income', direction: 'income', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'marcus-interest' }
         ];
         // --- Funds (portfolio) — accounts map: { acctId: { shares, value } } ---
         d.funds = [
@@ -2560,6 +2615,14 @@
         if (!S.gainSnapshots) S.gainSnapshots = [];
         if (!S.gainContribs) S.gainContribs = [];
         if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
+        if (!S.transactions) S.transactions = [];
+        if (!S.transactionBudgets) S.transactionBudgets = { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 };
+        S.transactions = S.transactions.map(t => ({
+          ...t,
+          myShare: t.myShare === undefined ? null : t.myShare,
+          ignored: t.ignored === true,
+          isRecurring: t.isRecurring === true
+        }));
         if (!S.settings.rank) S.settings.rank = { country: S.settings.currency === 'KRW' ? 'KR' : 'US', age: null, debt: 0 };
         migrateGainSnapshots();
 
@@ -3074,7 +3137,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, transactions: renderTransactions, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -3447,6 +3510,271 @@
 
       function openWidgets() { const labs = { metrics: 'Summary metrics', history: 'NW history chart', breakdown: 'Asset breakdown', goals: 'Goal progress bars' }; document.getElementById('wid-list').innerHTML = Object.entries(S.widgetVis).map(([k, v]) => `<div class="fb"><span style="font-size:13px">${labs[k]}</span><button onclick="tVis('${k}',this)" style="padding:4px 12px;border-radius:20px;border:1px solid ${v ? 'var(--fm)' : 'var(--border-strong)'};background:${v ? 'var(--fll)' : 'var(--surface)'};color:${v ? 'var(--f)' : 'var(--ink3)'};font-size:11px;font-weight:500;cursor:pointer">${v ? 'Visible' : 'Hidden'}</button></div>`).join(''); openModal('m-widgets'); }
       function tVis(k, btn) { S.widgetVis[k] = !S.widgetVis[k]; btn.style.background = S.widgetVis[k] ? 'var(--fll)' : 'var(--surface)'; btn.style.borderColor = S.widgetVis[k] ? 'var(--fm)' : 'var(--border-strong)'; btn.style.color = S.widgetVis[k] ? 'var(--f)' : 'var(--ink3)'; btn.textContent = S.widgetVis[k] ? 'Visible' : 'Hidden'; ps(S); renderOverview(); }
+
+      // ══════════════════════════════════════════════════════════════
+      // TRANSACTIONS
+      const STANDARD_TRANSACTION_CATEGORIES = [
+        'Dining', 'Groceries', 'Transport', 'Shopping', 'Entertainment',
+        'Bills & Utilities', 'Housing', 'Health', 'Travel', 'Education',
+        'Personal Care', 'Gifts & Donations', 'Income', 'Transfer', 'Other'
+      ];
+      let txFilters = { search: '', account: 'all', category: 'all', dateRange: 'all' };
+      let activeTransactionId = null;
+
+      // This is the single source of truth for spending, budget, and recurring totals.
+      function effectiveAmount(transaction) {
+        return transaction.ignored ? 0 : (transaction.myShare ?? transaction.amount);
+      }
+
+      function txEsc(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, char => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        })[char]);
+      }
+
+      function txLocalDate(dateString) {
+        const date = new Date(String(dateString) + 'T12:00:00');
+        return Number.isNaN(date.getTime()) ? new Date(0) : date;
+      }
+
+      function txDateKey(date) {
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      }
+
+      function txDateLabel(dateString) {
+        const date = txLocalDate(dateString);
+        const today = new Date();
+        today.setHours(12, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (txDateKey(date) === txDateKey(today)) return 'Today';
+        if (txDateKey(date) === txDateKey(yesterday)) return 'Yesterday';
+        return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      }
+
+      function transactionSpendingTotal(transactions = S.transactions) {
+        return transactions
+          .filter(t => t.direction !== 'income' && t.category !== 'Transfer')
+          .reduce((sum, t) => sum + effectiveAmount(t), 0);
+      }
+
+      function currentMonthTransactions() {
+        const now = new Date();
+        return S.transactions.filter(t => {
+          const date = txLocalDate(t.date);
+          return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+        });
+      }
+
+      function recurringSpendingTotal(transactions = currentMonthTransactions()) {
+        return transactions
+          .filter(t => t.isRecurring && t.direction !== 'income' && t.category !== 'Transfer')
+          .reduce((sum, t) => sum + effectiveAmount(t), 0);
+      }
+
+      function setTransactionFilter(key, value) {
+        txFilters[key] = value;
+        renderTransactions();
+      }
+
+      function filteredTransactions() {
+        const search = txFilters.search.trim().toLowerCase();
+        const normalizedSearchAmount = search.replace(/[^0-9.-]/g, '');
+        const now = new Date();
+        now.setHours(12, 0, 0, 0);
+        return S.transactions.filter(transaction => {
+          if (txFilters.account !== 'all' && transaction.account !== txFilters.account) return false;
+          if (txFilters.category !== 'all' && transaction.category !== txFilters.category) return false;
+          const date = txLocalDate(transaction.date);
+          if (txFilters.dateRange === 'month' && (date.getFullYear() !== now.getFullYear() || date.getMonth() !== now.getMonth())) return false;
+          if (txFilters.dateRange === '7' || txFilters.dateRange === '30') {
+            const cutoff = new Date(now);
+            cutoff.setDate(cutoff.getDate() - (Number(txFilters.dateRange) - 1));
+            if (date < cutoff || date > now) return false;
+          }
+          if (!search) return true;
+          const haystack = [transaction.merchant, transaction.category, transaction.account, transaction.amount, effectiveAmount(transaction)]
+            .join(' ').toLowerCase();
+          const amountMatch = normalizedSearchAmount && [transaction.amount, effectiveAmount(transaction)]
+            .some(amount => String(amount).includes(normalizedSearchAmount));
+          return haystack.includes(search) || amountMatch;
+        }).sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
+      }
+
+      function renderTransactionFilters() {
+        const accountEl = document.getElementById('tx-account-filter');
+        const categoryEl = document.getElementById('tx-category-filter');
+        const searchEl = document.getElementById('tx-search');
+        const dateEl = document.getElementById('tx-date-filter');
+        if (!accountEl || !categoryEl) return;
+        const accounts = [...new Set(S.transactions.map(t => t.account).filter(Boolean))].sort();
+        const categories = [...new Set([...STANDARD_TRANSACTION_CATEGORIES, ...S.transactions.map(t => t.category).filter(Boolean)])].sort();
+        accountEl.innerHTML = '<option value="all">All accounts</option>' + accounts.map(account => '<option value="' + txEsc(account) + '">' + txEsc(account) + '</option>').join('');
+        categoryEl.innerHTML = '<option value="all">All categories</option>' + categories.map(category => '<option value="' + txEsc(category) + '">' + txEsc(category) + '</option>').join('');
+        accountEl.value = txFilters.account;
+        categoryEl.value = txFilters.category;
+        if (searchEl && searchEl.value !== txFilters.search) searchEl.value = txFilters.search;
+        if (dateEl) dateEl.value = txFilters.dateRange;
+      }
+
+      function renderTransactionSummary() {
+        const el = document.getElementById('tx-summary');
+        if (!el) return;
+        const month = currentMonthTransactions();
+        const spending = transactionSpendingTotal(month);
+        const income = month.filter(t => t.direction === 'income').reduce((sum, t) => sum + effectiveAmount(t), 0);
+        const budget = Object.values(S.transactionBudgets || {}).reduce((sum, amount) => sum + Number(amount || 0), 0);
+        const remaining = budget - spending;
+        el.innerHTML = `
+          <div class="tx-stat"><span>Spending this month</span><strong id="tx-spending-total">${fmt(spending, 2)}</strong><small>Uses your share only</small></div>
+          <div class="tx-stat"><span>Budget remaining</span><strong id="tx-budget-total" class="${remaining < 0 ? 'negative' : ''}">${fmt(remaining, 2)}</strong><small>${fmt(spending, 0)} of ${fmt(budget, 0)}</small></div>
+          <div class="tx-stat"><span>Income this month</span><strong class="income">+${fmt(income, 2)}</strong><small>After ignored items</small></div>
+          <div class="tx-stat"><span>Recurring this month</span><strong>${fmt(recurringSpendingTotal(month), 2)}</strong><small>Effective recurring spend</small></div>`;
+      }
+
+      function transactionRowHtml(transaction) {
+        const initial = txEsc((transaction.merchant || '?').trim().charAt(0).toUpperCase());
+        const hasShare = transaction.myShare !== null && transaction.myShare !== undefined;
+        const amountClass = transaction.direction === 'income' ? 'income' : 'expense';
+        const displayAmount = (transaction.direction === 'income' ? '+' : '−') + fmt(transaction.amount, 2);
+        const effectiveLabel = hasShare && !transaction.ignored ? '<span class="tx-share-tag">your share ' + fmt(transaction.myShare, 2) + '</span>' : '';
+        return `<div class="tx-row ${transaction.ignored ? 'ignored' : ''}" role="button" tabindex="0" onclick="openTransactionDetail('${txEsc(transaction.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTransactionDetail('${txEsc(transaction.id)}')}">
+          <div class="tx-merchant-icon">${initial}</div>
+          <div class="tx-row-main">
+            <div class="tx-merchant-line"><span class="tx-merchant-name">${txEsc(transaction.merchant)}</span>${transaction.isRecurring ? '<span class="tx-recurring-tag">recurring</span>' : ''}${transaction.ignored ? '<span class="tx-ignored-tag">ignored</span>' : ''}</div>
+            <div class="tx-meta"><span>${txEsc(transaction.category)}</span><span>${txEsc(transaction.account)}</span></div>
+          </div>
+          <button class="tx-adjust-shortcut" onclick="event.stopPropagation();openTransactionDetail('${txEsc(transaction.id)}',true)">Adjust</button>
+          <div class="tx-row-amount ${amountClass}"><strong>${displayAmount}</strong>${effectiveLabel}</div>
+        </div>`;
+      }
+
+      function renderTransactions() {
+        if (!S?.transactions) return;
+        renderTransactionFilters();
+        renderTransactionSummary();
+        const el = document.getElementById('tx-list');
+        if (!el) return;
+        const transactions = filteredTransactions();
+        if (!transactions.length) {
+          el.innerHTML = '<div class="tx-empty"><strong>No transactions found</strong><span>Try clearing a filter or refreshing the list.</span></div>';
+        } else {
+          const groups = [];
+          transactions.forEach(transaction => {
+            const last = groups[groups.length - 1];
+            if (!last || last.date !== transaction.date) groups.push({ date: transaction.date, transactions: [transaction] });
+            else last.transactions.push(transaction);
+          });
+          el.innerHTML = groups.map(group => `<section class="tx-date-group"><div class="tx-date-label">${txDateLabel(group.date)}</div><div class="tx-group-card">${group.transactions.map(transactionRowHtml).join('')}</div></section>`).join('');
+        }
+        if (activeTransactionId) renderTransactionDetail();
+      }
+
+      function openTransactionDetail(id, focusAdjust = false) {
+        activeTransactionId = id;
+        renderTransactionDetail();
+        document.getElementById('tx-detail-backdrop')?.classList.add('open');
+        const detail = document.getElementById('tx-detail');
+        detail?.classList.add('open');
+        detail?.setAttribute('aria-hidden', 'false');
+        if (focusAdjust) setTimeout(() => document.getElementById('tx-share-input')?.focus(), 120);
+      }
+
+      function closeTransactionDetail() {
+        activeTransactionId = null;
+        document.getElementById('tx-detail-backdrop')?.classList.remove('open');
+        const detail = document.getElementById('tx-detail');
+        detail?.classList.remove('open');
+        detail?.setAttribute('aria-hidden', 'true');
+      }
+
+      function renderTransactionDetail() {
+        const el = document.getElementById('tx-detail');
+        const transaction = S.transactions.find(t => String(t.id) === String(activeTransactionId));
+        if (!el || !transaction) return;
+        const categories = [...new Set([...STANDARD_TRANSACTION_CATEGORIES, transaction.category])].sort();
+        const shareValue = transaction.myShare ?? transaction.amount;
+        el.innerHTML = `<div class="tx-detail-head"><div><span class="tx-detail-kicker">Transaction</span><h2>${txEsc(transaction.merchant)}</h2></div><button class="tx-detail-close" onclick="closeTransactionDetail()" aria-label="Close transaction detail">×</button></div>
+          <div class="tx-detail-amount ${transaction.direction === 'income' ? 'income' : ''}">${transaction.direction === 'income' ? '+' : '−'}${fmt(transaction.amount, 2)}</div>
+          <div class="tx-detail-facts">
+            <div><span>Date</span><strong>${txLocalDate(transaction.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong></div>
+            <div><span>Account</span><strong>${txEsc(transaction.account)}</strong></div>
+            <div><span>Status</span><strong>${transaction.isRecurring ? '<span class="tx-recurring-tag">recurring</span>' : 'One-time'}</strong></div>
+          </div>
+          <label class="tx-field"><span>Category</span><select onchange="updateTransaction('${txEsc(transaction.id)}','category',this.value)">${categories.map(category => '<option value="' + txEsc(category) + '"' + (category === transaction.category ? ' selected' : '') + '>' + txEsc(category) + '</option>').join('')}</select></label>
+          <label class="tx-field"><span>Notes</span><textarea rows="3" placeholder="Add a note" onchange="updateTransaction('${txEsc(transaction.id)}','notes',this.value)">${txEsc(transaction.notes || '')}</textarea></label>
+          <div class="tx-adjust-panel">
+            <div class="tx-adjust-title"><div><strong>Adjust</strong><span>Choose what counts everywhere else</span></div>${transaction.ignored ? '<span class="tx-ignored-tag">ignored</span>' : transaction.myShare !== null ? '<span class="tx-share-tag">share set</span>' : ''}</div>
+            <div class="tx-adjust-option">
+              <div class="tx-adjust-copy"><strong>I fronted this</strong><span>The full ${fmt(transaction.amount, 2)} stays here. Spending and Budgets count only your share.</span></div>
+              <div class="tx-share-control"><span>$</span><input id="tx-share-input" type="number" min="0" max="${transaction.amount}" step="0.01" value="${shareValue}" aria-label="My share amount"><button onclick="saveTransactionShare('${txEsc(transaction.id)}')">Save</button></div>
+              ${transaction.myShare !== null ? '<button class="tx-reset-share" onclick="clearTransactionShare(\'' + txEsc(transaction.id) + '\')">Count the full amount instead</button>' : ''}
+            </div>
+            <label class="tx-ignore-option"><div class="tx-adjust-copy"><strong>Ignore everywhere</strong><span>Exclude from Spending, Budgets, trends, and recurring totals.</span></div><input type="checkbox" ${transaction.ignored ? 'checked' : ''} onchange="updateTransaction('${txEsc(transaction.id)}','ignored',this.checked)"><span class="tx-switch" aria-hidden="true"></span></label>
+          </div>
+          <div class="tx-effective-note">Effective amount <strong>${fmt(effectiveAmount(transaction), 2)}</strong></div>`;
+      }
+
+      function updateTransaction(id, field, value) {
+        const transaction = S.transactions.find(t => String(t.id) === String(id));
+        if (!transaction) return;
+        transaction[field] = value;
+        ps(S);
+        renderTransactions();
+      }
+
+      function saveTransactionShare(id) {
+        const transaction = S.transactions.find(t => String(t.id) === String(id));
+        const input = document.getElementById('tx-share-input');
+        if (!transaction || !input) return;
+        const amount = Number(input.value);
+        if (!Number.isFinite(amount) || amount < 0 || amount > Number(transaction.amount)) {
+          input.classList.add('invalid');
+          input.focus();
+          return;
+        }
+        transaction.myShare = Math.round(amount * 100) / 100;
+        transaction.ignored = false;
+        ps(S);
+        renderTransactions();
+      }
+
+      function clearTransactionShare(id) {
+        const transaction = S.transactions.find(t => String(t.id) === String(id));
+        if (!transaction) return;
+        transaction.myShare = null;
+        ps(S);
+        renderTransactions();
+      }
+
+      async function refreshTransactions() {
+        const button = document.getElementById('tx-refresh-btn');
+        if (button) { button.disabled = true; button.classList.add('loading'); }
+        try {
+          const incoming = isDemoMode ? mkDemo().transactions : (await ls())?.transactions;
+          if (Array.isArray(incoming)) {
+            const localById = new Map(S.transactions.map(transaction => [String(transaction.id), transaction]));
+            const refreshedIds = new Set(incoming.map(transaction => String(transaction.id)));
+            S.transactions = incoming.map(transaction => {
+              const local = localById.get(String(transaction.id));
+              return {
+                ...transaction,
+                category: local?.category ?? transaction.category,
+                notes: local?.notes ?? transaction.notes ?? '',
+                myShare: local && Object.prototype.hasOwnProperty.call(local, 'myShare') ? local.myShare : (transaction.myShare ?? null),
+                ignored: local?.ignored ?? transaction.ignored ?? false
+              };
+            });
+            S.transactions.push(...[...localById.values()].filter(transaction => !refreshedIds.has(String(transaction.id))));
+            ps(S);
+          }
+          renderTransactions();
+        } catch (error) {
+          console.error('[moola] transaction refresh failed', error);
+        } finally {
+          if (button) { button.disabled = false; button.classList.remove('loading'); }
+        }
+      }
 
       // ══════════════════════════════════════════════════════════════
       // ACCOUNTS
