@@ -9018,3 +9018,135 @@ body.sb-collapsed .priv-section {
 .rec-cancel-btn {
   color: var(--rose, #e5484d);
 }
+
+/* ── FEAT-002: view sub-tabs, calendar grid, breakdown panel ── */
+/* View sub-tabs (segmented control, mirrors .sp-seg) */
+.rec-views {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  gap: 2px;
+}
+.rec-view-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink3);
+  font: 500 12.5px/1 var(--sans);
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+  white-space: nowrap;
+}
+.rec-view-btn:hover {
+  color: var(--ink2);
+}
+.rec-view-btn.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--sh1);
+}
+
+/* Right-panel breakdown chart */
+.rec-panel-sub {
+  font-size: 12px;
+  color: var(--ink3);
+  margin-bottom: 10px;
+}
+.rec-bar-wrap {
+  position: relative;
+  height: 220px;
+}
+.rec-bar-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink3);
+}
+.rec-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rec-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ink3);
+  display: inline-block;
+}
+
+/* Calendar grid (v1 current-month) */
+.rec-cal {
+  padding: 4px 2px 8px;
+}
+.rec-cal-hdr {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.rec-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.rec-cal-dow {
+  margin-bottom: 4px;
+}
+.rec-cal-dowlbl {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink3);
+  padding: 4px 0;
+}
+.rec-cal-cell {
+  position: relative;
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rec-cal-empty {
+  border: none;
+  background: transparent;
+}
+.rec-cal-num {
+  font-size: 11px;
+  color: var(--ink3);
+}
+.rec-cal-today {
+  border-color: var(--border-focus, var(--ink));
+}
+.rec-cal-has {
+  background: var(--s2);
+}
+.rec-cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--th-chart1, var(--ink));
+  position: absolute;
+  top: 7px;
+  right: 7px;
+}
+.rec-cal-amt {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--mono);
+  margin-top: auto;
+}
+.rec-cal-note {
+  font-size: 12px;
+  color: var(--ink3);
+  margin-top: 14px;
+}

@@ -609,6 +609,9 @@
               oninput="recOnSearch(this.value)" />
             <select class="rec-sort" id="rec-sort" onchange="recOnSort(this.value)">
               <option value="type">Sort by type</option>
+              <option value="amount">Sort by amount</option>
+              <option value="date">Sort by next date</option>
+              <option value="name">Sort by name</option>
             </select>
           </div>
         </div>
@@ -620,7 +623,7 @@
             <div id="recurring-left"></div>
           </div>
 
-          <!-- RIGHT: monthly breakdown panel (chart wired in FEAT-002) -->
+          <!-- RIGHT: monthly breakdown panel (6-month two-series bar chart) -->
           <div class="card rec-panel-card">
             <div class="sec">Monthly breakdown</div>
             <div id="recurring-right"></div>
@@ -3134,6 +3137,7 @@
           lifeInc: 'life',
           spBar: 'spending',
           spDonut: null,       // doughnut — no y-axis
+          recBreakdown: 'recurring',
         };
         Object.entries(allCharts).forEach(([key, tabId]) => {
           const ch = CH[key];
@@ -5081,7 +5085,8 @@
         sort: 'type',         // 'type' (grouped) — more options added in FEAT-002
         showInactive: false,  // 'Show inactive' toggle
         ccExpanded: false,    // Credit Card Payments group collapsed by default
-        detailKey: null       // normalized merchant currently open in the detail drawer
+        detailKey: null,      // normalized merchant currently open in the detail drawer
+        calMonth: null        // reserved for future calendar month navigation (v1 = current month)
       };
 
       const REC_SUBSCRIPTION_BRANDS = [
@@ -5238,6 +5243,50 @@
       function recToggleCreditCards() { recState.ccExpanded = !recState.ccExpanded; renderRecurring(); }
       function recOnSearch(q) { recState.search = String(q || ''); renderRecurring(); }
       function recOnSort(v) { recState.sort = v; renderRecurring(); }
+      function recSetView(v) {
+        if (v !== 'upcoming' && v !== 'all' && v !== 'calendar') return;
+        recState.view = v;
+        recState.calMonth = null; // reset any calendar navigation back to current month
+        renderRecurring();
+      }
+
+      // The three header view sub-tabs (segmented control). Rendered into #rec-views.
+      function recRenderViewTabs() {
+        const el = document.getElementById('rec-views');
+        if (!el) return;
+        const views = [
+          { id: 'upcoming', label: 'Upcoming' },
+          { id: 'all', label: 'All Recurring' },
+          { id: 'calendar', label: 'Calendar' }
+        ];
+        el.innerHTML = views.map(v =>
+          `<button class="rec-view-btn${recState.view === v.id ? ' on' : ''}" onclick="recSetView('${v.id}')">${v.label}</button>`
+        ).join('');
+      }
+
+      // Apply the active sort to a flat series array (mutates/returns a copy).
+      function recApplySort(arr) {
+        const list = [...arr];
+        switch (recState.sort) {
+          case 'amount':
+            list.sort((a, b) => recYearly(b) - recYearly(a));
+            break;
+          case 'date':
+            list.sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate));
+            break;
+          case 'name':
+            list.sort((a, b) => (a.merchant || '').localeCompare(b.merchant || ''));
+            break;
+          default: // 'type' → by group order, then soonest next-expected
+            list.sort((a, b) => {
+              const ga = REC_GROUP_ORDER.indexOf(a.group);
+              const gb = REC_GROUP_ORDER.indexOf(b.group);
+              if (ga !== gb) return ga - gb;
+              return txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate);
+            });
+        }
+        return list;
+      }
 
       // Relative due label from nextExpectedDate vs today.
       function recRelativeDue(nextExpectedDate) {
@@ -5304,19 +5353,54 @@
         if (document.getElementById('tab-recurring')?.classList.contains('on')) renderRecurring();
       }
 
-      // Grouped list render (the core FEAT-001 view = the 'All Recurring' view).
+      // Apply the current search query to a series array (merchant name, across groups).
+      function recFilterSearch(series) {
+        const q = recState.search.trim().toLowerCase();
+        if (!q) return series;
+        return series.filter(s =>
+          (s.merchant || '').toLowerCase().includes(q) || (s.normalizedMerchant || '').includes(q));
+      }
+
+      // Top-level dispatcher. Renders the active view sub-tab into #recurring-left
+      // and the 6-month breakdown chart into the right panel.
       function renderRecurring() {
         if (!S?.transactions) return;
-        const hide = isTabHidden('recurring');
         const leftEl = document.getElementById('recurring-left');
         if (!leftEl) return;
+        const hide = isTabHidden('recurring');
 
-        let series = recDetectSeries();
-        // Search filter (applies across all groups).
-        const q = recState.search.trim().toLowerCase();
-        if (q) series = series.filter(s =>
-          (s.merchant || '').toLowerCase().includes(q) || (s.normalizedMerchant || '').includes(q));
+        recRenderViewTabs();
 
+        // Detect + search-filter once; every view shares the filtered set.
+        const series = recFilterSearch(recDetectSeries());
+
+        if (recState.view === 'upcoming') {
+          leftEl.innerHTML = recRenderUpcomingView(series, hide);
+        } else if (recState.view === 'calendar') {
+          leftEl.innerHTML = recRenderCalendarView(series, hide);
+        } else {
+          leftEl.innerHTML = recRenderGroupedView(series, hide);
+        }
+
+        // Right panel: 6-month two-series breakdown chart.
+        recRenderBreakdown();
+
+        // If a detail drawer is open, refresh its contents.
+        if (recState.detailKey) renderRecurringDetail();
+      }
+
+      // Shared 'Show inactive' footer toggle.
+      function recShowInactiveHtml() {
+        return `<div class="rec-showinactive">
+          <label class="rec-toggle">
+            <input type="checkbox" ${recState.showInactive ? 'checked' : ''} onchange="recToggleShowInactive()">
+            <span>Show inactive</span>
+          </label>
+        </div>`;
+      }
+
+      // ── ALL RECURRING view = the grouped list (four groups + yearly totals). ──
+      function recRenderGroupedView(series, hide) {
         // Group the series.
         const byGroup = {};
         REC_GROUP_ORDER.forEach(g => byGroup[g] = []);
@@ -5335,8 +5419,11 @@
           const isCC = groupName === 'CREDIT CARD PAYMENTS';
           const collapsed = isCC && !recState.ccExpanded;
 
-          // Sort rows by soonest next-expected within the group.
-          visible.sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate));
+          // Sort rows within the group. 'type' (default) keeps soonest-next ordering;
+          // the other options reuse recApplySort so sorting is consistent everywhere.
+          const rows = recState.sort === 'type'
+            ? [...visible].sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate))
+            : recApplySort(visible);
 
           html += `<div class="rec-group${collapsed ? ' rec-collapsed' : ''}">
             <div class="rec-group-hdr" ${isCC ? `onclick="recToggleCreditCards()"` : ''}>
@@ -5347,7 +5434,7 @@
               <div class="rec-group-total">You spend ${hide ? '—' : fmtUSD(yearly, 0)}/yearly</div>
             </div>`;
           if (!collapsed) {
-            html += `<div class="rec-group-rows">${visible.map(s => recRowHtml(s, hide)).join('')}</div>`;
+            html += `<div class="rec-group-rows">${rows.map(s => recRowHtml(s, hide)).join('')}</div>`;
           }
           html += `</div>`;
         });
@@ -5355,26 +5442,176 @@
         if (!html) {
           html = `<div class="rec-empty">No recurring charges detected yet. As transactions repeat on a regular cadence, they will appear here.</div>`;
         }
+        html += recShowInactiveHtml();
+        return html;
+      }
 
-        // 'Show inactive' toggle at the bottom.
-        const anyInactive = series.some(s => !s.isActive);
-        html += `<div class="rec-showinactive">
-          <label class="rec-toggle">
-            <input type="checkbox" ${recState.showInactive ? 'checked' : ''} ${anyInactive ? '' : ''} onchange="recToggleShowInactive()">
-            <span>Show inactive</span>
-          </label>
-        </div>`;
+      // ── UPCOMING view = a single flat list of ACTIVE series, sorted by ──
+      // nextExpectedDate ASCENDING (soonest first). Reuses the FEAT-001 row renderer.
+      function recRenderUpcomingView(series, hide) {
+        const active = series.filter(s => s.isActive);
+        active.sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate));
+        let html = '';
+        if (!active.length) {
+          html = `<div class="rec-empty">No upcoming recurring charges. ${recState.search.trim() ? 'Try a different search.' : 'As transactions repeat on a regular cadence, they will appear here.'}</div>`;
+        } else {
+          html = `<div class="rec-group"><div class="rec-group-rows">${active.map(s => recRowHtml(s, hide)).join('')}</div></div>`;
+        }
+        // Upcoming only ever shows active series; omit the Show-inactive toggle here.
+        return html;
+      }
 
-        leftEl.innerHTML = html;
+      // ── CALENDAR view (v1) = a simple current-month grid with a dot on each ──
+      // day that has an expected charge. Scope: current month only, no month
+      // navigation; projects each active series' nextExpectedDate plus (for Monthly
+      // series) same-day-of-month occurrences that fall inside the displayed month.
+      function recRenderCalendarView(series, hide) {
+        const today = new Date(); today.setHours(12, 0, 0, 0);
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const first = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const startDow = first.getDay(); // 0=Sun
 
-        // Right panel placeholder (6-month breakdown chart wired in FEAT-002).
-        const rightEl = document.getElementById('recurring-right');
-        if (rightEl && !rightEl.dataset.feat002) {
-          rightEl.innerHTML = `<div class="rec-panel-ph">Subscriptions vs Bills &amp; Utilities — 6-month chart coming soon.</div>`;
+        // Map day-of-month → array of series expected that day.
+        const byDay = {};
+        const active = series.filter(s => s.isActive);
+        active.forEach(s => {
+          const next = txLocalDate(s.nextExpectedDate);
+          // Direct next-expected date if it lands in this month.
+          if (next.getFullYear() === year && next.getMonth() === month) {
+            (byDay[next.getDate()] = byDay[next.getDate()] || []).push(s);
+          }
+          // For Monthly series, also plot the same day-of-month within this month
+          // (so a charge already seen earlier this month still shows a marker).
+          if (s.frequency === 'Monthly') {
+            const dom = next.getDate();
+            if (dom <= daysInMonth) {
+              const arr = (byDay[dom] = byDay[dom] || []);
+              if (!arr.includes(s)) arr.push(s);
+            }
+          }
+        });
+
+        const monthLabel = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const dowLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        let cells = '';
+        // Leading blanks.
+        for (let i = 0; i < startDow; i++) cells += `<div class="rec-cal-cell rec-cal-empty"></div>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const hits = byDay[d] || [];
+          const isToday = d === today.getDate();
+          const total = hits.reduce((sum, s) => sum + s.averageAmount, 0);
+          const tip = hits.length
+            ? hits.map(s => `${s.merchant}: ${hide ? '—' : fmtUSD(s.averageAmount, 2)}`).join('\n')
+            : '';
+          cells += `<div class="rec-cal-cell${isToday ? ' rec-cal-today' : ''}${hits.length ? ' rec-cal-has' : ''}"${tip ? ` title="${recEsc(tip)}"` : ''}>
+            <span class="rec-cal-num">${d}</span>
+            ${hits.length ? `<span class="rec-cal-dot" aria-label="${hits.length} expected charge${hits.length === 1 ? '' : 's'}"></span>` : ''}
+            ${hits.length ? `<span class="rec-cal-amt">${hide ? '—' : fmtUSD(total, 0)}</span>` : ''}
+          </div>`;
         }
 
-        // If a detail drawer is open, refresh its contents.
-        if (recState.detailKey) renderRecurringDetail();
+        return `<div class="rec-cal">
+          <div class="rec-cal-hdr">${monthLabel}</div>
+          <div class="rec-cal-grid rec-cal-dow">${dowLabels.map(l => `<div class="rec-cal-dowlbl">${l}</div>`).join('')}</div>
+          <div class="rec-cal-grid">${cells}</div>
+          <div class="rec-cal-note">Expected charges for active recurring series this month.</div>
+        </div>`;
+      }
+
+      // ── RIGHT PANEL: 6-month two-series bar chart (Subscriptions vs Bills & Utilities). ──
+      // Mirrors renderSpendingBars(): build 6 months newest→oldest then reverse, sum
+      // ACTUAL monthly charges via effectiveAmount scoped per month, classifying each
+      // transaction's series into Subscriptions vs Bills & Utilities via recClassifyGroup.
+      function recRenderBreakdown() {
+        const rightEl = document.getElementById('recurring-right');
+        if (!rightEl) return;
+        const hide = isTabHidden('recurring');
+
+        // Build the canvas + tooltip host once; mark so FEAT-001's placeholder yields.
+        if (!rightEl.dataset.feat002) {
+          rightEl.dataset.feat002 = '1';
+          rightEl.innerHTML = `<div class="rec-panel-sub">Subscriptions vs Bills &amp; Utilities</div>
+            <div class="rec-bar-wrap">
+              <canvas id="recBreakdownChart"></canvas>
+              <div id="rec-bar-tip" class="chart-tip"></div>
+            </div>
+            <div class="rec-bar-legend">
+              <span class="rec-legend-item"><span class="rec-legend-swatch" id="rec-legend-sub"></span>Subscriptions</span>
+              <span class="rec-legend-item"><span class="rec-legend-swatch" id="rec-legend-bill"></span>Bills &amp; Utilities</span>
+            </div>`;
+        }
+
+        const canvas = document.getElementById('recBreakdownChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        // Classify EACH non-ignored, non-income transaction into Subscriptions /
+        // Bills & Utilities using the same recClassifyGroup logic (via a synthetic
+        // single-charge series carrying the tx's category + normalized merchant).
+        const classifyTx = t => {
+          const stub = { category: t.category, normalizedMerchant: recNormalizeMerchant(t.merchant) };
+          return recClassifyGroup(stub);
+        };
+
+        const WINDOW = 6;
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        const months = [];
+        for (let i = 0; i < WINDOW; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const from = new Date(d.getFullYear(), d.getMonth(), 1); from.setHours(0, 0, 0, 0);
+          const to = new Date(d.getFullYear(), d.getMonth() + 1, 0); to.setHours(23, 59, 59, 999);
+          let subs = 0, bills = 0;
+          (S.transactions || []).forEach(t => {
+            if (!t || t.ignored || spIsIncome(t)) return;
+            if (!spInRange(t, { from, to })) return;
+            const g = classifyTx(t);
+            if (g === 'SUBSCRIPTIONS') subs += effectiveAmount(t);
+            else if (g === 'BILLS & UTILITIES') bills += effectiveAmount(t);
+          });
+          months.push({ key: from.toISOString().slice(0, 7), label: from.toLocaleDateString('en-US', { month: 'short' }), fullLabel: from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), subs, bills });
+        }
+        months.reverse(); // oldest → newest
+
+        const thc = getThemeColors();
+        const subColor = thc[0];
+        const billColor = thc[2];
+        const subSw = document.getElementById('rec-legend-sub');
+        const billSw = document.getElementById('rec-legend-bill');
+        if (subSw) subSw.style.background = subColor;
+        if (billSw) billSw.style.background = billColor;
+
+        dC('recBreakdown');
+        CH['recBreakdown'] = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: months.map(m => m.label),
+            datasets: [
+              { label: 'Subscriptions', data: months.map(m => m.subs), backgroundColor: subColor, borderRadius: 4, borderSkipped: false },
+              { label: 'Bills & Utilities', data: months.map(m => m.bills), backgroundColor: billColor, borderRadius: 4, borderSkipped: false }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false, external: makeExternalTooltip('rec-bar-tip', (idx) => {
+                const m = months[idx];
+                if (!m) return null;
+                const rows = [
+                  { color: subColor, label: 'Subscriptions', value: hide ? '—' : fmtUSD(m.subs, 0) },
+                  { color: billColor, label: 'Bills & Utilities', value: hide ? '—' : fmtUSD(m.bills, 0) },
+                  { label: 'Total', value: hide ? '—' : fmtUSD(m.subs + m.bills, 0) }
+                ];
+                return { title: m.fullLabel, rows };
+              }) }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } },
+              y: { display: !hide, beginAtZero: true, ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmtUSD(v, 0) }, grid: { color: 'rgba(26,25,23,.04)' } }
+            }
+          }
+        });
       }
 
       // ── Row detail drawer ────────────────────────────────────────
