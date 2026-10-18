@@ -53,7 +53,7 @@ returns text
 language sql
 immutable
 as $$
-  select encode(digest(raw, 'sha256'), 'hex');
+  select encode(extensions.digest(convert_to(raw, 'UTF8'), 'sha256'), 'hex');
 $$;
 
 -- ----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ begin
      and revoked_at is null;
 
   -- Mint a new opaque token: "moola_" + 32 random bytes, base64url-ish hex.
-  raw_token := 'moola_' || encode(gen_random_bytes(32), 'hex');
+  raw_token := 'moola_' || encode(extensions.gen_random_bytes(32), 'hex');
 
   insert into public.ingest_tokens (token_hash, user_id)
   values (public.ingest_hash_token(raw_token), uid);
