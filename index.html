@@ -531,6 +531,110 @@
         <div id="sp-drill" class="tx-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Category transactions"></div>
       </div>
 
+      <!-- BUDGETS -->
+      <div id="tab-budgets" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Budgets</div>
+            <div class="page-sub">Plan each month and track what's left</div>
+          </div>
+          <div class="page-actions">
+            <button class="vis-toggle" id="tab-hide-budgets" onclick="toggleTab('budgets')">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="tab-hide-icon-budgets">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="tab-hide-lbl-budgets">Hide</span>
+            </button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+
+        <!-- Month-nav header -->
+        <div class="bud-month-nav">
+          <button class="bud-month-arrow" id="budgets-prev" onclick="shiftBudgetsMonth(-1)" aria-label="Previous month">‹</button>
+          <div class="bud-month-title" id="budgets-month-title">Budget</div>
+          <button class="bud-month-arrow" id="budgets-next" onclick="shiftBudgetsMonth(1)" aria-label="Next month">›</button>
+        </div>
+
+        <!-- Main + summary -->
+        <div class="sp-layout">
+          <!-- LEFT: budget tables -->
+          <div class="card bud-tables-card">
+            <div id="budgets-left"></div>
+          </div>
+
+          <!-- RIGHT: summary panel -->
+          <div class="card bud-summary-card">
+            <div class="sec">Summary</div>
+            <div class="sp-donut-wrap">
+              <div class="sp-donut-canvas">
+                <canvas id="budgetsDonutChart"></canvas>
+                <div class="sp-donut-center" id="budgets-donut-center"></div>
+                <div id="budgets-donut-tip" class="chart-tip"></div>
+              </div>
+            </div>
+            <div class="bud-donut-daily" id="budgets-donut-daily"></div>
+            <div id="budgets-summary"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECURRING -->
+      <div id="tab-recurring" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Recurring</div>
+            <div class="page-sub">Subscriptions, bills, and recurring charges</div>
+          </div>
+          <div class="page-actions">
+            <button class="vis-toggle" id="tab-hide-recurring" onclick="toggleTab('recurring')">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="tab-hide-icon-recurring">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="tab-hide-lbl-recurring">Hide</span>
+            </button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+
+        <!-- View sub-tabs / search / sort header (sub-tabs + sort wired in FEAT-002) -->
+        <div class="rec-toolbar">
+          <div class="rec-views" id="rec-views"></div>
+          <div class="rec-toolbar-right">
+            <input type="search" class="rec-search" id="rec-search" placeholder="Search recurring..."
+              oninput="recOnSearch(this.value)" />
+            <select class="rec-sort" id="rec-sort" onchange="recOnSort(this.value)">
+              <option value="type">Sort by type</option>
+              <option value="amount">Sort by amount</option>
+              <option value="date">Sort by next date</option>
+              <option value="name">Sort by name</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Main + right panel -->
+        <div class="sp-layout">
+          <!-- LEFT: grouped recurring list -->
+          <div class="card rec-list-card">
+            <div id="recurring-left"></div>
+          </div>
+
+          <!-- RIGHT: monthly breakdown panel (6-month two-series bar chart) -->
+          <div class="card rec-panel-card">
+            <div class="sec">Monthly breakdown</div>
+            <div id="recurring-right"></div>
+          </div>
+        </div>
+
+        <!-- Row detail drawer (mirrors the transaction-detail pattern) -->
+        <div id="rec-detail-backdrop" class="tx-detail-backdrop" onclick="closeRecurringDetail()"></div>
+        <div id="rec-detail" class="tx-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Recurring detail"></div>
+      </div>
+
       <!-- ACCOUNTS -->
       <div id="tab-accounts" class="tc">
         <div class="page-hdr">
@@ -2483,6 +2587,8 @@
             { id: 'overview', name: 'Overview', icon: 'grid', archived: false },
             { id: 'transactions', name: 'Transactions', icon: 'receipt', archived: false },
             { id: 'spending', name: 'Spending', icon: 'dollar', archived: false },
+            { id: 'budgets', name: 'Budgets', icon: 'target', archived: false },
+            { id: 'recurring', name: 'Recurring', icon: 'activity', archived: false },
             { id: 'accounts', name: 'Assets', icon: 'briefcase', archived: false },
             { id: 'portfolio', name: 'Portfolio', icon: 'chart', archived: false },
             { id: 'rebalance', name: 'Rebalance', icon: 'scale', archived: false },
@@ -2497,6 +2603,8 @@
           accounts: [],
           transactions: [],
           transactionBudgets: { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 },
+          budgetEarnings: {},
+          recurringOverrides: {},
           funds: [],
           goals: [],
           snapshots: [],
@@ -2793,6 +2901,8 @@
         if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
         if (!S.transactions) S.transactions = [];
         if (!S.transactionBudgets) S.transactionBudgets = { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 };
+        if (!S.budgetEarnings) S.budgetEarnings = {};
+        if (!S.recurringOverrides) S.recurringOverrides = {};
         S.transactions = S.transactions.map(t => ({
           ...t,
           myShare: t.myShare === undefined ? null : t.myShare,
@@ -3027,6 +3137,7 @@
           lifeInc: 'life',
           spBar: 'spending',
           spDonut: null,       // doughnut — no y-axis
+          recBreakdown: 'recurring',
         };
         Object.entries(allCharts).forEach(([key, tabId]) => {
           const ch = CH[key];
@@ -3108,7 +3219,7 @@
         if (ss) ss.classList.toggle('life-blurred', g || !!pv().life);
 
         // Update per-tab toggle buttons
-        ['accounts', 'portfolio', 'rebalance', 'projections', 'goals', 'life', 'spending'].forEach(tab => {
+        ['accounts', 'portfolio', 'rebalance', 'projections', 'goals', 'life', 'spending', 'budgets', 'recurring'].forEach(tab => {
           const hidden = isTabHidden(tab);
           const btn = document.getElementById(`tab-hide-${tab}`);
           const ico = document.getElementById(`tab-hide-icon-${tab}`);
@@ -3162,6 +3273,18 @@
           dlg => {
             dlg.querySelector('#_moDlgNo').onclick = () => { _moDlgClose(); if (onNo) onNo(); };
             dlg.querySelector('#_moDlgYes').onclick = () => { _moDlgClose(); onYes(); };
+          }
+        );
+      }
+      // Single-button informational dialog (no yes/no decision).
+      function moInfo(msg, onOk) {
+        _moDlg(
+          `<p style="margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--ink,#222)">${msg}</p>
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button id="_moDlgYes" class="btn bp">OK</button>
+           </div>`,
+          dlg => {
+            dlg.querySelector('#_moDlgYes').onclick = () => { _moDlgClose(); if (onOk) onOk(); };
           }
         );
       }
@@ -3315,7 +3438,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, transactions: renderTransactions, spending: renderSpending, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, transactions: renderTransactions, spending: renderSpending, budgets: renderBudgets, recurring: renderRecurring, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -4219,6 +4342,12 @@
       function spRerenderIfActive() {
         if (document.getElementById('tab-spending')?.classList.contains('on')) renderSpending();
         if (document.getElementById('sp-drill')?.classList.contains('open')) renderSpendingDrill();
+        // Keep the Budgets tab live too: recategorize / myShare / ignore edits
+        // move spend to the right budget Actual immediately.
+        budgetsRerenderIfActive();
+        // Recurring detection is recomputed from transactions on every render,
+        // so editing/recategorizing/ignoring a transaction updates series live.
+        recurringRerenderIfActive();
       }
 
       // ── Monthly bar chart ────────────────────────────────────────
@@ -4577,6 +4706,967 @@
           </div>
           <div class="sp-drill-list">${rows || '<div class="sp-empty">No transactions.</div>'}</div>
           <div class="sp-drill-foot">Tap a transaction to adjust its share, category, or ignore it.</div>`;
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // BUDGETS
+      // Rocket Money–style monthly budgets. Actual/spend math reuses the
+      // effectiveAmount() single source of truth (ignored never counts;
+      // fronted counts only at myShare) and is scoped to the selected month.
+      //
+      // DESIGN DECISIONS (per feature plan):
+      //  • Budgeted amounts are recurring: the SAME S.transactionBudgets value
+      //    applies every month, while ACTUAL is recomputed per selected month
+      //    ("budgets reset monthly" = the plan repeats, the spend is per-month).
+      //  • Earnings is stored per-month in S.budgetEarnings['YYYY-MM']; an empty
+      //    month falls back to the most recent prior month's value, else 0.
+      //  • "Everything Else" catch-all shows Actual only (no budget), so its
+      //    Remaining is left blank (Rocket Money style).
+      //  • Spending Budget / donut reflect spending categories EXCLUDING
+      //    Bills & Utilities (Bills lives in BUDGET BASICS and is tracked there).
+      let budgetsViewMonth = null; // { year, month } of the month on screen
+
+      // Categories that can never hold a spending budget row.
+      function budIsBudgetableCategory(cat) {
+        if (!cat) return false;
+        if (cat === 'Income' || cat === 'Transfer') return false;
+        if (cat === SP_BILLS_CATEGORY) return false; // lives in BASICS
+        if (Object.prototype.hasOwnProperty.call(SP_NONSPEND, cat)) return false;
+        return true;
+      }
+
+      // Month-key helper: 'YYYY-MM' for the given {year, month}.
+      function budMonthKey(vm) {
+        return vm.year + '-' + String(vm.month + 1).padStart(2, '0');
+      }
+
+      // {from, to, label} for the selected {year, month}, mirroring spMonthRange.
+      function budMonthRange(vm) {
+        const from = new Date(vm.year, vm.month, 1);
+        const to = new Date(vm.year, vm.month + 1, 0); // last day of month
+        to.setHours(23, 59, 59, 999);
+        const label = from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        return { from, to, label };
+      }
+
+      // Earnings for a month, falling back to the most recent prior month set.
+      function budEarningsFor(vm) {
+        const map = S.budgetEarnings || {};
+        const key = budMonthKey(vm);
+        if (map[key] != null) return Number(map[key]) || 0;
+        // fall back to the latest earlier month that has a value
+        const keys = Object.keys(map).filter(k => k < key).sort();
+        const last = keys[keys.length - 1];
+        return last != null ? (Number(map[last]) || 0) : 0;
+      }
+
+      // Actual spend for a category in the selected month (reuses effectiveAmount).
+      function budCategoryActual(cat, range) {
+        return S.transactions
+          .filter(t => t.category === cat && !spIsIncome(t) && spInRange(t, range))
+          .reduce((s, t) => s + effectiveAmount(t), 0);
+      }
+
+      // "Everything Else" = spendable, non-income, non-transfer, non-nonspend,
+      // non-bills transactions in the month whose category has no budget row.
+      function budEverythingElseActual(range, budgetedCats) {
+        const budgeted = new Set(budgetedCats);
+        return S.transactions
+          .filter(t => {
+            if (spIsIncome(t)) return false;
+            if (!spInRange(t, range)) return false;
+            if (t.category === SP_BILLS_CATEGORY) return false;
+            if (Object.prototype.hasOwnProperty.call(SP_NONSPEND, t.category)) return false;
+            if (budgeted.has(t.category)) return false;
+            return true;
+          })
+          .reduce((s, t) => s + effectiveAmount(t), 0);
+      }
+
+      function shiftBudgetsMonth(dir) {
+        if (!budgetsViewMonth) {
+          const now = new Date();
+          budgetsViewMonth = { year: now.getFullYear(), month: now.getMonth() };
+        }
+        const d = new Date(budgetsViewMonth.year, budgetsViewMonth.month + dir, 1);
+        budgetsViewMonth = { year: d.getFullYear(), month: d.getMonth() };
+        renderBudgets();
+      }
+
+      // Re-render the Budgets tab when it is the one on screen (called from the
+      // transaction mutators so recategorize / myShare / ignore edits move spend
+      // to the right budget immediately).
+      function budgetsRerenderIfActive() {
+        if (document.getElementById('tab-budgets')?.classList.contains('on')) renderBudgets();
+      }
+
+      // Save an edited Earnings value for the selected month.
+      function commitBudgetEarnings(raw) {
+        if (!budgetsViewMonth) return;
+        const val = Math.max(0, Number(raw) || 0);
+        if (!S.budgetEarnings) S.budgetEarnings = {};
+        S.budgetEarnings[budMonthKey(budgetsViewMonth)] = val;
+        ps(S);
+        renderBudgets();
+      }
+
+      // Save an edited per-category budgeted amount (recurring).
+      function commitBudgetAmount(cat, raw) {
+        const val = Math.max(0, Number(raw) || 0);
+        if (!S.transactionBudgets) S.transactionBudgets = {};
+        S.transactionBudgets[cat] = val;
+        ps(S);
+        renderBudgets();
+      }
+
+      function deleteBudget(cat) {
+        moConfirm('Delete this budget?', () => {
+          if (S.transactionBudgets) delete S.transactionBudgets[cat];
+          ps(S);
+          renderBudgets();
+        });
+      }
+
+      // Add-budget modal: pick an un-budgeted spending category + monthly amount.
+      function openAddBudget() {
+        const budgeted = new Set(Object.keys(S.transactionBudgets || {}));
+        const options = STANDARD_TRANSACTION_CATEGORIES
+          .filter(c => budIsBudgetableCategory(c) && !budgeted.has(c));
+        if (!options.length) {
+          moInfo('Every category already has a budget.');
+          return;
+        }
+        const opts = options.map(c => `<option value="${txEsc(c)}">${txEsc(c)}</option>`).join('');
+        _moDlg(
+          `<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:var(--ink)">Add budget</p>
+           <label style="display:block;font-size:12px;color:var(--ink3);margin-bottom:4px">Category</label>
+           <select id="_budAddCat" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:14px;margin-bottom:12px;color:var(--ink);background:var(--surface)">${opts}</select>
+           <label style="display:block;font-size:12px;color:var(--ink3);margin-bottom:4px">Monthly amount</label>
+           <input id="_budAddAmt" type="number" min="0" step="1" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:14px;margin-bottom:16px;outline:none;color:var(--ink);background:var(--surface)">
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button id="_moDlgNo" class="btn">Cancel</button>
+             <button id="_moDlgYes" class="btn bp">Add</button>
+           </div>`,
+          dlg => {
+            dlg.querySelector('#_moDlgNo').onclick = () => _moDlgClose();
+            dlg.querySelector('#_moDlgYes').onclick = () => {
+              const cat = dlg.querySelector('#_budAddCat')?.value;
+              const amt = Math.max(0, Number(dlg.querySelector('#_budAddAmt')?.value) || 0);
+              if (!cat) { _moDlgClose(); return; }
+              if (!S.transactionBudgets) S.transactionBudgets = {};
+              S.transactionBudgets[cat] = amt;
+              _moDlgClose();
+              ps(S);
+              renderBudgets();
+            };
+            setTimeout(() => dlg.querySelector('#_budAddAmt')?.focus(), 0);
+          }
+        );
+      }
+
+      function renderBudgets() {
+        if (!S?.transactions) return;
+        if (!budgetsViewMonth) {
+          const now = new Date();
+          budgetsViewMonth = { year: now.getFullYear(), month: now.getMonth() };
+        }
+        const vm = budgetsViewMonth;
+        const range = budMonthRange(vm);
+        const hide = isTabHidden('budgets');
+        const titleEl = document.getElementById('budgets-month-title');
+        if (titleEl) titleEl.textContent = range.label + ' Budget';
+
+        const budgets = S.transactionBudgets || {};
+        const earnings = budEarningsFor(vm);
+
+        // Category rows = every budgeted spending category (excl. Bills & Utilities).
+        const catNames = Object.keys(budgets).filter(budIsBudgetableCategory);
+
+        // ── BASICS ──
+        const billsBudget = Number(budgets[SP_BILLS_CATEGORY]) || 0;
+        const billsActual = budCategoryActual(SP_BILLS_CATEGORY, range);
+
+        // ── Totals ──
+        let totalBudgeted = billsBudget;
+        catNames.forEach(c => { totalBudgeted += Number(budgets[c]) || 0; });
+        const leftForSavings = earnings - totalBudgeted;
+
+        const everythingElse = budEverythingElseActual(range, catNames);
+
+        const money = (v) => hide ? '—' : fmtUSD(v, 0);
+        const remCell = (rem) => {
+          const cls = rem < 0 ? ' bud-over' : '';
+          return `<span class="sp-num bud-rem${cls}">${hide ? '—' : fmtUSD(rem, 0)}</span>`;
+        };
+
+        const headRow = `<div class="bud-row bud-head">
+          <span>Name</span>
+          <span class="sp-num">Budgeted</span>
+          <span class="sp-num">Actual</span>
+          <span class="sp-num">Remaining</span>
+        </div>`;
+
+        // BUDGET BASICS
+        const earningsRow = `<div class="bud-row">
+          <span class="bud-name">Earnings</span>
+          <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${earnings || ''}" placeholder="0" onchange="commitBudgetEarnings(this.value)" aria-label="Monthly earnings"></span>
+          <span class="sp-num bud-muted">—</span>
+          <span class="sp-num bud-muted">—</span>
+        </div>`;
+        const billsRem = billsBudget - billsActual;
+        const billsRow = `<div class="bud-row${billsRem < 0 ? ' bud-row-over' : ''}">
+          <span class="bud-name">${SP_BILLS_CATEGORY}</span>
+          <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${billsBudget || ''}" placeholder="0" onchange="commitBudgetAmount('${txEsc(SP_BILLS_CATEGORY)}', this.value)" aria-label="Bills budget"></span>
+          <span class="sp-num">${money(billsActual)}</span>
+          ${remCell(billsRem)}
+        </div>`;
+
+        // BUDGET CATEGORIES
+        const catRows = catNames.map(c => {
+          const b = Number(budgets[c]) || 0;
+          const a = budCategoryActual(c, range);
+          const rem = b - a;
+          return `<div class="bud-row bud-cat-row${rem < 0 ? ' bud-row-over' : ''}">
+            <span class="bud-name">${txEsc(c)}</span>
+            <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${b || ''}" placeholder="0" onchange="commitBudgetAmount('${txEsc(c)}', this.value)" aria-label="${txEsc(c)} budget"></span>
+            <span class="sp-num">${money(a)}</span>
+            ${remCell(rem)}
+            <button class="bud-del" onclick="deleteBudget('${txEsc(c)}')" aria-label="Delete ${txEsc(c)} budget" title="Delete budget">×</button>
+          </div>`;
+        }).join('');
+
+        const everythingElseRow = `<div class="bud-row bud-cat-row bud-else-row">
+          <span class="bud-name">Everything Else</span>
+          <span class="sp-num bud-muted">—</span>
+          <span class="sp-num">${money(everythingElse)}</span>
+          <span class="sp-num bud-muted"></span>
+        </div>`;
+
+        const leftEl = document.getElementById('budgets-left');
+        if (leftEl) {
+          leftEl.innerHTML = `
+            <div class="bud-section-title">Budget Basics</div>
+            <div class="bud-table">
+              ${headRow}
+              ${earningsRow}
+              ${billsRow}
+            </div>
+            <div class="bud-section-head">
+              <div class="bud-section-title">Budget Categories</div>
+              <button class="btn bp bud-add-btn" onclick="openAddBudget()">+ Add Budget</button>
+            </div>
+            <div class="bud-table">
+              ${headRow}
+              ${catRows || ''}
+              ${everythingElseRow}
+            </div>
+            <div class="bud-table bud-savings-table">
+              <div class="bud-row bud-savings-row${leftForSavings < 0 ? ' bud-row-over' : ''}">
+                <span class="bud-name">Left For Savings</span>
+                <span class="sp-num"></span>
+                <span class="sp-num"></span>
+                <span class="sp-num bud-rem${leftForSavings < 0 ? ' bud-over' : ''}">${hide ? '—' : fmtUSD(leftForSavings, 0)}</span>
+              </div>
+            </div>`;
+        }
+
+        // ── RIGHT: SUMMARY (spending categories, excludes Bills) ──
+        let spendingBudget = 0;
+        let currentSpend = 0;
+        catNames.forEach(c => {
+          spendingBudget += Number(budgets[c]) || 0;
+          currentSpend += budCategoryActual(c, range);
+        });
+        // Current Spend measures the SAME set as Spending Budget (budgeted
+        // spending categories only, Bills excluded). Uncategorized "Everything
+        // Else" spend is intentionally NOT folded in here, so both sides of the
+        // donut measure the same category set and Remaining can only go negative
+        // when a budgeted category is overspent (not from unbudgeted spend).
+        const remaining = spendingBudget - currentSpend;
+
+        // Days left for the daily-pacing figure. Current month -> days from
+        // today to month end. Past months -> the month's full day count (so a
+        // historical month still shows a per-day pace rather than being hidden).
+        // Future months -> full month.
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        const isCurrentMonth = vm.year === now.getFullYear() && vm.month === now.getMonth();
+        const lastDay = new Date(vm.year, vm.month + 1, 0).getDate();
+        let daysLeft;
+        if (isCurrentMonth) daysLeft = Math.max(1, lastDay - now.getDate() + 1);
+        else daysLeft = lastDay;
+        const perDay = daysLeft > 0 ? Math.max(0, remaining) / daysLeft : 0;
+
+        const dailyEl = document.getElementById('budgets-donut-daily');
+        if (dailyEl) {
+          dailyEl.innerHTML = daysLeft > 0
+            ? `${hide ? '—' : fmtUSD(perDay, 0)}/day for the next ${daysLeft} day${daysLeft === 1 ? '' : 's'} of the month`
+            : 'This month is complete';
+        }
+
+        // Center overlay: "Left to Spend $X of $Y"
+        const centerEl = document.getElementById('budgets-donut-center');
+        if (centerEl) {
+          centerEl.innerHTML = `<div class="sp-donut-label">LEFT TO SPEND</div>
+            <div class="sp-donut-total">${hide ? '—' : fmtUSD(remaining, 0)}</div>
+            <div class="sp-donut-sub bud-donut-of">of ${hide ? '—' : fmtUSD(spendingBudget, 0)}</div>`;
+        }
+
+        // Donut: spent vs remaining (clamped so negatives render gracefully).
+        const canvas = document.getElementById('budgetsDonutChart');
+        if (canvas) {
+          const thc = getThemeColors();
+          const isDark = document.documentElement.classList.contains('dark');
+          const spentSeg = Math.max(0, currentSpend);
+          const remSeg = Math.max(0, remaining);
+          const segColors = [remaining < 0 ? (getComputedStyle(document.documentElement).getPropertyValue('--rose').trim() || thc[0]) : thc[0], isDark ? '#2a2a2a' : '#eee'];
+          dC('budgetsDonut');
+          if (spendingBudget > 0 || currentSpend > 0) {
+            CH['budgetsDonut'] = new Chart(canvas, {
+              type: 'doughnut',
+              data: { labels: ['Spent', 'Remaining'], datasets: [{ data: [spentSeg, remSeg || (spentSeg > 0 ? 0 : 1)], backgroundColor: segColors, borderWidth: 2, borderColor: isDark ? 'transparent' : '#fff' }] },
+              options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false, external: makeDoughnutTooltip('budgets-donut-tip', (i) => {
+                  const labels = ['Spent', 'Remaining'];
+                  const vals = [currentSpend, remaining];
+                  return { color: segColors[i], label: labels[i], value: hide ? '—' : fmtUSD(vals[i], 2), pct: spendingBudget > 0 ? pct((vals[i] / spendingBudget) * 100) : '' };
+                }) } }
+              }
+            });
+          }
+        }
+
+        // Summary rows
+        const summaryEl = document.getElementById('budgets-summary');
+        if (summaryEl) {
+          summaryEl.innerHTML = `
+            <div class="bud-sum-row"><span>Spending Budget</span><span class="sp-num">${money(spendingBudget)}</span></div>
+            <div class="bud-sum-row"><span>Current Spend</span><span class="sp-num">${money(currentSpend)}</span></div>
+            <div class="bud-sum-row bud-sum-total"><span>Remaining</span><span class="sp-num bud-rem${remaining < 0 ? ' bud-over' : ''}">${hide ? '—' : fmtUSD(remaining, 0)}</span></div>`;
+        }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // RECURRING  (Rocket Money–style recurring view)
+      //
+      // DETECTION (v1): group non-ignored transactions by a normalized merchant
+      // name. A merchant with 2+ charges whose consecutive intervals cluster
+      // around ~30 days (±5 = Monthly) or ~365 days (±20 = Annual) is a recurring
+      // series. recDetectSeries() is a PURE computation over S.transactions; it
+      // never mutates them. User overrides + cancellations persist separately in
+      // S.recurringOverrides, keyed by the normalized merchant.
+      //
+      //   S.recurringOverrides['<normKey>'] = { forced: 'recurring'|'not-recurring'|null, cancelled: bool }
+      //     forced 'not-recurring' → series dropped entirely
+      //     forced 'recurring'     → merchant included even with <2 charges / irregular intervals
+      //     cancelled === true     → series isActive=false, EXCLUDED from yearly totals
+      //
+      // GROUP CLASSIFICATION (documented rule):
+      //   • CREDIT CARD PAYMENTS: category is a transfer/payment OR the normalized
+      //     merchant mentions 'card payment' / 'credit card' / 'cc payment' /
+      //     'autopay' / 'transfer to' a card. (payoffs, collapsed by default.)
+      //   • SUBSCRIPTIONS: category === 'Entertainment' OR the normalized merchant
+      //     matches a known subscription brand list (netflix, spotify, adobe,
+      //     amazon prime, hulu, disney, etc.).
+      //   • BILLS & UTILITIES: category === 'Bills & Utilities'.
+      //   • OTHER: everything else.
+      //
+      // ACCOUNT MASK: the data has no real card number (account is a name string),
+      // so we SYNTHESIZE a stable 4-digit pseudo-mask by hashing the account name
+      // and render it as '••1234'. Deterministic across renders; purely cosmetic.
+      // ══════════════════════════════════════════════════════════════
+
+      // Module-scope UI state for the Recurring tab. (View sub-tabs / search /
+      // sort are fully wired in FEAT-002; the fields live here so both features
+      // share one state object.)
+      let recState = {
+        view: 'all',          // 'upcoming' | 'all' | 'calendar' (FEAT-002 wires switching)
+        search: '',           // merchant search query
+        sort: 'type',         // 'type' (grouped) — more options added in FEAT-002
+        showInactive: false,  // 'Show inactive' toggle
+        ccExpanded: false,    // Credit Card Payments group collapsed by default
+        detailKey: null,      // normalized merchant currently open in the detail drawer
+        calMonth: null        // reserved for future calendar month navigation (v1 = current month)
+      };
+
+      const REC_SUBSCRIPTION_BRANDS = [
+        'netflix', 'spotify', 'adobe', 'amazon prime', 'prime video', 'hulu',
+        'disney', 'hbo', 'max', 'youtube', 'apple music', 'apple tv', 'icloud',
+        'dropbox', 'notion', 'audible', 'patreon', 'paramount', 'peacock',
+        'nytimes', 'new york times', 'github', 'openai', 'chatgpt'
+      ];
+
+      // Normalize a merchant name so 'Amazon #123' and 'Amazon' group together:
+      // lowercase, drop diacritics-light punctuation, strip trailing store numbers
+      // and common suffixes, collapse whitespace.
+      function recNormalizeMerchant(name) {
+        let s = String(name || '').toLowerCase().trim();
+        s = s.replace(/[#*].*$/, ' ');              // drop store/ref numbers after # or *
+        s = s.replace(/[^a-z0-9&\s]/g, ' ');        // punctuation → space
+        s = s.replace(/\b(inc|llc|co|corp|ltd|the|payment|pmt|autopay|recurring|subscription|monthly|annual|usa|us)\b/g, ' ');
+        s = s.replace(/\b\d{2,}\b/g, ' ');          // standalone numbers (store ids)
+        s = s.replace(/\s+/g, ' ').trim();
+        return s || String(name || '').toLowerCase().trim();
+      }
+
+      // Stable synthetic 4-digit pseudo-mask derived from the account name.
+      function recAccountMask(accountName) {
+        const s = String(accountName || '');
+        let h = 0;
+        for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+        return '••' + String(h % 10000).padStart(4, '0');
+      }
+
+      // Classify a detected series into one of the four display groups.
+      function recClassifyGroup(series) {
+        const cat = series.category || '';
+        const n = series.normalizedMerchant || '';
+        const ccHints = ['card payment', 'credit card', 'cc payment', 'card pmt', 'visa payment', 'amex payment'];
+        if (cat === 'Transfer' && /card|visa|amex|mastercard|discover/.test(n)) return 'CREDIT CARD PAYMENTS';
+        if (ccHints.some(h => n.includes(h))) return 'CREDIT CARD PAYMENTS';
+        if (cat === 'Bills & Utilities') return 'BILLS & UTILITIES';
+        if (cat === 'Entertainment') return 'SUBSCRIPTIONS';
+        if (REC_SUBSCRIPTION_BRANDS.some(b => n.includes(b))) return 'SUBSCRIPTIONS';
+        return 'OTHER';
+      }
+
+      const REC_GROUP_ORDER = ['SUBSCRIPTIONS', 'BILLS & UTILITIES', 'CREDIT CARD PAYMENTS', 'OTHER'];
+
+      // Most-common raw display form for a group of transactions.
+      function recDisplayName(charges) {
+        const counts = {};
+        charges.forEach(c => { counts[c.merchant] = (counts[c.merchant] || 0) + 1; });
+        let best = charges[0]?.merchant || 'Unknown';
+        let bestN = -1;
+        Object.keys(counts).forEach(m => { if (counts[m] > bestN) { bestN = counts[m]; best = m; } });
+        return best;
+      }
+
+      // Median of a numeric array.
+      function recMedian(arr) {
+        if (!arr.length) return 0;
+        const s = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(s.length / 2);
+        return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+      }
+
+      // PURE detection over S.transactions → array of recurring series objects.
+      function recDetectSeries() {
+        const overrides = S.recurringOverrides || {};
+        const txns = (S.transactions || []).filter(t => t && !t.ignored && !spIsIncome(t));
+        // Group by normalized merchant.
+        const groups = {};
+        txns.forEach(t => {
+          const key = recNormalizeMerchant(t.merchant);
+          if (!key) return;
+          (groups[key] = groups[key] || []).push(t);
+        });
+
+        const series = [];
+        const DAY = 86400000;
+
+        Object.keys(groups).forEach(key => {
+          const ov = overrides[key] || {};
+          if (ov.forced === 'not-recurring') return; // explicitly excluded
+
+          const charges = groups[key]
+            .map(t => ({ date: t.date, amount: effectiveAmount(t), merchant: t.merchant, account: t.account, category: t.category }))
+            .sort((a, b) => txLocalDate(a.date) - txLocalDate(b.date));
+
+          // Intervals between consecutive charges (in days).
+          const intervals = [];
+          for (let i = 1; i < charges.length; i++) {
+            intervals.push((txLocalDate(charges[i].date) - txLocalDate(charges[i - 1].date)) / DAY);
+          }
+          const typical = recMedian(intervals);
+
+          let frequency = null;
+          if (Math.abs(typical - 30) <= 5 || (typical >= 25 && typical <= 35)) frequency = 'Monthly';
+          else if (Math.abs(typical - 365) <= 20) frequency = 'Annual';
+
+          const detected = charges.length >= 2 && frequency !== null;
+          const isForced = ov.forced === 'recurring';
+          if (!detected && !isForced) return;
+
+          // Forced-recurring with no clear cadence → best-effort Monthly.
+          if (!frequency) frequency = 'Monthly';
+          const intervalDays = frequency === 'Annual' ? 365 : (typical > 0 ? typical : 30);
+
+          const last = charges[charges.length - 1];
+          const lastDate = last.date;
+          const nextD = new Date(txLocalDate(lastDate).getTime() + intervalDays * DAY);
+          const nextExpectedDate = txDateKey(nextD);
+          const amounts = charges.map(c => c.amount);
+          const averageAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
+
+          const s = {
+            key,
+            merchant: recDisplayName(charges),
+            normalizedMerchant: key,
+            account: last.account,
+            category: last.category,
+            averageAmount,
+            frequency,
+            lastDate,
+            nextExpectedDate,
+            charges,
+            isActive: ov.cancelled !== true,
+            forced: ov.forced || null
+          };
+          s.group = recClassifyGroup(s);
+          series.push(s);
+        });
+
+        return series;
+      }
+
+      // Mutators — every change persists via ps(S) then re-renders.
+      function recGetOverride(key) {
+        if (!S.recurringOverrides) S.recurringOverrides = {};
+        if (!S.recurringOverrides[key]) S.recurringOverrides[key] = { forced: null, cancelled: false };
+        return S.recurringOverrides[key];
+      }
+      function recSetForced(key, value) {
+        const ov = recGetOverride(key);
+        ov.forced = value; // 'recurring' | 'not-recurring' | null
+        ps(S);
+        if (recState.detailKey && (value === 'not-recurring')) { recState.detailKey = null; closeRecurringDetail(); }
+        renderRecurring();
+      }
+      function recSetCancelled(key, cancelled) {
+        const ov = recGetOverride(key);
+        ov.cancelled = !!cancelled;
+        ps(S);
+        renderRecurring();
+      }
+      function recToggleShowInactive() { recState.showInactive = !recState.showInactive; renderRecurring(); }
+      function recToggleCreditCards() { recState.ccExpanded = !recState.ccExpanded; renderRecurring(); }
+      function recOnSearch(q) { recState.search = String(q || ''); renderRecurring(); }
+      function recOnSort(v) { recState.sort = v; renderRecurring(); }
+      function recSetView(v) {
+        if (v !== 'upcoming' && v !== 'all' && v !== 'calendar') return;
+        recState.view = v;
+        recState.calMonth = null; // reset any calendar navigation back to current month
+        renderRecurring();
+      }
+
+      // The three header view sub-tabs (segmented control). Rendered into #rec-views.
+      function recRenderViewTabs() {
+        const el = document.getElementById('rec-views');
+        if (!el) return;
+        const views = [
+          { id: 'upcoming', label: 'Upcoming' },
+          { id: 'all', label: 'All Recurring' },
+          { id: 'calendar', label: 'Calendar' }
+        ];
+        el.innerHTML = views.map(v =>
+          `<button class="rec-view-btn${recState.view === v.id ? ' on' : ''}" onclick="recSetView('${v.id}')">${v.label}</button>`
+        ).join('');
+      }
+
+      // Apply the active sort to a flat series array (mutates/returns a copy).
+      function recApplySort(arr) {
+        const list = [...arr];
+        switch (recState.sort) {
+          case 'amount':
+            list.sort((a, b) => recYearly(b) - recYearly(a));
+            break;
+          case 'date':
+            list.sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate));
+            break;
+          case 'name':
+            list.sort((a, b) => (a.merchant || '').localeCompare(b.merchant || ''));
+            break;
+          default: // 'type' → by group order, then soonest next-expected
+            list.sort((a, b) => {
+              const ga = REC_GROUP_ORDER.indexOf(a.group);
+              const gb = REC_GROUP_ORDER.indexOf(b.group);
+              if (ga !== gb) return ga - gb;
+              return txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate);
+            });
+        }
+        return list;
+      }
+
+      // Relative due label from nextExpectedDate vs today.
+      function recRelativeDue(nextExpectedDate) {
+        const today = new Date(); today.setHours(12, 0, 0, 0);
+        const next = txLocalDate(nextExpectedDate);
+        const days = Math.round((next - today) / 86400000);
+        if (days === 0) return 'today';
+        if (days > 0) return 'in ' + days + ' day' + (days === 1 ? '' : 's');
+        const ago = -days;
+        return ago + ' day' + (ago === 1 ? '' : 's') + ' ago';
+      }
+
+      // Yearly contribution of an active series (Monthly ×12, Annual ×1).
+      function recYearly(series) {
+        return series.frequency === 'Annual' ? series.averageAmount : series.averageAmount * 12;
+      }
+
+      // Escape for safe HTML attribute use (reuse the transaction escaper).
+      function recEsc(v) { return txEsc(v); }
+
+      // Build one list row.
+      function recRowHtml(s, hide) {
+        const initial = (s.merchant || '?').charAt(0).toUpperCase();
+        const mask = recAccountMask(s.account);
+        const due = recRelativeDue(s.nextExpectedDate);
+        const amt = hide ? '—' : fmtUSD(s.averageAmount, 2);
+        const inactiveCls = s.isActive ? '' : ' rec-row-inactive';
+        const cancelTag = s.isActive ? '' : '<span class="rec-tag-cancelled">Cancelled</span>';
+        const k = recEsc(s.key);
+        return `<div class="rec-row${inactiveCls}" onclick="openRecurringDetail('${k}')">
+          <div class="rec-avatar">${recEsc(initial)}</div>
+          <div class="rec-row-main">
+            <div class="rec-row-name">${recEsc(s.merchant)}${cancelTag}</div>
+            <div class="rec-row-sub">${s.frequency} · ${recEsc(mask)}</div>
+          </div>
+          <div class="rec-row-due">${recEsc(due)}</div>
+          <div class="rec-row-amount">${amt}</div>
+          <div class="rec-row-menu" onclick="event.stopPropagation()">
+            <button class="rec-menu-btn" onclick="recToggleMenu('${k}',event)" aria-label="More actions">⋯</button>
+            <div class="rec-menu" id="rec-menu-${k}">
+              ${s.isActive
+                ? `<button onclick="recSetCancelled('${k}',true);recCloseMenus()">Mark cancelled</button>`
+                : `<button onclick="recSetCancelled('${k}',false);recCloseMenus()">Reactivate</button>`}
+              <button onclick="recSetForced('${k}','not-recurring');recCloseMenus()">Not recurring</button>
+              <button onclick="recSetForced('${k}','recurring');recCloseMenus()">Mark as recurring</button>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function recToggleMenu(key, ev) {
+        if (ev) ev.stopPropagation();
+        const open = document.getElementById('rec-menu-' + key);
+        const wasOpen = open?.classList.contains('open');
+        recCloseMenus();
+        if (open && !wasOpen) open.classList.add('open');
+      }
+      function recCloseMenus() {
+        document.querySelectorAll('.rec-menu.open').forEach(m => m.classList.remove('open'));
+      }
+
+      // Live re-render hook (fired from spRerenderIfActive after tx mutations).
+      function recurringRerenderIfActive() {
+        if (document.getElementById('tab-recurring')?.classList.contains('on')) renderRecurring();
+      }
+
+      // Apply the current search query to a series array (merchant name, across groups).
+      function recFilterSearch(series) {
+        const q = recState.search.trim().toLowerCase();
+        if (!q) return series;
+        return series.filter(s =>
+          (s.merchant || '').toLowerCase().includes(q) || (s.normalizedMerchant || '').includes(q));
+      }
+
+      // Top-level dispatcher. Renders the active view sub-tab into #recurring-left
+      // and the 6-month breakdown chart into the right panel.
+      function renderRecurring() {
+        if (!S?.transactions) return;
+        const leftEl = document.getElementById('recurring-left');
+        if (!leftEl) return;
+        const hide = isTabHidden('recurring');
+
+        recRenderViewTabs();
+
+        // Detect + search-filter once; every view shares the filtered set.
+        const series = recFilterSearch(recDetectSeries());
+
+        if (recState.view === 'upcoming') {
+          leftEl.innerHTML = recRenderUpcomingView(series, hide);
+        } else if (recState.view === 'calendar') {
+          leftEl.innerHTML = recRenderCalendarView(series, hide);
+        } else {
+          leftEl.innerHTML = recRenderGroupedView(series, hide);
+        }
+
+        // Right panel: 6-month two-series breakdown chart.
+        recRenderBreakdown();
+
+        // If a detail drawer is open, refresh its contents.
+        if (recState.detailKey) renderRecurringDetail();
+      }
+
+      // Shared 'Show inactive' footer toggle.
+      function recShowInactiveHtml() {
+        return `<div class="rec-showinactive">
+          <label class="rec-toggle">
+            <input type="checkbox" ${recState.showInactive ? 'checked' : ''} onchange="recToggleShowInactive()">
+            <span>Show inactive</span>
+          </label>
+        </div>`;
+      }
+
+      // ── ALL RECURRING view = the grouped list (four groups + yearly totals). ──
+      function recRenderGroupedView(series, hide) {
+        // Group the series.
+        const byGroup = {};
+        REC_GROUP_ORDER.forEach(g => byGroup[g] = []);
+        series.forEach(s => { (byGroup[s.group] = byGroup[s.group] || []).push(s); });
+
+        let html = '';
+        REC_GROUP_ORDER.forEach(groupName => {
+          const all = byGroup[groupName] || [];
+          const active = all.filter(s => s.isActive);
+          // Visible rows: active always; inactive only when the toggle is on.
+          const visible = recState.showInactive ? all : active;
+          if (!visible.length) return; // skip empty groups
+
+          // Yearly total from ACTIVE series only (cancelled excluded).
+          const yearly = active.reduce((sum, s) => sum + recYearly(s), 0);
+          const isCC = groupName === 'CREDIT CARD PAYMENTS';
+          const collapsed = isCC && !recState.ccExpanded;
+
+          // Sort rows within the group. 'type' (default) keeps soonest-next ordering;
+          // the other options reuse recApplySort so sorting is consistent everywhere.
+          const rows = recState.sort === 'type'
+            ? [...visible].sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate))
+            : recApplySort(visible);
+
+          html += `<div class="rec-group${collapsed ? ' rec-collapsed' : ''}">
+            <div class="rec-group-hdr" ${isCC ? `onclick="recToggleCreditCards()"` : ''}>
+              <div class="rec-group-title">
+                ${isCC ? `<span class="rec-chevron">${collapsed ? '▸' : '▾'}</span>` : ''}
+                ${groupName}
+              </div>
+              <div class="rec-group-total">You spend ${hide ? '—' : fmtUSD(yearly, 0)}/yearly</div>
+            </div>`;
+          if (!collapsed) {
+            html += `<div class="rec-group-rows">${rows.map(s => recRowHtml(s, hide)).join('')}</div>`;
+          }
+          html += `</div>`;
+        });
+
+        if (!html) {
+          html = `<div class="rec-empty">No recurring charges detected yet. As transactions repeat on a regular cadence, they will appear here.</div>`;
+        }
+        html += recShowInactiveHtml();
+        return html;
+      }
+
+      // ── UPCOMING view = a single flat list of ACTIVE series, sorted by ──
+      // nextExpectedDate ASCENDING (soonest first). Reuses the FEAT-001 row renderer.
+      function recRenderUpcomingView(series, hide) {
+        const active = series.filter(s => s.isActive);
+        active.sort((a, b) => txLocalDate(a.nextExpectedDate) - txLocalDate(b.nextExpectedDate));
+        let html = '';
+        if (!active.length) {
+          html = `<div class="rec-empty">No upcoming recurring charges. ${recState.search.trim() ? 'Try a different search.' : 'As transactions repeat on a regular cadence, they will appear here.'}</div>`;
+        } else {
+          html = `<div class="rec-group"><div class="rec-group-rows">${active.map(s => recRowHtml(s, hide)).join('')}</div></div>`;
+        }
+        // Upcoming only ever shows active series; omit the Show-inactive toggle here.
+        return html;
+      }
+
+      // ── CALENDAR view (v1) = a simple current-month grid with a dot on each ──
+      // day that has an expected charge. Scope: current month only, no month
+      // navigation; projects each active series' nextExpectedDate plus (for Monthly
+      // series) same-day-of-month occurrences that fall inside the displayed month.
+      function recRenderCalendarView(series, hide) {
+        const today = new Date(); today.setHours(12, 0, 0, 0);
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const first = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const startDow = first.getDay(); // 0=Sun
+
+        // Map day-of-month → array of series expected that day.
+        const byDay = {};
+        const active = series.filter(s => s.isActive);
+        active.forEach(s => {
+          const next = txLocalDate(s.nextExpectedDate);
+          // Direct next-expected date if it lands in this month.
+          if (next.getFullYear() === year && next.getMonth() === month) {
+            (byDay[next.getDate()] = byDay[next.getDate()] || []).push(s);
+          }
+          // For Monthly series, also plot the same day-of-month within this month
+          // (so a charge already seen earlier this month still shows a marker).
+          if (s.frequency === 'Monthly') {
+            const dom = next.getDate();
+            if (dom <= daysInMonth) {
+              const arr = (byDay[dom] = byDay[dom] || []);
+              if (!arr.includes(s)) arr.push(s);
+            }
+          }
+        });
+
+        const monthLabel = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const dowLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        let cells = '';
+        // Leading blanks.
+        for (let i = 0; i < startDow; i++) cells += `<div class="rec-cal-cell rec-cal-empty"></div>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const hits = byDay[d] || [];
+          const isToday = d === today.getDate();
+          const total = hits.reduce((sum, s) => sum + s.averageAmount, 0);
+          const tip = hits.length
+            ? hits.map(s => `${s.merchant}: ${hide ? '—' : fmtUSD(s.averageAmount, 2)}`).join('\n')
+            : '';
+          cells += `<div class="rec-cal-cell${isToday ? ' rec-cal-today' : ''}${hits.length ? ' rec-cal-has' : ''}"${tip ? ` title="${recEsc(tip)}"` : ''}>
+            <span class="rec-cal-num">${d}</span>
+            ${hits.length ? `<span class="rec-cal-dot" aria-label="${hits.length} expected charge${hits.length === 1 ? '' : 's'}"></span>` : ''}
+            ${hits.length ? `<span class="rec-cal-amt">${hide ? '—' : fmtUSD(total, 0)}</span>` : ''}
+          </div>`;
+        }
+
+        return `<div class="rec-cal">
+          <div class="rec-cal-hdr">${monthLabel}</div>
+          <div class="rec-cal-grid rec-cal-dow">${dowLabels.map(l => `<div class="rec-cal-dowlbl">${l}</div>`).join('')}</div>
+          <div class="rec-cal-grid">${cells}</div>
+          <div class="rec-cal-note">Expected charges for active recurring series this month.</div>
+        </div>`;
+      }
+
+      // ── RIGHT PANEL: 6-month two-series bar chart (Subscriptions vs Bills & Utilities). ──
+      // Mirrors renderSpendingBars(): build 6 months newest→oldest then reverse, sum
+      // ACTUAL monthly charges via effectiveAmount scoped per month, classifying each
+      // transaction's series into Subscriptions vs Bills & Utilities via recClassifyGroup.
+      function recRenderBreakdown() {
+        const rightEl = document.getElementById('recurring-right');
+        if (!rightEl) return;
+        const hide = isTabHidden('recurring');
+
+        // Build the canvas + tooltip host once; mark so FEAT-001's placeholder yields.
+        if (!rightEl.dataset.feat002) {
+          rightEl.dataset.feat002 = '1';
+          rightEl.innerHTML = `<div class="rec-panel-sub">Subscriptions vs Bills &amp; Utilities</div>
+            <div class="rec-bar-wrap">
+              <canvas id="recBreakdownChart"></canvas>
+              <div id="rec-bar-tip" class="chart-tip"></div>
+            </div>
+            <div class="rec-bar-legend">
+              <span class="rec-legend-item"><span class="rec-legend-swatch" id="rec-legend-sub"></span>Subscriptions</span>
+              <span class="rec-legend-item"><span class="rec-legend-swatch" id="rec-legend-bill"></span>Bills &amp; Utilities</span>
+            </div>`;
+        }
+
+        const canvas = document.getElementById('recBreakdownChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        // Classify EACH non-ignored, non-income transaction into Subscriptions /
+        // Bills & Utilities using the same recClassifyGroup logic (via a synthetic
+        // single-charge series carrying the tx's category + normalized merchant).
+        const classifyTx = t => {
+          const stub = { category: t.category, normalizedMerchant: recNormalizeMerchant(t.merchant) };
+          return recClassifyGroup(stub);
+        };
+
+        const WINDOW = 6;
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        const months = [];
+        for (let i = 0; i < WINDOW; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const from = new Date(d.getFullYear(), d.getMonth(), 1); from.setHours(0, 0, 0, 0);
+          const to = new Date(d.getFullYear(), d.getMonth() + 1, 0); to.setHours(23, 59, 59, 999);
+          let subs = 0, bills = 0;
+          (S.transactions || []).forEach(t => {
+            if (!t || t.ignored || spIsIncome(t)) return;
+            if (!spInRange(t, { from, to })) return;
+            const g = classifyTx(t);
+            if (g === 'SUBSCRIPTIONS') subs += effectiveAmount(t);
+            else if (g === 'BILLS & UTILITIES') bills += effectiveAmount(t);
+          });
+          months.push({ key: from.toISOString().slice(0, 7), label: from.toLocaleDateString('en-US', { month: 'short' }), fullLabel: from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), subs, bills });
+        }
+        months.reverse(); // oldest → newest
+
+        const thc = getThemeColors();
+        const subColor = thc[0];
+        const billColor = thc[2];
+        const subSw = document.getElementById('rec-legend-sub');
+        const billSw = document.getElementById('rec-legend-bill');
+        if (subSw) subSw.style.background = subColor;
+        if (billSw) billSw.style.background = billColor;
+
+        dC('recBreakdown');
+        CH['recBreakdown'] = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: months.map(m => m.label),
+            datasets: [
+              { label: 'Subscriptions', data: months.map(m => m.subs), backgroundColor: subColor, borderRadius: 4, borderSkipped: false },
+              { label: 'Bills & Utilities', data: months.map(m => m.bills), backgroundColor: billColor, borderRadius: 4, borderSkipped: false }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false, external: makeExternalTooltip('rec-bar-tip', (idx) => {
+                const m = months[idx];
+                if (!m) return null;
+                const rows = [
+                  { color: subColor, label: 'Subscriptions', value: hide ? '—' : fmtUSD(m.subs, 0) },
+                  { color: billColor, label: 'Bills & Utilities', value: hide ? '—' : fmtUSD(m.bills, 0) },
+                  { label: 'Total', value: hide ? '—' : fmtUSD(m.subs + m.bills, 0) }
+                ];
+                return { title: m.fullLabel, rows };
+              }) }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } },
+              y: { display: !hide, beginAtZero: true, ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmtUSD(v, 0) }, grid: { color: 'rgba(26,25,23,.04)' } }
+            }
+          }
+        });
+      }
+
+      // ── Row detail drawer ────────────────────────────────────────
+      function openRecurringDetail(key) {
+        recCloseMenus();
+        recState.detailKey = key;
+        renderRecurringDetail();
+        document.getElementById('rec-detail-backdrop')?.classList.add('open');
+        const d = document.getElementById('rec-detail');
+        d?.classList.add('open');
+        d?.setAttribute('aria-hidden', 'false');
+      }
+      function closeRecurringDetail() {
+        recState.detailKey = null;
+        document.getElementById('rec-detail-backdrop')?.classList.remove('open');
+        const d = document.getElementById('rec-detail');
+        d?.classList.remove('open');
+        d?.setAttribute('aria-hidden', 'true');
+        setTimeout(() => { if (!recState.detailKey && d) d.innerHTML = ''; }, 220);
+      }
+      function renderRecurringDetail() {
+        const el = document.getElementById('rec-detail');
+        if (!el) return;
+        const s = recDetectSeries().find(x => x.key === recState.detailKey);
+        if (!s) { closeRecurringDetail(); return; }
+        const hide = isTabHidden('recurring');
+        const money = v => hide ? '—' : fmtUSD(v, 2);
+        const k = recEsc(s.key);
+        const history = [...s.charges].sort((a, b) => txLocalDate(b.date) - txLocalDate(a.date)).map(c =>
+          `<div class="rec-hist-row">
+            <span>${txLocalDate(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            <span class="rec-hist-amt">${money(c.amount)}</span>
+          </div>`).join('');
+        el.innerHTML = `<button class="tx-detail-close" onclick="closeRecurringDetail()" aria-label="Close detail">×</button>
+          <div class="rec-detail-head">
+            <div class="rec-avatar rec-avatar-lg">${recEsc((s.merchant || '?').charAt(0).toUpperCase())}</div>
+            <div>
+              <div class="rec-detail-name">${recEsc(s.merchant)}${s.isActive ? '' : ' <span class="rec-tag-cancelled">Cancelled</span>'}</div>
+              <div class="rec-detail-sub">${s.frequency} · ${recEsc(recAccountMask(s.account))}</div>
+            </div>
+          </div>
+          <div class="rec-detail-stats">
+            <div class="rec-stat"><span>Average amount</span><strong>${money(s.averageAmount)}</strong></div>
+            <div class="rec-stat"><span>Next expected</span><strong>${txLocalDate(s.nextExpectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></div>
+            <div class="rec-stat"><span>Status</span><strong>${s.isActive ? 'Active' : 'Inactive'}</strong></div>
+          </div>
+          <div class="rec-detail-sec">Charge history</div>
+          <div class="rec-hist">${history || '<div class="rec-hist-row"><span>No charges</span></div>'}</div>
+          <div class="rec-detail-actions">
+            ${s.isActive
+              ? `<button class="btn rec-cancel-btn" onclick="recSetCancelled('${k}',true)">Mark cancelled</button>`
+              : `<button class="btn" onclick="recSetCancelled('${k}',false)">Reactivate</button>`}
+            <button class="btn" onclick="recSetForced('${k}','not-recurring')">Not recurring</button>
+            <button class="btn" onclick="recSetForced('${k}','recurring')">Mark as recurring</button>
+          </div>`;
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -5331,6 +6421,7 @@
       // Add global click handler to close dropdowns
       document.addEventListener('click', () => {
         document.querySelectorAll('.ms-dropdown').forEach(d => d.style.display = 'none');
+        if (typeof recCloseMenus === 'function') recCloseMenus();
       });
 
       function togglePortAcct(id) {
