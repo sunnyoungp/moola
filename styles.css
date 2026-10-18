@@ -286,13 +286,12 @@
 }
 
 .tx-row.ignored {
-  opacity: .53;
-  background: var(--s2);
+  background: transparent;
 }
 
 .tx-row.ignored:hover,
 .tx-row.ignored:focus-visible {
-  opacity: .7;
+  background: var(--fll);
 }
 
 .tx-row-main {
@@ -4743,12 +4742,12 @@ body.sb-collapsed .priv-section {
 .tx-amount-button:focus-visible {
   border-color: var(--border);
   outline: 0;
-  background: var(--surface);
+  background: transparent;
 }
 
 .tx-amount-button.adjusted {
-  border-color: rgba(138, 104, 32, .18);
-  background: var(--gold-l);
+  border-color: transparent;
+  background: transparent;
 }
 
 .tx-amount-button strong {
@@ -7121,8 +7120,12 @@ body.sb-collapsed .priv-section {
 }
 
 .tx-table-row.ignored {
-  opacity: .45;
-  background: var(--s2);
+  background: transparent;
+}
+
+.tx-table-row.ignored:hover,
+.tx-table-row.ignored:focus-visible {
+  background: var(--fll);
 }
 
 .tx-cell {
@@ -7533,12 +7536,12 @@ body.sb-collapsed .priv-section {
 }
 
 .tx-modal-amount-editor.expense {
-  background: var(--rose-l);
+  background: transparent;
   color: var(--rose);
 }
 
 .tx-modal-amount-editor.income {
-  background: var(--teal-l);
+  background: transparent;
   color: var(--teal);
 }
 
@@ -7706,11 +7709,11 @@ body.sb-collapsed .priv-section {
 }
 
 .tx-row-amount.expense .tx-amount-button:not(.adjusted) {
-  background: var(--rose-l);
+  background: transparent;
 }
 
 .tx-row-amount.income .tx-amount-button:not(.adjusted) {
-  background: var(--teal-l);
+  background: transparent;
 }
 
 .tx-modal-foot {
