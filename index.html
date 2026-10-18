@@ -531,6 +531,56 @@
         <div id="sp-drill" class="tx-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Category transactions"></div>
       </div>
 
+      <!-- BUDGETS -->
+      <div id="tab-budgets" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Budgets</div>
+            <div class="page-sub">Plan each month and track what's left</div>
+          </div>
+          <div class="page-actions">
+            <button class="vis-toggle" id="tab-hide-budgets" onclick="toggleTab('budgets')">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="tab-hide-icon-budgets">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="tab-hide-lbl-budgets">Hide</span>
+            </button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+
+        <!-- Month-nav header -->
+        <div class="bud-month-nav">
+          <button class="bud-month-arrow" id="budgets-prev" onclick="shiftBudgetsMonth(-1)" aria-label="Previous month">‹</button>
+          <div class="bud-month-title" id="budgets-month-title">Budget</div>
+          <button class="bud-month-arrow" id="budgets-next" onclick="shiftBudgetsMonth(1)" aria-label="Next month">›</button>
+        </div>
+
+        <!-- Main + summary -->
+        <div class="sp-layout">
+          <!-- LEFT: budget tables -->
+          <div class="card bud-tables-card">
+            <div id="budgets-left"></div>
+          </div>
+
+          <!-- RIGHT: summary panel -->
+          <div class="card bud-summary-card">
+            <div class="sec">Summary</div>
+            <div class="sp-donut-wrap">
+              <div class="sp-donut-canvas">
+                <canvas id="budgetsDonutChart"></canvas>
+                <div class="sp-donut-center" id="budgets-donut-center"></div>
+                <div id="budgets-donut-tip" class="chart-tip"></div>
+              </div>
+            </div>
+            <div class="bud-donut-daily" id="budgets-donut-daily"></div>
+            <div id="budgets-summary"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ACCOUNTS -->
       <div id="tab-accounts" class="tc">
         <div class="page-hdr">
@@ -2483,6 +2533,7 @@
             { id: 'overview', name: 'Overview', icon: 'grid', archived: false },
             { id: 'transactions', name: 'Transactions', icon: 'receipt', archived: false },
             { id: 'spending', name: 'Spending', icon: 'dollar', archived: false },
+            { id: 'budgets', name: 'Budgets', icon: 'target', archived: false },
             { id: 'accounts', name: 'Assets', icon: 'briefcase', archived: false },
             { id: 'portfolio', name: 'Portfolio', icon: 'chart', archived: false },
             { id: 'rebalance', name: 'Rebalance', icon: 'scale', archived: false },
@@ -2497,6 +2548,7 @@
           accounts: [],
           transactions: [],
           transactionBudgets: { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 },
+          budgetEarnings: {},
           funds: [],
           goals: [],
           snapshots: [],
@@ -2793,6 +2845,7 @@
         if (!S.gainsAcctToggles) S.gainsAcctToggles = {};
         if (!S.transactions) S.transactions = [];
         if (!S.transactionBudgets) S.transactionBudgets = { 'Dining': 500, 'Groceries': 650, 'Transport': 300, 'Shopping': 350, 'Entertainment': 200, 'Bills & Utilities': 450 };
+        if (!S.budgetEarnings) S.budgetEarnings = {};
         S.transactions = S.transactions.map(t => ({
           ...t,
           myShare: t.myShare === undefined ? null : t.myShare,
@@ -3315,7 +3368,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, transactions: renderTransactions, spending: renderSpending, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, transactions: renderTransactions, spending: renderSpending, budgets: renderBudgets, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -4219,6 +4272,9 @@
       function spRerenderIfActive() {
         if (document.getElementById('tab-spending')?.classList.contains('on')) renderSpending();
         if (document.getElementById('sp-drill')?.classList.contains('open')) renderSpendingDrill();
+        // Keep the Budgets tab live too: recategorize / myShare / ignore edits
+        // move spend to the right budget Actual immediately.
+        budgetsRerenderIfActive();
       }
 
       // ── Monthly bar chart ────────────────────────────────────────
@@ -4577,6 +4633,342 @@
           </div>
           <div class="sp-drill-list">${rows || '<div class="sp-empty">No transactions.</div>'}</div>
           <div class="sp-drill-foot">Tap a transaction to adjust its share, category, or ignore it.</div>`;
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // BUDGETS
+      // Rocket Money–style monthly budgets. Actual/spend math reuses the
+      // effectiveAmount() single source of truth (ignored never counts;
+      // fronted counts only at myShare) and is scoped to the selected month.
+      //
+      // DESIGN DECISIONS (per feature plan):
+      //  • Budgeted amounts are recurring: the SAME S.transactionBudgets value
+      //    applies every month, while ACTUAL is recomputed per selected month
+      //    ("budgets reset monthly" = the plan repeats, the spend is per-month).
+      //  • Earnings is stored per-month in S.budgetEarnings['YYYY-MM']; an empty
+      //    month falls back to the most recent prior month's value, else 0.
+      //  • "Everything Else" catch-all shows Actual only (no budget), so its
+      //    Remaining is left blank (Rocket Money style).
+      //  • Spending Budget / donut reflect spending categories EXCLUDING
+      //    Bills & Utilities (Bills lives in BUDGET BASICS and is tracked there).
+      let budgetsViewMonth = null; // { year, month } of the month on screen
+
+      // Categories that can never hold a spending budget row.
+      function budIsBudgetableCategory(cat) {
+        if (!cat) return false;
+        if (cat === 'Income' || cat === 'Transfer') return false;
+        if (cat === SP_BILLS_CATEGORY) return false; // lives in BASICS
+        if (Object.prototype.hasOwnProperty.call(SP_NONSPEND, cat)) return false;
+        return true;
+      }
+
+      // Month-key helper: 'YYYY-MM' for the given {year, month}.
+      function budMonthKey(vm) {
+        return vm.year + '-' + String(vm.month + 1).padStart(2, '0');
+      }
+
+      // {from, to, label} for the selected {year, month}, mirroring spMonthRange.
+      function budMonthRange(vm) {
+        const from = new Date(vm.year, vm.month, 1);
+        const to = new Date(vm.year, vm.month + 1, 0); // last day of month
+        to.setHours(23, 59, 59, 999);
+        const label = from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        return { from, to, label };
+      }
+
+      // Earnings for a month, falling back to the most recent prior month set.
+      function budEarningsFor(vm) {
+        const map = S.budgetEarnings || {};
+        const key = budMonthKey(vm);
+        if (map[key] != null) return Number(map[key]) || 0;
+        // fall back to the latest earlier month that has a value
+        const keys = Object.keys(map).filter(k => k < key).sort();
+        const last = keys[keys.length - 1];
+        return last != null ? (Number(map[last]) || 0) : 0;
+      }
+
+      // Actual spend for a category in the selected month (reuses effectiveAmount).
+      function budCategoryActual(cat, range) {
+        return S.transactions
+          .filter(t => t.category === cat && t.direction !== 'income' && spInRange(t, range))
+          .reduce((s, t) => s + effectiveAmount(t), 0);
+      }
+
+      // "Everything Else" = spendable, non-income, non-transfer, non-nonspend,
+      // non-bills transactions in the month whose category has no budget row.
+      function budEverythingElseActual(range, budgetedCats) {
+        const budgeted = new Set(budgetedCats);
+        return S.transactions
+          .filter(t => {
+            if (t.direction === 'income') return false;
+            if (!spInRange(t, range)) return false;
+            if (t.category === SP_BILLS_CATEGORY) return false;
+            if (Object.prototype.hasOwnProperty.call(SP_NONSPEND, t.category)) return false;
+            if (budgeted.has(t.category)) return false;
+            return true;
+          })
+          .reduce((s, t) => s + effectiveAmount(t), 0);
+      }
+
+      function shiftBudgetsMonth(dir) {
+        if (!budgetsViewMonth) {
+          const now = new Date();
+          budgetsViewMonth = { year: now.getFullYear(), month: now.getMonth() };
+        }
+        const d = new Date(budgetsViewMonth.year, budgetsViewMonth.month + dir, 1);
+        budgetsViewMonth = { year: d.getFullYear(), month: d.getMonth() };
+        renderBudgets();
+      }
+
+      // Re-render the Budgets tab when it is the one on screen (called from the
+      // transaction mutators so recategorize / myShare / ignore edits move spend
+      // to the right budget immediately).
+      function budgetsRerenderIfActive() {
+        if (document.getElementById('tab-budgets')?.classList.contains('on')) renderBudgets();
+      }
+
+      // Save an edited Earnings value for the selected month.
+      function commitBudgetEarnings(raw) {
+        if (!budgetsViewMonth) return;
+        const val = Math.max(0, Number(raw) || 0);
+        if (!S.budgetEarnings) S.budgetEarnings = {};
+        S.budgetEarnings[budMonthKey(budgetsViewMonth)] = val;
+        ps(S);
+        renderBudgets();
+      }
+
+      // Save an edited per-category budgeted amount (recurring).
+      function commitBudgetAmount(cat, raw) {
+        const val = Math.max(0, Number(raw) || 0);
+        if (!S.transactionBudgets) S.transactionBudgets = {};
+        S.transactionBudgets[cat] = val;
+        ps(S);
+        renderBudgets();
+      }
+
+      function deleteBudget(cat) {
+        moConfirm('Delete this budget?', () => {
+          if (S.transactionBudgets) delete S.transactionBudgets[cat];
+          ps(S);
+          renderBudgets();
+        });
+      }
+
+      // Add-budget modal: pick an un-budgeted spending category + monthly amount.
+      function openAddBudget() {
+        const budgeted = new Set(Object.keys(S.transactionBudgets || {}));
+        const options = STANDARD_TRANSACTION_CATEGORIES
+          .filter(c => budIsBudgetableCategory(c) && !budgeted.has(c));
+        if (!options.length) {
+          moConfirm('Every category already has a budget.', () => {}, () => {});
+          return;
+        }
+        const opts = options.map(c => `<option value="${txEsc(c)}">${txEsc(c)}</option>`).join('');
+        _moDlg(
+          `<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:var(--ink)">Add budget</p>
+           <label style="display:block;font-size:12px;color:var(--ink3);margin-bottom:4px">Category</label>
+           <select id="_budAddCat" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:14px;margin-bottom:12px;color:var(--ink);background:var(--surface)">${opts}</select>
+           <label style="display:block;font-size:12px;color:var(--ink3);margin-bottom:4px">Monthly amount</label>
+           <input id="_budAddAmt" type="number" min="0" step="1" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:14px;margin-bottom:16px;outline:none;color:var(--ink);background:var(--surface)">
+           <div style="display:flex;gap:8px;justify-content:flex-end">
+             <button id="_moDlgNo" class="btn">Cancel</button>
+             <button id="_moDlgYes" class="btn bp">Add</button>
+           </div>`,
+          dlg => {
+            dlg.querySelector('#_moDlgNo').onclick = () => _moDlgClose();
+            dlg.querySelector('#_moDlgYes').onclick = () => {
+              const cat = dlg.querySelector('#_budAddCat')?.value;
+              const amt = Math.max(0, Number(dlg.querySelector('#_budAddAmt')?.value) || 0);
+              if (!cat) { _moDlgClose(); return; }
+              if (!S.transactionBudgets) S.transactionBudgets = {};
+              S.transactionBudgets[cat] = amt;
+              _moDlgClose();
+              ps(S);
+              renderBudgets();
+            };
+            setTimeout(() => dlg.querySelector('#_budAddAmt')?.focus(), 0);
+          }
+        );
+      }
+
+      function renderBudgets() {
+        if (!S?.transactions) return;
+        if (!budgetsViewMonth) {
+          const now = new Date();
+          budgetsViewMonth = { year: now.getFullYear(), month: now.getMonth() };
+        }
+        const vm = budgetsViewMonth;
+        const range = budMonthRange(vm);
+        const hide = isTabHidden('budgets');
+        const titleEl = document.getElementById('budgets-month-title');
+        if (titleEl) titleEl.textContent = range.label + ' Budget';
+
+        const budgets = S.transactionBudgets || {};
+        const earnings = budEarningsFor(vm);
+
+        // Category rows = every budgeted spending category (excl. Bills & Utilities).
+        const catNames = Object.keys(budgets).filter(budIsBudgetableCategory);
+
+        // ── BASICS ──
+        const billsBudget = Number(budgets[SP_BILLS_CATEGORY]) || 0;
+        const billsActual = budCategoryActual(SP_BILLS_CATEGORY, range);
+
+        // ── Totals ──
+        let totalBudgeted = billsBudget;
+        catNames.forEach(c => { totalBudgeted += Number(budgets[c]) || 0; });
+        const leftForSavings = earnings - totalBudgeted;
+
+        const everythingElse = budEverythingElseActual(range, catNames);
+
+        const money = (v) => hide ? '—' : fmtUSD(v, 0);
+        const remCell = (rem) => {
+          const cls = rem < 0 ? ' bud-over' : '';
+          return `<span class="sp-num bud-rem${cls}">${hide ? '—' : fmtUSD(rem, 0)}</span>`;
+        };
+
+        const headRow = `<div class="bud-row bud-head">
+          <span>Name</span>
+          <span class="sp-num">Budgeted</span>
+          <span class="sp-num">Actual</span>
+          <span class="sp-num">Remaining</span>
+        </div>`;
+
+        // BUDGET BASICS
+        const earningsRow = `<div class="bud-row">
+          <span class="bud-name">Earnings</span>
+          <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${earnings || ''}" placeholder="0" onchange="commitBudgetEarnings(this.value)" aria-label="Monthly earnings"></span>
+          <span class="sp-num bud-muted">—</span>
+          <span class="sp-num bud-muted">—</span>
+        </div>`;
+        const billsRem = billsBudget - billsActual;
+        const billsRow = `<div class="bud-row${billsRem < 0 ? ' bud-row-over' : ''}">
+          <span class="bud-name">${SP_BILLS_CATEGORY}</span>
+          <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${billsBudget || ''}" placeholder="0" onchange="commitBudgetAmount('${txEsc(SP_BILLS_CATEGORY)}', this.value)" aria-label="Bills budget"></span>
+          <span class="sp-num">${money(billsActual)}</span>
+          ${remCell(billsRem)}
+        </div>`;
+
+        // BUDGET CATEGORIES
+        const catRows = catNames.map(c => {
+          const b = Number(budgets[c]) || 0;
+          const a = budCategoryActual(c, range);
+          const rem = b - a;
+          return `<div class="bud-row bud-cat-row${rem < 0 ? ' bud-row-over' : ''}">
+            <span class="bud-name">${txEsc(c)}</span>
+            <span class="sp-num"><input type="number" min="0" step="1" class="bud-inp" value="${b || ''}" placeholder="0" onchange="commitBudgetAmount('${txEsc(c)}', this.value)" aria-label="${txEsc(c)} budget"></span>
+            <span class="sp-num">${money(a)}</span>
+            ${remCell(rem)}
+            <button class="bud-del" onclick="deleteBudget('${txEsc(c)}')" aria-label="Delete ${txEsc(c)} budget" title="Delete budget">×</button>
+          </div>`;
+        }).join('');
+
+        const everythingElseRow = `<div class="bud-row bud-cat-row bud-else-row">
+          <span class="bud-name">Everything Else</span>
+          <span class="sp-num bud-muted">—</span>
+          <span class="sp-num">${money(everythingElse)}</span>
+          <span class="sp-num bud-muted"></span>
+        </div>`;
+
+        const leftEl = document.getElementById('budgets-left');
+        if (leftEl) {
+          leftEl.innerHTML = `
+            <div class="bud-section-title">Budget Basics</div>
+            <div class="bud-table">
+              ${headRow}
+              ${earningsRow}
+              ${billsRow}
+            </div>
+            <div class="bud-section-head">
+              <div class="bud-section-title">Budget Categories</div>
+              <button class="btn bp bud-add-btn" onclick="openAddBudget()">+ Add Budget</button>
+            </div>
+            <div class="bud-table">
+              ${headRow}
+              ${catRows || ''}
+              ${everythingElseRow}
+            </div>
+            <div class="bud-table bud-savings-table">
+              <div class="bud-row bud-savings-row${leftForSavings < 0 ? ' bud-row-over' : ''}">
+                <span class="bud-name">Left For Savings</span>
+                <span class="sp-num"></span>
+                <span class="sp-num"></span>
+                <span class="sp-num bud-rem${leftForSavings < 0 ? ' bud-over' : ''}">${hide ? '—' : fmtUSD(leftForSavings, 0)}</span>
+              </div>
+            </div>`;
+        }
+
+        // ── RIGHT: SUMMARY (spending categories, excludes Bills) ──
+        let spendingBudget = 0;
+        let currentSpend = 0;
+        catNames.forEach(c => {
+          spendingBudget += Number(budgets[c]) || 0;
+          currentSpend += budCategoryActual(c, range);
+        });
+        // include uncategorized spend in Current Spend so the donut reflects
+        // all discretionary spending against the plan
+        currentSpend += everythingElse;
+        const remaining = spendingBudget - currentSpend;
+
+        // Days left in the selected month (rule: current month -> days from
+        // today to month end; past months -> 0; future months -> full month).
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        const isCurrentMonth = vm.year === now.getFullYear() && vm.month === now.getMonth();
+        const isPastMonth = (vm.year < now.getFullYear()) || (vm.year === now.getFullYear() && vm.month < now.getMonth());
+        const lastDay = new Date(vm.year, vm.month + 1, 0).getDate();
+        let daysLeft;
+        if (isCurrentMonth) daysLeft = Math.max(1, lastDay - now.getDate() + 1);
+        else if (isPastMonth) daysLeft = 0;
+        else daysLeft = lastDay;
+        const perDay = daysLeft > 0 ? Math.max(0, remaining) / daysLeft : 0;
+
+        const dailyEl = document.getElementById('budgets-donut-daily');
+        if (dailyEl) {
+          dailyEl.innerHTML = daysLeft > 0
+            ? `${hide ? '—' : fmtUSD(perDay, 0)}/day for the next ${daysLeft} day${daysLeft === 1 ? '' : 's'} of the month`
+            : 'This month is complete';
+        }
+
+        // Center overlay: "Left to Spend $X of $Y"
+        const centerEl = document.getElementById('budgets-donut-center');
+        if (centerEl) {
+          centerEl.innerHTML = `<div class="sp-donut-label">LEFT TO SPEND</div>
+            <div class="sp-donut-total">${hide ? '—' : fmtUSD(remaining, 0)}</div>
+            <div class="sp-donut-sub bud-donut-of">of ${hide ? '—' : fmtUSD(spendingBudget, 0)}</div>`;
+        }
+
+        // Donut: spent vs remaining (clamped so negatives render gracefully).
+        const canvas = document.getElementById('budgetsDonutChart');
+        if (canvas) {
+          const thc = getThemeColors();
+          const isDark = document.documentElement.classList.contains('dark');
+          const spentSeg = Math.max(0, currentSpend);
+          const remSeg = Math.max(0, remaining);
+          const segColors = [remaining < 0 ? (getComputedStyle(document.documentElement).getPropertyValue('--rose').trim() || thc[0]) : thc[0], isDark ? '#2a2a2a' : '#eee'];
+          dC('budgetsDonut');
+          if (spendingBudget > 0 || currentSpend > 0) {
+            CH['budgetsDonut'] = new Chart(canvas, {
+              type: 'doughnut',
+              data: { labels: ['Spent', 'Remaining'], datasets: [{ data: [spentSeg, remSeg || (spentSeg > 0 ? 0 : 1)], backgroundColor: segColors, borderWidth: 2, borderColor: isDark ? 'transparent' : '#fff' }] },
+              options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false, external: makeDoughnutTooltip('budgets-donut-tip', (i) => {
+                  const labels = ['Spent', 'Remaining'];
+                  const vals = [currentSpend, remaining];
+                  return { color: segColors[i], label: labels[i], value: hide ? '—' : fmtUSD(vals[i], 2), pct: spendingBudget > 0 ? pct((vals[i] / spendingBudget) * 100) : '' };
+                }) } }
+              }
+            });
+          }
+        }
+
+        // Summary rows
+        const summaryEl = document.getElementById('budgets-summary');
+        if (summaryEl) {
+          summaryEl.innerHTML = `
+            <div class="bud-sum-row"><span>Spending Budget</span><span class="sp-num">${money(spendingBudget)}</span></div>
+            <div class="bud-sum-row"><span>Current Spend</span><span class="sp-num">${money(currentSpend)}</span></div>
+            <div class="bud-sum-row bud-sum-total"><span>Remaining</span><span class="sp-num bud-rem${remaining < 0 ? ' bud-over' : ''}">${hide ? '—' : fmtUSD(remaining, 0)}</span></div>`;
+        }
       }
 
       // ══════════════════════════════════════════════════════════════

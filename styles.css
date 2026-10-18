@@ -8486,3 +8486,211 @@ body.sb-collapsed .priv-section {
   color: var(--ink3);
   text-align: center;
 }
+
+/* ═══ BUDGETS TAB ══════════════════════════════════════════ */
+.bud-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.bud-month-arrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .12s ease, border-color .12s ease;
+}
+
+.bud-month-arrow:hover {
+  background: var(--s2);
+  border-color: var(--border-strong);
+}
+
+.bud-month-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 220px;
+  text-align: center;
+}
+
+.bud-tables-card {
+  min-width: 0;
+}
+
+.bud-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin: 4px 0 6px;
+}
+
+.bud-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.bud-add-btn {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.bud-table {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+
+.bud-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 88px 96px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--ink);
+  position: relative;
+}
+
+.bud-head {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ink3);
+  padding-bottom: 8px;
+}
+
+.bud-name {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bud-muted {
+  color: var(--ink3);
+}
+
+.bud-rem {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.bud-over {
+  color: var(--rose);
+}
+
+.bud-row-over {
+  background: var(--rose-l);
+}
+
+.bud-inp {
+  width: 84px;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  text-align: right;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .12s ease;
+}
+
+.bud-inp:focus {
+  border-color: var(--border-strong);
+}
+
+.bud-del {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rose);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .12s ease;
+}
+
+.bud-cat-row:hover .bud-del {
+  opacity: 1;
+}
+
+.bud-savings-table {
+  margin-top: 14px;
+}
+
+.bud-savings-row {
+  border-top: 2px solid var(--border-strong);
+  border-bottom: none;
+  font-weight: 600;
+}
+
+.bud-else-row .bud-name {
+  color: var(--ink3);
+}
+
+.bud-summary-card {
+  min-width: 0;
+}
+
+.bud-donut-daily {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink3);
+  margin: -6px 0 16px;
+}
+
+.bud-donut-of {
+  color: var(--ink3);
+}
+
+.bud-sum-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.bud-sum-row .sp-num {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.bud-sum-total {
+  border-bottom: none;
+  font-weight: 600;
+}
