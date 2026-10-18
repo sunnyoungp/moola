@@ -1456,6 +1456,28 @@
                 <!-- Default key is set in fetchQuotes() — personal key (sunyoung) -->
               </div>
             </div>
+            <!-- Transaction ingest token card -->
+            <div class="card mb-2">
+              <div class="sec">Transaction Sync Token</div>
+              <div style="font-size:11.5px;color:var(--ink3);line-height:1.6;margin-bottom:10px">
+                A private bearer token lets a data provider push transactions into your account via the
+                <span style="font-family:var(--mono);font-size:11px">transactions-ingest</span> endpoint. Keep it secret
+                — anyone with it can write transactions to your account. Regenerating immediately revokes the old one.
+              </div>
+              <div id="ingest-token-status" style="font-size:12px;color:var(--ink2);margin-bottom:10px">Checking…</div>
+              <div id="ingest-token-reveal" style="display:none;margin-bottom:10px">
+                <div style="font-size:10.5px;color:var(--rose);margin-bottom:4px">Copy it now — it is shown only once.</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="text" id="ingest-token-value" readonly
+                    style="flex:1;min-width:0;font-family:var(--mono);font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--ink)">
+                  <button class="btn bsm" style="border:1px solid var(--border)" onclick="copyIngestToken()">Copy</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn bsm bp" id="ingest-regen-btn" onclick="regenerateIngestToken()">Generate token</button>
+                <button class="btn bsm" id="ingest-revoke-btn" style="display:none;border:1px solid var(--border);color:var(--rose)" onclick="revokeIngestToken()">Revoke</button>
+              </div>
+            </div>
             <div class="card">
               <div class="sec">Data Management</div>
               <div style="display:flex;flex-direction:column;gap:6px">
@@ -7919,6 +7941,91 @@
         }
       }
 
+      // ── Transaction ingest token (Settings card) ─────────────────
+      // These talk to the SECURITY DEFINER RPCs added in the ingest_tokens
+      // migration. The raw token is returned by the RPC exactly once and is
+      // never stored anywhere (not in S, not in localStorage).
+      let _ingestTokenRevealTimer = null;
+      async function refreshIngestTokenStatus() {
+        const statusEl = document.getElementById('ingest-token-status');
+        const regenBtn = document.getElementById('ingest-regen-btn');
+        const revokeBtn = document.getElementById('ingest-revoke-btn');
+        if (!statusEl) return;
+        if (isDemoMode) {
+          statusEl.textContent = 'Sign in to generate a sync token (unavailable in demo mode).';
+          if (regenBtn) regenBtn.disabled = true;
+          return;
+        }
+        try {
+          const { data, error } = await db.rpc('ingest_token_status');
+          if (error) throw error;
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row && row.has_token) {
+            const when = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            statusEl.innerHTML = 'Active token' + (when ? ' · created ' + txEsc(when) : '') + '. The token value is hidden; regenerate to get a new one.';
+            if (regenBtn) regenBtn.textContent = 'Regenerate token';
+            if (revokeBtn) revokeBtn.style.display = '';
+          } else {
+            statusEl.textContent = 'No token yet. Generate one to let a provider sync transactions.';
+            if (regenBtn) regenBtn.textContent = 'Generate token';
+            if (revokeBtn) revokeBtn.style.display = 'none';
+          }
+        } catch (e) {
+          console.error('[moola] ingest token status failed', e);
+          statusEl.textContent = 'Unable to load token status.';
+        }
+      }
+      async function regenerateIngestToken() {
+        if (isDemoMode) return;
+        const btn = document.getElementById('ingest-regen-btn');
+        const revealWrap = document.getElementById('ingest-token-reveal');
+        const valueEl = document.getElementById('ingest-token-value');
+        if (btn) { btn.disabled = true; }
+        try {
+          const { data, error } = await db.rpc('ingest_regenerate_token');
+          if (error) throw error;
+          if (valueEl && revealWrap) {
+            valueEl.value = data;            // raw token, shown once
+            revealWrap.style.display = '';
+            // Auto-hide the raw value after a while so it doesn't linger.
+            clearTimeout(_ingestTokenRevealTimer);
+            _ingestTokenRevealTimer = setTimeout(() => {
+              if (valueEl) valueEl.value = '';
+              revealWrap.style.display = 'none';
+            }, 120000);
+          }
+          await refreshIngestTokenStatus();
+        } catch (e) {
+          console.error('[moola] regenerate ingest token failed', e);
+          alert('Could not generate token. Please try again.');
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      }
+      async function revokeIngestToken() {
+        if (isDemoMode) return;
+        if (!confirm('Revoke the current sync token? Any provider using it will stop working immediately.')) return;
+        try {
+          const { error } = await db.rpc('ingest_revoke_token');
+          if (error) throw error;
+          const revealWrap = document.getElementById('ingest-token-reveal');
+          const valueEl = document.getElementById('ingest-token-value');
+          if (valueEl) valueEl.value = '';
+          if (revealWrap) revealWrap.style.display = 'none';
+          await refreshIngestTokenStatus();
+        } catch (e) {
+          console.error('[moola] revoke ingest token failed', e);
+          alert('Could not revoke token. Please try again.');
+        }
+      }
+      function copyIngestToken() {
+        const valueEl = document.getElementById('ingest-token-value');
+        if (!valueEl || !valueEl.value) return;
+        valueEl.select();
+        if (navigator.clipboard) navigator.clipboard.writeText(valueEl.value).catch(() => {});
+        else document.execCommand('copy');
+      }
+
       // ── renderSettings extension ──────────────────────────────────
       function renderSettings() {
         // Show logged-in user info
@@ -7943,6 +8050,7 @@
         document.getElementById('fx-set').value = S.settings.fx;
         const fhKeyEl = document.getElementById('finnhub-key');
         if (fhKeyEl) fhKeyEl.value = S.settings.finnhubKey || '';
+        refreshIngestTokenStatus();
         syncPrivacyUI();
         document.getElementById('snap-list').innerHTML = '';
         if (S.snapshots.length === 0) {

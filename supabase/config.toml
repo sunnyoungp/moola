@@ -1,0 +1,9 @@
+# Supabase project config for Moola.
+# project_id should match your Supabase project ref.
+project_id = "hbdyztbxxivrmmxyhmuj"
+
+[functions.transactions-ingest]
+# The ingest endpoint authenticates callers with a per-user bearer token that
+# is NOT a Supabase JWT, so we disable the platform's built-in JWT check and
+# verify the token ourselves inside the function.
+verify_jwt = false
