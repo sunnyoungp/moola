@@ -428,6 +428,109 @@
         <div id="tx-detail" class="tx-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Transaction detail"></div>
       </div>
 
+      <!-- SPENDING -->
+      <div id="tab-spending" class="tc">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Spending</div>
+            <div class="page-sub" id="sp-subtitle">Where your money went</div>
+          </div>
+          <div class="page-actions">
+            <button class="vis-toggle" id="tab-hide-spending" onclick="toggleTab('spending')">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" id="tab-hide-icon-spending">
+                <path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" />
+                <circle cx="7" cy="7" r="1.8" />
+              </svg>
+              <span id="tab-hide-lbl-spending">Hide</span>
+            </button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+
+        <!-- Top controls: period segmented control + Net/Gross + Include bills -->
+        <div class="sp-controls">
+          <div class="sp-seg" id="sp-period-seg" role="tablist" aria-label="Spending period">
+            <button class="sp-seg-btn" data-period="last" role="tab" onclick="setSpendingPeriod('last')">Last Month</button>
+            <button class="sp-seg-btn" data-period="this" role="tab" onclick="setSpendingPeriod('this')">This Month</button>
+            <button class="sp-seg-btn" data-period="custom" role="tab" onclick="setSpendingPeriod('custom')">Custom</button>
+          </div>
+          <div class="sp-controls-right">
+            <div class="sp-seg sp-seg-sm" id="sp-netgross-seg" aria-label="Net or gross spending">
+              <button class="sp-seg-btn" data-ng="net" onclick="setSpendingNetGross('net')" title="Count only your share of each transaction">Net</button>
+              <button class="sp-seg-btn" data-ng="gross" onclick="setSpendingNetGross('gross')" title="Count the full amount of each transaction">Gross</button>
+            </div>
+            <button class="vis-toggle sp-bills-toggle" id="sp-bills-toggle" onclick="toggleSpendingBills()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="sp-bills-icon"><path d="M1 7c1-2.5 3.2-4 6-4s5 1.5 6 4c-1 2.5-3.2 4-6 4s-5-1.5-6-4z" /><circle cx="7" cy="7" r="1.8" /></svg>
+              <span id="sp-bills-lbl">Include bills</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom range row (shown only when period = custom) -->
+        <div class="sp-custom-row" id="sp-custom-row" style="display:none">
+          <label>From <input type="date" id="sp-custom-from" class="inp inpm" onchange="setSpendingCustom('from',this.value)"></label>
+          <label>To <input type="date" id="sp-custom-to" class="inp inpm" onchange="setSpendingCustom('to',this.value)"></label>
+        </div>
+
+        <!-- Monthly bar chart (last 6 months, scrollable) -->
+        <div class="card mb-2 sp-barcard">
+          <div class="sp-barcard-head">
+            <div class="sec" style="margin-bottom:0">Monthly spending</div>
+            <div class="sp-bar-legend">
+              <span class="sp-legend-item"><span class="sp-legend-dot" style="background:var(--th-chart1)"></span>Non-bills</span>
+              <span class="sp-legend-item"><span class="sp-legend-dot" style="background:var(--th-chart3)"></span>Bills</span>
+              <div class="sp-bar-nav">
+                <button class="sp-bar-arrow" id="sp-bar-prev" onclick="scrollSpendingBars(-1)" aria-label="Earlier months">‹</button>
+                <button class="sp-bar-arrow" id="sp-bar-next" onclick="scrollSpendingBars(1)" aria-label="Later months">›</button>
+              </div>
+            </div>
+          </div>
+          <div class="sp-bar-wrap">
+            <canvas id="spBarChart"></canvas>
+            <div id="sp-bar-tip" class="chart-tip"></div>
+          </div>
+        </div>
+
+        <!-- Main + right panel -->
+        <div class="sp-layout">
+          <!-- MAIN: breakdown -->
+          <div class="card sp-breakdown-card">
+            <div class="sec">Spending breakdown</div>
+            <div class="sp-donut-wrap">
+              <div class="sp-donut-canvas">
+                <canvas id="spDonutChart"></canvas>
+                <div class="sp-donut-center" id="sp-donut-center"></div>
+                <div id="sp-donut-tip" class="chart-tip"></div>
+              </div>
+            </div>
+            <div id="sp-cat-table" class="sp-cat-table"></div>
+
+            <div class="sp-nonspend" id="sp-nonspend"></div>
+          </div>
+
+          <!-- RIGHT: insights -->
+          <div class="sp-insights">
+            <div class="card mb-2">
+              <div class="sec">Summary</div>
+              <div id="sp-summary"></div>
+            </div>
+            <div class="card mb-2">
+              <div class="sec">Frequent spend</div>
+              <div id="sp-frequent"></div>
+            </div>
+            <div class="card">
+              <div class="sec">Largest purchases</div>
+              <div id="sp-largest"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category drill-down drawer (reuses transaction detail modal for edits) -->
+        <div id="sp-drill-backdrop" class="tx-detail-backdrop" onclick="closeSpendingDrill()"></div>
+        <div id="sp-drill" class="tx-detail" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Category transactions"></div>
+      </div>
+
       <!-- ACCOUNTS -->
       <div id="tab-accounts" class="tc">
         <div class="page-hdr">
@@ -2357,6 +2460,7 @@
           tabs: [
             { id: 'overview', name: 'Overview', icon: 'grid', archived: false },
             { id: 'transactions', name: 'Transactions', icon: 'receipt', archived: false },
+            { id: 'spending', name: 'Spending', icon: 'dollar', archived: false },
             { id: 'accounts', name: 'Assets', icon: 'briefcase', archived: false },
             { id: 'portfolio', name: 'Portfolio', icon: 'chart', archived: false },
             { id: 'rebalance', name: 'Rebalance', icon: 'scale', archived: false },
@@ -2437,6 +2541,15 @@
           date.setDate(date.getDate() - daysAgo);
           return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
         };
+        // A date `m` months back, on day `day` (defaults to the 15th).
+        const txMonth = (m, day = 15) => {
+          const date = new Date();
+          date.setHours(12, 0, 0, 0);
+          date.setDate(1);
+          date.setMonth(date.getMonth() - m);
+          date.setDate(day);
+          return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        };
         d.transactions = [
           { id: 'tx-1001', merchant: 'Whole Foods Market', amount: 118.75, date: txDate(0), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
           { id: 'tx-1002', merchant: 'Acme Studio Payroll', amount: 4280.00, date: txDate(0), account: 'Chase Checking', category: 'Income', direction: 'income', notes: 'October payroll', myShare: null, ignored: false, isRecurring: true, recurringId: 'payroll-acme' },
@@ -2447,7 +2560,35 @@
           { id: 'tx-1007', merchant: 'Amazon', amount: 43.29, date: txDate(3), account: 'Chase Checking', category: 'Shopping', direction: 'expense', notes: '', myShare: null, ignored: true, isRecurring: false },
           { id: 'tx-1008', merchant: 'PG&E', amount: 91.62, date: txDate(5), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'pge-monthly' },
           { id: 'tx-1009', merchant: 'Trader Joe’s', amount: 76.18, date: txDate(8), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
-          { id: 'tx-1010', merchant: 'Interest payment', amount: 51.42, date: txDate(12), account: 'Marcus HYSA', category: 'Income', direction: 'income', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'marcus-interest' }
+          { id: 'tx-1010', merchant: 'Interest payment', amount: 51.42, date: txDate(12), account: 'Marcus HYSA', category: 'Income', direction: 'income', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'marcus-interest' },
+          // Repeat merchants this month (frequent-spend insight)
+          { id: 'tx-1011', merchant: 'Blue Bottle Coffee', amount: 6.50, date: txDate(2), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1012', merchant: 'Blue Bottle Coffee', amount: 8.25, date: txDate(4), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1013', merchant: 'Uber', amount: 18.40, date: txDate(6), account: 'Chase Checking', category: 'Transport', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          // A split dinner (fronted): paid 180, your share 60 → 120 fronted
+          { id: 'tx-1014', merchant: 'Lazy Bear', amount: 180.00, date: txDate(7), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: 'Split with friends', myShare: 60, ignored: false, isRecurring: false },
+          // Non-spending buckets (excluded from totals, listed separately)
+          { id: 'tx-1015', merchant: 'Transfer to Marcus HYSA', amount: 500.00, date: txDate(9), account: 'Chase Checking', category: 'Transfer', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1016', merchant: 'Adobe Creative Cloud', amount: 59.99, date: txDate(10), account: 'Chase Checking', category: 'Tax Deductible', direction: 'expense', notes: 'Business software', myShare: null, ignored: false, isRecurring: true, recurringId: 'adobe-monthly' },
+          { id: 'tx-1017', merchant: 'Work travel — flight', amount: 342.00, date: txDate(11), account: 'Chase Checking', category: 'Reimbursements', direction: 'expense', notes: 'Expense report filed', myShare: null, ignored: false, isRecurring: false },
+          // Larger purchases this month
+          { id: 'tx-1018', merchant: 'Apple Store', amount: 429.00, date: txDate(6), account: 'Chase Checking', category: 'Shopping', direction: 'expense', notes: 'AirPods Max', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-1019', merchant: 'Comcast', amount: 84.00, date: txDate(3), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'comcast-monthly' },
+          // ── Prior month (for "vs last month" + bar chart) ──
+          { id: 'tx-0901', merchant: 'Acme Studio Payroll', amount: 4280.00, date: txMonth(1, 1), account: 'Chase Checking', category: 'Income', direction: 'income', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'payroll-acme' },
+          { id: 'tx-0902', merchant: 'Whole Foods Market', amount: 142.30, date: txMonth(1, 4), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0903', merchant: 'Blue Bottle Coffee', amount: 7.25, date: txMonth(1, 9), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0904', merchant: 'PG&E', amount: 88.10, date: txMonth(1, 6), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'pge-monthly' },
+          { id: 'tx-0905', merchant: 'Comcast', amount: 84.00, date: txMonth(1, 6), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'comcast-monthly' },
+          { id: 'tx-0906', merchant: 'Amazon', amount: 112.60, date: txMonth(1, 12), account: 'Chase Checking', category: 'Shopping', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0907', merchant: 'Shell', amount: 54.20, date: txMonth(1, 18), account: 'Chase Checking', category: 'Transport', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          // ── Two–five months back (bar chart depth) ──
+          { id: 'tx-0801', merchant: 'Monthly spend', amount: 1620.00, date: txMonth(2, 15), account: 'Chase Checking', category: 'Shopping', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0802', merchant: 'PG&E', amount: 95.00, date: txMonth(2, 6), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'pge-monthly' },
+          { id: 'tx-0701', merchant: 'Monthly spend', amount: 1840.00, date: txMonth(3, 15), account: 'Chase Checking', category: 'Dining', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0702', merchant: 'PG&E', amount: 102.00, date: txMonth(3, 6), account: 'Chase Checking', category: 'Bills & Utilities', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: true, recurringId: 'pge-monthly' },
+          { id: 'tx-0601', merchant: 'Monthly spend', amount: 1510.00, date: txMonth(4, 15), account: 'Chase Checking', category: 'Groceries', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false },
+          { id: 'tx-0501', merchant: 'Monthly spend', amount: 1725.00, date: txMonth(5, 15), account: 'Chase Checking', category: 'Transport', direction: 'expense', notes: '', myShare: null, ignored: false, isRecurring: false }
         ];
         // --- Funds (portfolio) — accounts map: { acctId: { shares, value } } ---
         d.funds = [
@@ -2862,6 +3003,8 @@
           goals: 'goals',
           lifeNW: 'life',
           lifeInc: 'life',
+          spBar: 'spending',
+          spDonut: null,       // doughnut — no y-axis
         };
         Object.entries(allCharts).forEach(([key, tabId]) => {
           const ch = CH[key];
@@ -2943,7 +3086,7 @@
         if (ss) ss.classList.toggle('life-blurred', g || !!pv().life);
 
         // Update per-tab toggle buttons
-        ['accounts', 'portfolio', 'rebalance', 'projections', 'goals', 'life'].forEach(tab => {
+        ['accounts', 'portfolio', 'rebalance', 'projections', 'goals', 'life', 'spending'].forEach(tab => {
           const hidden = isTabHidden(tab);
           const btn = document.getElementById(`tab-hide-${tab}`);
           const ico = document.getElementById(`tab-hide-icon-${tab}`);
@@ -3150,7 +3293,7 @@
         if (activeTC) { const id = activeTC.id.replace('tab-', ''); renderTab(id); }
       }
       function renderTab(id) {
-        ({ overview: renderOverview, transactions: renderTransactions, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
+        ({ overview: renderOverview, transactions: renderTransactions, spending: renderSpending, accounts: renderAccounts, portfolio: renderPortfolio, rebalance: calcRebal, projections: () => { updateProj(); renderRetTbl(); renderStress(); }, goals: renderGoals, life: renderLife, future: renderLifePlan, gains: renderGains, rank: renderRank, settings: renderSettings })[id]?.();
       }
 
       // ══════════════════════════════════════════════════════════════
@@ -3529,7 +3672,8 @@
       const STANDARD_TRANSACTION_CATEGORIES = [
         'Dining', 'Groceries', 'Transport', 'Shopping', 'Entertainment',
         'Bills & Utilities', 'Housing', 'Health', 'Travel', 'Education',
-        'Personal Care', 'Gifts & Donations', 'Income', 'Transfer', 'Other'
+        'Personal Care', 'Gifts & Donations', 'Income', 'Transfer',
+        'Tax Deductible', 'Reimbursements', 'Other'
       ];
       let txFilters = { search: '', account: 'all', category: 'all', dateRange: 'all', amount: 'all', sort: 'newest' };
       let activeTransactionId = null;
@@ -3829,6 +3973,7 @@
         editingAmountTransactionId = null;
         ps(S);
         renderTransactions();
+        spRerenderIfActive();
       }
 
       function cancelTransactionAmountEdit() {
@@ -3849,6 +3994,7 @@
         transaction[field] = value;
         ps(S);
         renderTransactions();
+        spRerenderIfActive();
       }
 
       function saveTransactionShare(id, inputId = 'tx-share-input') {
@@ -3866,6 +4012,7 @@
         activeShareTransactionId = null;
         ps(S);
         renderTransactions();
+        spRerenderIfActive();
       }
 
       function previewModalTransactionAmount(id, raw) {
@@ -3898,6 +4045,7 @@
         activeShareTransactionId = null;
         ps(S);
         renderTransactions();
+        spRerenderIfActive();
       }
 
       async function refreshTransactions() {
@@ -3927,6 +4075,486 @@
         } finally {
           if (button) { button.disabled = false; button.classList.remove('loading'); }
         }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SPENDING  (Rocket Money–style spending view)
+      // Everything is computed from S.transactions on every render, so edits
+      // to myShare / ignored / category reflect immediately. effectiveAmount()
+      // stays the single source of truth for "net" spend.
+      // ══════════════════════════════════════════════════════════════
+      const SP_BILLS_CATEGORY = 'Bills & Utilities';
+      // Categories that are tracked but excluded from spending totals.
+      const SP_NONSPEND = {
+        'Tax Deductible': { label: 'Tax Deductible' },
+        'Reimbursements': { label: 'Reimbursements' },
+        'Reimbursement': { label: 'Reimbursements' }, // alias
+        'Transfer': { label: 'Internal Transfers' }
+      };
+      let spState = {
+        period: 'this',            // 'last' | 'this' | 'custom'
+        netGross: 'net',           // 'net' | 'gross' — default Net
+        includeBills: true,
+        customFrom: null,
+        customTo: null,
+        barOffset: 0,              // month-scroll offset (0 = most recent window)
+        drillCategory: null
+      };
+
+      // Amount a transaction contributes given the Net/Gross toggle.
+      // Ignored transactions always contribute 0 to spend (they live in the
+      // Non-spending → Ignored row instead).
+      function spAmount(t) {
+        if (t.ignored) return 0;
+        if (spState.netGross === 'gross') return Number(t.amount) || 0;
+        return effectiveAmount(t); // net = myShare ?? amount
+      }
+      // The "fronted" amount = what you paid on behalf of others = amount − myShare.
+      function spFronted(t) {
+        if (t.ignored || t.myShare === null || t.myShare === undefined) return 0;
+        const d = (Number(t.amount) || 0) - Number(t.myShare);
+        return d > 0 ? d : 0;
+      }
+      function spIsIncome(t) { return t.direction === 'income' || t.category === 'Income'; }
+      function spIsBills(t) { return t.category === SP_BILLS_CATEGORY; }
+      function spIsNonSpend(t) { return Object.prototype.hasOwnProperty.call(SP_NONSPEND, t.category); }
+      // A transaction counts toward the spending total/donut/table when it is:
+      // an expense, not income, not a non-spending category, not ignored, and
+      // (bills included OR it isn't a bill).
+      function spIsSpending(t) {
+        if (spIsIncome(t)) return false;
+        if (spIsNonSpend(t)) return false;
+        if (t.ignored) return false;
+        if (!spState.includeBills && spIsBills(t)) return false;
+        return true;
+      }
+
+      // ── Date-range helpers ───────────────────────────────────────
+      function spMonthStart(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+      function spMonthRange(period) {
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        if (period === 'custom') {
+          const from = spState.customFrom ? txLocalDate(spState.customFrom) : spMonthStart(now);
+          const to = spState.customTo ? txLocalDate(spState.customTo) : now;
+          return { from, to, label: 'Custom range' };
+        }
+        const ref = period === 'last' ? new Date(now.getFullYear(), now.getMonth() - 1, 1) : spMonthStart(now);
+        const from = new Date(ref.getFullYear(), ref.getMonth(), 1);
+        const to = new Date(ref.getFullYear(), ref.getMonth() + 1, 0); // last day of month
+        to.setHours(23, 59, 59, 999);
+        const label = from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        return { from, to, label };
+      }
+      function spInRange(t, range) {
+        const d = txLocalDate(t.date);
+        return d >= range.from && d <= range.to;
+      }
+      // Previous comparable range (prior month, or prior custom-length window).
+      function spPrevRange(range, period) {
+        if (period === 'custom') {
+          const span = range.to - range.from;
+          const to = new Date(range.from.getTime() - 1);
+          const from = new Date(to.getTime() - span);
+          return { from, to };
+        }
+        const from = new Date(range.from.getFullYear(), range.from.getMonth() - 1, 1);
+        const to = new Date(range.from.getFullYear(), range.from.getMonth(), 0);
+        to.setHours(23, 59, 59, 999);
+        return { from, to };
+      }
+
+      // Sum spending over a range using current toggles.
+      function spSpendTotal(range) {
+        return S.transactions.filter(t => spInRange(t, range) && spIsSpending(t))
+          .reduce((s, t) => s + spAmount(t), 0);
+      }
+
+      // ── Controls ─────────────────────────────────────────────────
+      function setSpendingPeriod(p) {
+        spState.period = p;
+        spState.barOffset = 0;
+        const row = document.getElementById('sp-custom-row');
+        if (row) row.style.display = p === 'custom' ? '' : 'none';
+        renderSpending();
+      }
+      function setSpendingNetGross(v) { spState.netGross = v; renderSpending(); }
+      function toggleSpendingBills() { spState.includeBills = !spState.includeBills; renderSpending(); }
+      function setSpendingCustom(which, val) {
+        if (which === 'from') spState.customFrom = val || null;
+        else spState.customTo = val || null;
+        renderSpending();
+      }
+      function scrollSpendingBars(dir) {
+        // dir -1 = earlier (increase offset into the past), +1 = later
+        const next = spState.barOffset + (dir < 0 ? 1 : -1);
+        spState.barOffset = Math.max(0, next);
+        renderSpendingBars();
+      }
+
+      // Called by the transaction edit functions so edits made in the shared
+      // detail modal (which can be opened from the Spending drill-down) or on
+      // the Transactions tab refresh this tab when it is the one on screen.
+      function spRerenderIfActive() {
+        if (document.getElementById('tab-spending')?.classList.contains('on')) renderSpending();
+        if (document.getElementById('sp-drill')?.classList.contains('open')) renderSpendingDrill();
+      }
+
+      // ── Monthly bar chart ────────────────────────────────────────
+      function renderSpendingBars() {
+        const canvas = document.getElementById('spBarChart');
+        if (!canvas) return;
+        const WINDOW = 6;
+        const now = new Date(); now.setHours(12, 0, 0, 0);
+        // Build months newest→oldest, then take a 6-wide window per barOffset.
+        const months = [];
+        for (let i = 0; i < WINDOW + spState.barOffset; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - (i + spState.barOffset), 1);
+          const from = new Date(d.getFullYear(), d.getMonth(), 1);
+          const to = new Date(d.getFullYear(), d.getMonth() + 1, 0); to.setHours(23, 59, 59, 999);
+          let bills = 0, nonbills = 0;
+          S.transactions.forEach(t => {
+            if (!spInRange(t, { from, to })) return;
+            if (spIsIncome(t) || spIsNonSpend(t) || t.ignored) return;
+            if (spIsBills(t)) { if (spState.includeBills) bills += spAmount(t); }
+            else nonbills += spAmount(t);
+          });
+          months.push({ key: from.toISOString().slice(0, 7), label: from.toLocaleDateString('en-US', { month: 'short' }), from, to, bills, nonbills });
+          if (months.length >= WINDOW + spState.barOffset) break;
+        }
+        // slice the visible window (skip barOffset most-recent months)
+        const windowMonths = months.slice(spState.barOffset, spState.barOffset + WINDOW).reverse();
+        const curKey = spMonthStart(now).toISOString().slice(0, 7);
+        const thc = getThemeColors();
+        const nonBillColor = thc[0];
+        const billColor = thc[2];
+        const labels = windowMonths.map(m => m.label);
+        const fullLabels = windowMonths.map(m => m.from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+        // Highlight current month: full opacity; others slightly muted.
+        const alphaFor = m => (m.key === curKey ? 'FF' : 'B0');
+        dC('spBar');
+        CH['spBar'] = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Non-bills', data: windowMonths.map(m => m.nonbills), backgroundColor: windowMonths.map(m => nonBillColor + alphaFor(m)), stack: 's', borderRadius: 4, borderSkipped: false },
+              { label: 'Bills', data: windowMonths.map(m => m.bills), backgroundColor: windowMonths.map(m => billColor + alphaFor(m)), stack: 's', borderRadius: 4, borderSkipped: false }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false, external: makeExternalTooltip('sp-bar-tip', (idx) => {
+                const m = windowMonths[idx];
+                if (!m) return null;
+                const hide = isTabHidden('spending');
+                const rows = [
+                  { color: nonBillColor, label: 'Non-bills', value: hide ? '—' : fmtUSD(m.nonbills, 0) }
+                ];
+                if (spState.includeBills) rows.push({ color: billColor, label: 'Bills', value: hide ? '—' : fmtUSD(m.bills, 0) });
+                rows.push({ label: 'Total', value: hide ? '—' : fmtUSD(m.nonbills + m.bills, 0) });
+                return { title: fullLabels[idx], rows };
+              }) }
+            },
+            scales: {
+              x: { stacked: true, grid: { display: false }, ticks: { color: '#9A958E', font: { size: 10 } } },
+              y: { stacked: true, display: !isTabHidden('spending'), ticks: { color: '#9A958E', font: { size: 10 }, callback: v => fmtUSD(v, 0) }, grid: { color: 'rgba(26,25,23,.04)' } }
+            }
+          }
+        });
+        const prevBtn = document.getElementById('sp-bar-prev');
+        const nextBtn = document.getElementById('sp-bar-next');
+        if (nextBtn) nextBtn.disabled = spState.barOffset === 0;
+        // prev is effectively unbounded but cap so we don't scroll past data age
+        if (prevBtn) prevBtn.disabled = false;
+      }
+
+      // ── Category breakdown (donut + table) ───────────────────────
+      function spCategoryBreakdown(range) {
+        const map = new Map();
+        S.transactions.forEach(t => {
+          if (!spInRange(t, range) || !spIsSpending(t)) return;
+          const amt = spAmount(t);
+          if (amt <= 0) return;
+          map.set(t.category, (map.get(t.category) || 0) + amt);
+        });
+        return [...map.entries()].map(([category, amount]) => ({ category, amount }))
+          .sort((a, b) => b.amount - a.amount);
+      }
+
+      function renderSpending() {
+        if (!S?.transactions) return;
+        // Sync control active states
+        document.querySelectorAll('#sp-period-seg .sp-seg-btn').forEach(b => b.classList.toggle('on', b.dataset.period === spState.period));
+        document.querySelectorAll('#sp-netgross-seg .sp-seg-btn').forEach(b => b.classList.toggle('on', b.dataset.ng === spState.netGross));
+        const billsBtn = document.getElementById('sp-bills-toggle');
+        const billsLbl = document.getElementById('sp-bills-lbl');
+        if (billsBtn) billsBtn.classList.toggle('is-hidden', !spState.includeBills);
+        if (billsLbl) billsLbl.textContent = spState.includeBills ? 'Bills included' : 'Bills excluded';
+        const customRow = document.getElementById('sp-custom-row');
+        if (customRow) customRow.style.display = spState.period === 'custom' ? '' : 'none';
+
+        const range = spMonthRange(spState.period);
+        const prevRange = spPrevRange(range, spState.period);
+        const sub = document.getElementById('sp-subtitle');
+        if (sub) sub.textContent = range.label;
+
+        renderSpendingBars();
+        renderSpendingDonutAndTable(range, prevRange);
+        renderSpendingNonSpend(range);
+        renderSpendingInsights(range, prevRange);
+      }
+
+      function renderSpendingDonutAndTable(range, prevRange) {
+        const breakdown = spCategoryBreakdown(range);
+        const total = breakdown.reduce((s, c) => s + c.amount, 0);
+        const prevTotal = spSpendTotal(prevRange);
+        const thc = getThemeColors();
+        const hide = isTabHidden('spending');
+
+        // Donut center
+        const centerEl = document.getElementById('sp-donut-center');
+        if (centerEl) {
+          let pctVs = '';
+          if (prevTotal > 0) {
+            const chg = ((total - prevTotal) / prevTotal) * 100;
+            const arrow = chg > 0 ? '▲' : (chg < 0 ? '▼' : '');
+            const col = chg > 0 ? 'var(--rose)' : 'var(--teal)';
+            pctVs = `<div class="sp-donut-sub" style="color:${col}">${arrow} ${Math.abs(chg).toFixed(1)}% vs last month</div>`;
+          } else {
+            pctVs = `<div class="sp-donut-sub">no prior data</div>`;
+          }
+          centerEl.innerHTML = `<div class="sp-donut-label">TOTAL SPEND</div><div class="sp-donut-total">${hide ? '—' : fmtUSD(total, 0)}</div>${pctVs}`;
+        }
+
+        // Donut chart
+        const canvas = document.getElementById('spDonutChart');
+        if (canvas) {
+          const colors = breakdown.map((c, i) => thc[i % thc.length]);
+          const isDark = document.documentElement.classList.contains('dark');
+          dC('spDonut');
+          if (breakdown.length) {
+            CH['spDonut'] = new Chart(canvas, {
+              type: 'doughnut',
+              data: { labels: breakdown.map(c => c.category), datasets: [{ data: breakdown.map(c => c.amount), backgroundColor: colors, borderWidth: 2, borderColor: isDark ? 'transparent' : '#fff' }] },
+              options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false, external: makeDoughnutTooltip('sp-donut-tip', (i) => {
+                  return { color: colors[i], label: breakdown[i].category, value: hide ? '—' : fmtUSD(breakdown[i].amount, 2), pct: total > 0 ? pct((breakdown[i].amount / total) * 100) : '' };
+                }) } }
+              }
+            });
+          }
+        }
+
+        // Category table
+        const tableEl = document.getElementById('sp-cat-table');
+        if (tableEl) {
+          if (!breakdown.length) {
+            tableEl.innerHTML = '<div class="sp-empty">No spending in this period.</div>';
+          } else {
+            // prior-period per-category for change arrows
+            const prevMap = new Map();
+            S.transactions.forEach(t => {
+              if (!spInRange(t, prevRange) || !spIsSpending(t)) return;
+              const amt = spAmount(t);
+              if (amt > 0) prevMap.set(t.category, (prevMap.get(t.category) || 0) + amt);
+            });
+            const head = `<div class="sp-cat-head"><span>Category</span><span class="sp-num">% of spend</span><span class="sp-num">Change</span><span class="sp-num">Amount</span></div>`;
+            const rows = breakdown.map((c, i) => {
+              const share = total > 0 ? (c.amount / total) * 100 : 0;
+              const prev = prevMap.get(c.category) || 0;
+              let chgHtml = '<span class="sp-chg sp-chg-flat">—</span>';
+              if (prev > 0) {
+                const chg = ((c.amount - prev) / prev) * 100;
+                const up = chg > 0;
+                chgHtml = `<span class="sp-chg ${up ? 'sp-chg-up' : (chg < 0 ? 'sp-chg-down' : 'sp-chg-flat')}">${up ? '▲' : (chg < 0 ? '▼' : '')} ${Math.abs(chg).toFixed(0)}%</span>`;
+              } else if (c.amount > 0) {
+                chgHtml = '<span class="sp-chg sp-chg-up">new</span>';
+              }
+              const color = getThemeColors()[i % getThemeColors().length];
+              return `<button class="sp-cat-row" onclick="openSpendingDrill('${txEsc(c.category)}')" aria-label="View ${txEsc(c.category)} transactions">
+                <span class="sp-cat-name"><span class="sp-cat-dot" style="background:${color}"></span><span class="sp-cat-ico">${transactionCategoryIcon(c.category)}</span>${txEsc(c.category)}</span>
+                <span class="sp-num sp-cat-pct">${share.toFixed(1)}%</span>
+                <span class="sp-num">${chgHtml}</span>
+                <span class="sp-num sp-cat-amt">${hide ? '—' : fmtUSD(c.amount, 2)}</span>
+              </button>`;
+            }).join('');
+            tableEl.innerHTML = head + rows;
+          }
+        }
+      }
+
+      function renderSpendingNonSpend(range) {
+        const el = document.getElementById('sp-nonspend');
+        if (!el) return;
+        const hide = isTabHidden('spending');
+        // Aggregate the non-spending buckets for this range.
+        const buckets = { 'Tax Deductible': 0, 'Reimbursements': 0, 'Internal Transfers': 0 };
+        let ignoredTotal = 0, ignoredCount = 0;
+        S.transactions.forEach(t => {
+          if (!spInRange(t, range)) return;
+          if (t.ignored) {
+            // Ignored appears ONLY here (its effective amount is 0 everywhere else).
+            ignoredTotal += Number(t.amount) || 0;
+            ignoredCount++;
+            return;
+          }
+          if (spIsNonSpend(t)) {
+            const label = SP_NONSPEND[t.category].label;
+            buckets[label] = (buckets[label] || 0) + (Number(t.amount) || 0);
+          }
+        });
+        const rows = [];
+        const pushRow = (label, amount, extra = '') => {
+          rows.push(`<div class="sp-ns-row"><span class="sp-ns-label">${label}${extra}</span><span class="sp-num sp-ns-amt">${hide ? '—' : fmtUSD(amount, 2)}</span></div>`);
+        };
+        pushRow('Tax Deductible', buckets['Tax Deductible']);
+        pushRow('Reimbursements', buckets['Reimbursements']);
+        pushRow('Ignored', ignoredTotal, ignoredCount ? ` <span class="sp-ns-count">${ignoredCount}</span>` : '');
+        pushRow('Internal Transfers', buckets['Internal Transfers']);
+        el.innerHTML = `<div class="sp-ns-title">Non-spending <span class="sp-ns-note">excluded from totals</span></div>${rows.join('')}`;
+      }
+
+      function renderSpendingInsights(range, prevRange) {
+        const hide = isTabHidden('spending');
+        // ── SUMMARY ──
+        const inRange = S.transactions.filter(t => spInRange(t, range));
+        const incomeTx = inRange.filter(t => spIsIncome(t) && !t.ignored);
+        const incomeTotal = incomeTx.reduce((s, t) => s + (spState.netGross === 'gross' ? Number(t.amount) || 0 : effectiveAmount(t)), 0);
+        const billsTotal = inRange.filter(t => spIsBills(t) && !t.ignored && !spIsIncome(t)).reduce((s, t) => s + spAmount(t), 0);
+        const billsBudget = (S.transactionBudgets && S.transactionBudgets[SP_BILLS_CATEGORY]) || 0;
+        const spendTotal = spSpendTotal(range);
+        const prevSpend = spSpendTotal(prevRange);
+        const spendDiff = spendTotal - prevSpend;
+        const frontedTotal = inRange.reduce((s, t) => s + spFronted(t), 0);
+
+        let billsIndicator = '';
+        if (billsBudget > 0) {
+          const over = billsTotal > billsBudget;
+          billsIndicator = `<span class="sp-badge ${over ? 'sp-badge-over' : 'sp-badge-under'}">${over ? 'Over' : 'Under'} budget · ${hide ? '—' : fmtUSD(Math.abs(billsTotal - billsBudget), 0)}</span>`;
+        }
+        const diffCol = spendDiff > 0 ? 'var(--rose)' : 'var(--teal)';
+        const diffArrow = spendDiff > 0 ? '▲' : (spendDiff < 0 ? '▼' : '');
+        const summaryEl = document.getElementById('sp-summary');
+        if (summaryEl) {
+          summaryEl.innerHTML = `
+            <div class="sp-sum-row"><span>Income <span class="sp-ns-count">${incomeTx.length}</span></span><strong class="sp-pos">${hide ? '—' : '+' + fmtUSD(incomeTotal, 0)}</strong></div>
+            <div class="sp-sum-row"><span>Bills &amp; Utilities</span><span style="text-align:right"><strong>${hide ? '—' : fmtUSD(billsTotal, 0)}</strong> ${billsIndicator}</span></div>
+            <div class="sp-sum-row"><span>Spending</span><span style="text-align:right"><strong>${hide ? '—' : fmtUSD(spendTotal, 0)}</strong> <span class="sp-diff" style="color:${diffCol}">${diffArrow} ${hide ? '—' : fmtUSD(Math.abs(spendDiff), 0)} vs last</span></span></div>
+            <div class="sp-sum-row sp-sum-fronted" title="Money you paid on behalf of others (amount − your share). Shown for context; not counted in spending."><span>Fronted</span><span class="sp-num" style="color:var(--ink3)">${hide ? '—' : fmtUSD(frontedTotal, 2)}</span></div>
+          `;
+        }
+
+        // ── FREQUENT SPEND ── merchants with ≥2 this period, with prior count
+        const freqEl = document.getElementById('sp-frequent');
+        if (freqEl) {
+          const byMerchant = new Map();
+          inRange.filter(spIsSpending).forEach(t => {
+            const k = t.merchant || 'Unknown';
+            const e = byMerchant.get(k) || { count: 0, total: 0 };
+            e.count++; e.total += spAmount(t);
+            byMerchant.set(k, e);
+          });
+          const prevByMerchant = new Map();
+          S.transactions.filter(t => spInRange(t, prevRange) && spIsSpending(t)).forEach(t => {
+            const k = t.merchant || 'Unknown';
+            prevByMerchant.set(k, (prevByMerchant.get(k) || 0) + 1);
+          });
+          const freq = [...byMerchant.entries()].filter(([, e]) => e.count >= 2)
+            .sort((a, b) => b[1].count - a[1].count).slice(0, 4);
+          if (!freq.length) {
+            freqEl.innerHTML = '<div class="sp-empty">No repeat merchants this period.</div>';
+          } else {
+            freqEl.innerHTML = freq.map(([merchant, e]) => {
+              const prevCount = prevByMerchant.get(merchant) || 0;
+              const avg = e.total / e.count;
+              return `<div class="sp-freq-row">
+                <div class="sp-freq-main">
+                  <div class="sp-freq-merchant">${txEsc(merchant)}</div>
+                  <div class="sp-freq-sub">${e.count}× this month · ${prevCount}× last month</div>
+                </div>
+                <div class="sp-freq-nums">
+                  <div class="sp-freq-total">${hide ? '—' : fmtUSD(e.total, 0)}</div>
+                  <div class="sp-freq-avg">avg ${hide ? '—' : fmtUSD(avg, 2)}</div>
+                </div>
+              </div>`;
+            }).join('');
+          }
+        }
+
+        // ── LARGEST PURCHASES ── top 3 single transactions
+        const largeEl = document.getElementById('sp-largest');
+        if (largeEl) {
+          const spendList = inRange.filter(spIsSpending).map(t => ({ t, amt: spAmount(t) })).filter(x => x.amt > 0)
+            .sort((a, b) => b.amt - a.amt);
+          const top3 = spendList.slice(0, 3);
+          const spendTot = spendList.reduce((s, x) => s + x.amt, 0);
+          if (!top3.length) {
+            largeEl.innerHTML = '<div class="sp-empty">No purchases this period.</div>';
+          } else {
+            const top3Sum = top3.reduce((s, x) => s + x.amt, 0);
+            const sharePct = spendTot > 0 ? (top3Sum / spendTot) * 100 : 0;
+            largeEl.innerHTML = top3.map(({ t, amt }) => `
+              <div class="sp-large-row">
+                <div class="sp-large-main">
+                  <div class="sp-large-merchant">${txEsc(t.merchant)}</div>
+                  <div class="sp-large-date">${txLocalDate(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                </div>
+                <div class="sp-large-amt">${hide ? '—' : fmtUSD(amt, 2)}</div>
+              </div>`).join('') +
+              `<div class="sp-large-foot">Your top 3 were <strong>${sharePct.toFixed(0)}%</strong> of spend</div>`;
+          }
+        }
+      }
+
+      // ── Category drill-down (lists transactions; edits reuse the tx modal) ─
+      function openSpendingDrill(category) {
+        spState.drillCategory = category;
+        renderSpendingDrill();
+        document.getElementById('sp-drill-backdrop')?.classList.add('open');
+        const d = document.getElementById('sp-drill');
+        d?.classList.add('open');
+        d?.setAttribute('aria-hidden', 'false');
+      }
+      function closeSpendingDrill() {
+        spState.drillCategory = null;
+        document.getElementById('sp-drill-backdrop')?.classList.remove('open');
+        const d = document.getElementById('sp-drill');
+        d?.classList.remove('open');
+        d?.setAttribute('aria-hidden', 'true');
+        setTimeout(() => { if (!spState.drillCategory && d) d.innerHTML = ''; }, 220);
+      }
+      function renderSpendingDrill() {
+        const el = document.getElementById('sp-drill');
+        if (!el || !spState.drillCategory) return;
+        const hide = isTabHidden('spending');
+        const range = spMonthRange(spState.period);
+        const cat = spState.drillCategory;
+        const list = S.transactions.filter(t => t.category === cat && spInRange(t, range))
+          .sort((a, b) => b.date.localeCompare(a.date));
+        const total = list.filter(spIsSpending).reduce((s, t) => s + spAmount(t), 0);
+        const rows = list.map(t => {
+          const amt = spAmount(t);
+          const muted = (t.ignored || spIsIncome(t)) ? ' sp-drill-muted' : '';
+          const sign = spIsIncome(t) ? '+' : '';
+          return `<button class="sp-drill-row${muted}" onclick="openTransactionDetail('${txEsc(t.id)}')" aria-label="Edit ${txEsc(t.merchant)}">
+            <div class="sp-drill-left">
+              <div class="sp-drill-merchant">${txEsc(t.merchant)}${t.ignored ? ' <span class="tx-ignored-tag">ignored</span>' : ''}</div>
+              <div class="sp-drill-date">${txLocalDate(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${txEsc(t.account)}</div>
+            </div>
+            <div class="sp-drill-amt">${hide ? '—' : sign + fmtUSD(t.ignored ? (Number(t.amount) || 0) : amt, 2)}${(t.myShare != null && !t.ignored) ? `<span class="sp-drill-share">your share</span>` : ''}</div>
+          </button>`;
+        }).join('');
+        el.innerHTML = `<button class="tx-detail-close" onclick="closeSpendingDrill()" aria-label="Close">×</button>
+          <div class="sp-drill-head">
+            <span class="tx-category-icon sp-drill-headico">${transactionCategoryIcon(cat)}</span>
+            <div><div class="sp-drill-title">${txEsc(cat)}</div><div class="sp-drill-sub">${range.label} · ${list.length} transaction${list.length === 1 ? '' : 's'}</div></div>
+            <div class="sp-drill-total">${hide ? '—' : fmtUSD(total, 2)}</div>
+          </div>
+          <div class="sp-drill-list">${rows || '<div class="sp-empty">No transactions.</div>'}</div>
+          <div class="sp-drill-foot">Tap a transaction to adjust its share, category, or ignore it.</div>`;
       }
 
       // ══════════════════════════════════════════════════════════════
